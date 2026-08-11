@@ -41,7 +41,7 @@ export default function LoginPage() {
   React.useEffect(() => {
     const session = localStorage.getItem("user_session")
     if (session) {
-      router.push("/dashboard")
+      router.push("/dashboard/products")
     } else {
       // Defer the state update to prevent synchronous cascading renders inside the hook
       setTimeout(() => {
@@ -94,7 +94,7 @@ export default function LoginPage() {
             })
           )
           toast.success(`Welcome back, ${displayName}!`)
-          router.push("/dashboard")
+          router.push("/dashboard/products")
         } else {
           toast.error(data.error || "Invalid email or password")
           setLoading(false)
@@ -136,7 +136,7 @@ export default function LoginPage() {
             })
           )
           toast.success("Account created successfully!")
-          router.push("/dashboard")
+          router.push("/dashboard/products")
         } else {
           toast.error(data.error || "Registration failed")
           setLoading(false)
