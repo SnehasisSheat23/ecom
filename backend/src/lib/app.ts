@@ -246,11 +246,12 @@ export const createApp = ({
       origin: async (origin, c) => {
         if (!origin) return null
 
-        // 1. Allow localhost, workers.dev, and pages.dev origins
+        // 1. Allow localhost, workers.dev, pages.dev, and vercel.app origins
         const isAllowedOrigin = 
           /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
           /\.workers\.dev$/.test(origin) ||
-          /\.pages\.dev$/.test(origin)
+          /\.pages\.dev$/.test(origin) ||
+          /\.vercel\.app$/.test(origin)
         if (isAllowedOrigin) {
           return origin
         }
