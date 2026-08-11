@@ -38,7 +38,7 @@ export class MediaService {
       throw new AppError('File exceeds 10MB limit', 400, 'file-too-large')
     }
 
-    let url = `memory://${filename}`
+    let url = `data:${contentType};base64,${content.toString('base64')}`
     let storagePath: string | null = null
 
     console.log(`[Media Upload]: Attempting upload of filename=${filename}. Storage provider present: ${!!this.storage}`)
@@ -47,7 +47,7 @@ export class MediaService {
       url = await this.storage.upload(tenantId, storagePath, content, contentType)
       console.log(`[Media Upload]: Success. URL generated: ${url}`)
     } else {
-      console.warn(`[Media Upload]: No storage provider detected! Falling back to memory URL.`)
+      console.warn(`[Media Upload]: No cloud storage provider detected! Falling back to base64 Data URL.`)
     }
 
     return this.repository.createAsset(tenantId, {

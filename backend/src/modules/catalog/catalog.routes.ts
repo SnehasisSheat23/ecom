@@ -205,8 +205,8 @@ export const createCatalogRoutes = (service: CatalogService) => {
     requireCatalogWriter(actorFromContext(c))
     const payload = z
       .object({
-        mediaId: z.string().uuid(),
-        variantId: z.string().uuid().nullable().optional(),
+        mediaId: z.string().min(1),
+        variantId: z.string().min(1).nullable().optional(),
         altText: z.string().nullable().optional(),
         position: z.number().int().min(0).optional(),
       })
