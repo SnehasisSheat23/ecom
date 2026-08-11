@@ -1,0 +1,9 @@
+{
+  "name": "dubai-ecom",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "cd backend && npm run start",
+    "build": "cd backend && npm run build"
+  }
+}
