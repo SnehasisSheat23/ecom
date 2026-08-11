@@ -82,11 +82,7 @@ export class S3StorageProvider implements StorageProvider {
       throw new Error(`Failed to upload file to storage: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
 
-    if (this.config.publicBaseUrl) {
-      return `${this.config.publicBaseUrl.replace(/\/+$/, '')}/${key}`
-    }
-
-    // Generate 7-day presigned GET URL so browsers can access private R2 objects directly without 401
+    // Generate 7-day presigned GET URL so browsers load R2 objects directly without 401 Unauthorized
     return this.getSignedUrl(_tenantId, key, 604800)
   }
 
