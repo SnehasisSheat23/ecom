@@ -1,3 +1,8 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
 # Dependencies
 node_modules
 .pnpm-store
@@ -8,12 +13,6 @@ node_modules
 dist
 build
 .wrangler
-
-# Local env files (preserve template/config)
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
 # System & IDE files
 .DS_Store
