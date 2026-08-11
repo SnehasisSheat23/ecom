@@ -1,0 +1,17 @@
+export const ALL_PRODUCTS = [
+    { id: '1', title: 'TOMATO KETCHUP PORTION', arabic: 'كاتشب طماطم مظاريف', category: 'KETCHUP', size: '( 1000 x 8 g )', price: 180, inStock: true, onSale: true, img: 'https://www.dropbox.com/scl/fi/tmhvpb1857h9n4v5myxw3/1ed8a4787fc118d97bbd66fcda1f1ccdfb113b82-1.png?rlkey=pk43p6i80m5rb06dc1yi3jk0t&st=qvvnx4z3&raw=1' },
+    { id: '2', title: 'TOMATO KETCHUP SQUEEZE', arabic: 'كاتشب طماطم عصر', category: 'KETCHUP', size: '( 12 x 340 g )', price: 120, inStock: true, onSale: false},
+    { id: '3', title: 'TOMATO KETCHUP GALLON', arabic: 'جالون كاتشب طماطم', category: 'KETCHUP', size: '( 4 x 5 Kg )', price: 500, inStock: true, onSale: true, img: 'https://www.dropbox.com/scl/fi/vveb76ej83cno5x2pg57h/1c35a3fc83b5d3bd6338a52ac7609f4819064413.jpg?rlkey=fbvucajcoeymqkyjnlgv7u7id&st=wzt3d0i4&raw=1' },
+    { id: '4', title: 'WHITE VINEGAR BOTTLE', arabic: 'خل أبيض نقي', category: 'VINEGAR', size: '( 12 x 473 ml )', price: 95, inStock: true, onSale: false, img: '/images/white-vinegar-bottle.png' },
+    { id: '5', title: 'WHITE VINEGAR GALLON', arabic: 'جالون خل أبيض', category: 'VINEGAR', size: '( 4 x 3.78 L )', price: 210, inStock: true, onSale: true, img: '/images/white-vinegar-gallon.png' },
+    { id: '6', title: 'PICKLED CUCUMBER SLICED', arabic: 'خيار مخلل شرائح', category: 'PICKLES', size: '( 6 x 3 Kg )', price: 340, inStock: true, onSale: false, img: '/images/pickled-cucumber-sliced.png' },
+    { id: '7', title: 'MIXED VEGETABLE PICKLES', arabic: 'مخلل خضار مشكل', category: 'PICKLES', size: '( 4 x 5 Kg )', price: 420, inStock: true, onSale: true, img: '/images/mixed-vegetable-pickles.png' },
+    { id: '8', title: 'MAYONNAISE CLASSIC GALLON', arabic: 'مايونيز كلاسيك جالون', category: 'SAUCES & DRESSING', size: '( 4 x 3.78 L )', price: 650, inStock: true, onSale: false, img: '/images/mayonnaise-classic-gallon.png' },
+    { id: '9', title: 'BARBECUE SAUCE BOTTLE', arabic: 'صلصة باربيكيو', category: 'SAUCES & DRESSING', size: '( 12 x 510 g )', price: 280, inStock: true, onSale: true, img: '/images/barbecue-sauce-bottle.png' },
+    { id: '10', title: 'SWEET CORN CANNED', arabic: 'ذرة حلوة معلبة', category: 'CANNED FRUITS & VEGETABLES', size: '( 24 x 400 g )', price: 160, inStock: true, onSale: false, img: '/images/sweet-corn-canned.png' },
+    { id: '11', title: 'EXTRA VIRGIN OLIVE OIL', arabic: 'زيت زيتون بكر ممتاز', category: 'OILS', size: '( 4 x 5 L )', price: 850, inStock: true, onSale: true, img: '/images/extra-virgin-olive-oil.png' },
+    { id: '12', title: 'BLACK OLIVES SLICED', arabic: 'زيتون أسود شرائح', category: 'OLIVES', size: '( 6 x 3 Kg )', price: 310, inStock: true, onSale: false, img: '/images/black-olives-sliced.png' },
+    { id: '13', title: 'FRENCH FRIES STRAIGHT CUT', arabic: 'بطاطس مقلية أصابع', category: 'FRENCH FRIES', size: '( 4 x 2.5 Kg )', price: 290, inStock: true, onSale: true, img: '/images/french-fries-straight-cut.png' },
+    { id: '14', title: 'BLACK PEPPER POWDER', arabic: 'فلفل أسود مطحون', category: 'POWDERED SPICES', size: '( 12 x 500 g )', price: 450, inStock: true, onSale: false, img: '/images/black-pepper-powder.png' },
+    { id: '15', title: 'CHEDDAR CHEESE SAUCE', arabic: 'صلصة جبنة شيدر', category: 'DAIRY ITEMS', size: '( 6 x 3 Kg )', price: 780, inStock: true, onSale: true, img: '/images/cheddar-cheese-sauce.png' },
+];

@@ -1,0 +1,15 @@
+{
+  "id": "M17",
+  "name": "Sales & Analytics",
+  "phase": 3,
+  "status": "DESIGN",
+  "dependencies": ["M07", "M14"],
+  "documentation": {
+    "prd": "docs/modules/M17-sales-analytics/PRD-M17.md",
+    "design": "docs/modules/M17-sales-analytics/DESIGN-M17.md"
+  },
+  "performance": {
+    "target_dashboard_load": "< 500ms p95",
+    "data_latency": "< 1m"
+  }
+}

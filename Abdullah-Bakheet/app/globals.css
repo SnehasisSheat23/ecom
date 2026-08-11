@@ -1,0 +1,41 @@
+@font-face {
+  font-family: 'Fiorello';
+  src: url('/fonts/fiorello-cg-condensed-regular-opentype_ufonts.com.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@import "tailwindcss";
+
+:root {
+  --background: #faf8f3;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-gray: #faf8f3;
+  --color-brand-dark: #20312c;
+  --color-brand-yellow: #f9c014;
+  --font-sans: var(--font-outfit);
+  --font-mono: var(--font-outfit);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #faf8f3;
+    --foreground: #171717;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-outfit), Arial, Helvetica, sans-serif;
+}
+
+.font-heading {
+  font-family: var(--font-heading);
+}

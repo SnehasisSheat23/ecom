@@ -1,0 +1,12 @@
+package-lock.json
+node_modules/*
+Trugift-vendor/*
+.wrangler/*
+.cursorrules
+.DS_Store
+.env
+AGENTS.md
+CLAUDE.md
+tests/*
+scratch/*
+Trugift-vendor

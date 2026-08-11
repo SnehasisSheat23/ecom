@@ -1,0 +1,19 @@
+{
+  "id": "M06",
+  "name": "Cart",
+  "slug": "cart",
+  "layer": "core",
+  "phase": 1,
+  "status": "not_started",
+  "estimate_days": 2,
+  "depends_on": ["M01", "M02", "M03", "M04", "M05"],
+  "required_by": ["M07", "M11"],
+  "source_path": "src/modules/cart/",
+  "files": { "service": "cart.service.ts", "repository": "cart.repository.ts", "routes": "cart.routes.ts", "schema": "cart.schema.ts", "types": "cart.types.ts", "validators": "cart.validators.ts", "tests": "cart.test.ts" },
+  "tables": ["carts", "cart_items", "saved_for_later_items"],
+  "queues": ["tenant:{tenantId}:cart-expiry"],
+  "redis_keys": ["tenant:{tenantId}:cart:{cartId}"],
+  "events_emitted": ["cart.updated", "cart.abandoned"],
+  "events_consumed": [],
+  "data_integrity_rules": ["R9"]
+}

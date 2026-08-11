@@ -1,0 +1,119 @@
+[
+  {
+    "id": "PROD-001",
+    "image": "https://images.unsplash.com/photo-1521369909029-2afed882ba54?w=100&q=80",
+    "title": "Example Hat",
+    "description": "A comfortable and stylish hat for everyday wear. Made from 100% cotton with an adjustable strap.",
+    "status": "Archived",
+    "inventory": "Inventory not tracked",
+    "salesChannels": 2,
+    "markets": 2,
+    "category": "Clothing",
+    "type": "Hat",
+    "vendor": "Acme",
+    "price": 25,
+    "compareAtPrice": 35,
+    "costPerItem": 10,
+    "sku": "HAT-001",
+    "barcode": "123456789012",
+    "trackQuantity": true,
+    "continueSellingWhenOutOfStock": false,
+    "quantity": 142,
+    "weight": 0.5,
+    "weightUnit": "lb",
+    "countryOfOrigin": "US",
+    "hsCode": "6505.00.0000",
+    "collections": [
+      "Summer Collection",
+      "Accessories"
+    ],
+    "publishingDetails": [
+      {
+        "channel": "Online Store",
+        "published": true,
+        "date": "2023-01-15"
+      },
+      {
+        "channel": "Point of Sale",
+        "published": true,
+        "date": "2023-01-15"
+      },
+      {
+        "channel": "Google & YouTube",
+        "published": false
+      }
+    ],
+    "variants": [
+      {
+        "name": "Default Title",
+        "price": 25,
+        "inventory": 142,
+        "currency": "USD"
+      }
+    ],
+    "seo": {
+      "title": "Example Hat | Acme Store",
+      "description": "Buy the best Example Hat at Acme store."
+    },
+    "tags": [
+      "summer",
+      "accessories"
+    ],
+    "currency": "USD"
+  },
+  {
+    "id": "PROD-002",
+    "image": "https://images.unsplash.com/photo-1542272604-787c3835535d?w=100&q=80",
+    "title": "Example Pants",
+    "status": "Draft",
+    "inventory": "Inventory not tracked",
+    "salesChannels": 2,
+    "markets": 2,
+    "category": "Clothing",
+    "type": "Pants",
+    "vendor": "Acme",
+    "price": 55,
+    "sku": "PANT-002",
+    "currency": "INR"
+  },
+  {
+    "id": "PROD-003",
+    "image": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=100&q=80",
+    "title": "Example T-Shirt",
+    "description": "Premium quality cotton t-shirt with our signature logo.",
+    "status": "Active",
+    "inventory": "0 in stock for 3 variants",
+    "salesChannels": 3,
+    "markets": 2,
+    "category": "Clothing",
+    "type": "Shirts",
+    "vendor": "Acme",
+    "price": 30,
+    "costPerItem": 12,
+    "trackQuantity": true,
+    "quantity": 0,
+    "weight": 0.3,
+    "weightUnit": "kg",
+    "variants": [
+      {
+        "name": "Small",
+        "price": 30,
+        "inventory": 0,
+        "currency": "EUR"
+      },
+      {
+        "name": "Medium",
+        "price": 30,
+        "inventory": 0,
+        "currency": "EUR"
+      },
+      {
+        "name": "Large",
+        "price": 30,
+        "inventory": 0,
+        "currency": "EUR"
+      }
+    ],
+    "currency": "EUR"
+  }
+]

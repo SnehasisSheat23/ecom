@@ -1,0 +1,482 @@
+[
+  {
+    "id": "ORD-2048",
+    "date": "2026-05-20T17:45:00Z",
+    "customer": {
+      "name": "Sarah Jenkins",
+      "email": "sarah.j@gmail.com",
+      "city": "San Francisco, CA"
+    },
+    "items": [
+      {
+        "name": "Moissanite Stud Earrings (14K Gold)",
+        "sku": "JW-STUD-14K",
+        "qty": 1,
+        "price": 249.99
+      },
+      {
+        "name": "Jewelry Polishing Cloth",
+        "sku": "JW-CLOTH-01",
+        "qty": 2,
+        "price": 9.99
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Fulfilled",
+    "total": 269.97,
+    "googleSync": "Synced",
+    "syncMessage": "Synced to Google Merchant Center successfully.",
+    "additionalDetails": "Customer requested premium gift wrap and a custom card message: 'Happy Anniversary, my love! Please deliver before 5 PM.'",
+    "currency": "INR"
+  },
+  {
+    "id": "ORD-2047",
+    "date": "2026-05-20T16:12:00Z",
+    "customer": {
+      "name": "David Miller",
+      "email": "david.miller@outlook.com",
+      "city": "Austin, TX"
+    },
+    "items": [
+      {
+        "name": "Titanium Wedding Band (8mm)",
+        "sku": "JW-BAND-TIT",
+        "qty": 1,
+        "price": 189.5
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Unfulfilled",
+    "total": 189.5,
+    "googleSync": "Pending",
+    "syncMessage": "Pending product validation queue.",
+    "currency": "USD"
+  },
+  {
+    "id": "ORD-2046",
+    "date": "2026-05-20T15:30:00Z",
+    "customer": {
+      "name": "Elena Rostova",
+      "email": "elena.r@yandex.com",
+      "city": "Boston, MA"
+    },
+    "items": [
+      {
+        "name": "Sterling Silver Pendant (Sapphire)",
+        "sku": "JW-PEND-SAP",
+        "qty": 1,
+        "price": 135
+      }
+    ],
+    "paymentStatus": "Refunded",
+    "fulfillmentStatus": "Unfulfilled",
+    "total": 135,
+    "googleSync": "Error",
+    "syncMessage": "GTIN/UPC barcode is missing for this variant.",
+    "currency": "USD"
+  },
+  {
+    "id": "ORD-2045",
+    "date": "2026-05-20T14:05:00Z",
+    "customer": {
+      "name": "Marcus Aurelius",
+      "email": "marcus.stoic@gmail.com",
+      "city": "Rome, GA"
+    },
+    "items": [
+      {
+        "name": "Rose Gold Tennis Bracelet",
+        "sku": "JW-BRAC-RG-7",
+        "qty": 1,
+        "price": 450
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Fulfilled",
+    "total": 450,
+    "googleSync": "Synced",
+    "syncMessage": "Synced to Google Merchant Center successfully.",
+    "currency": "USD"
+  },
+  {
+    "id": "ORD-2044",
+    "date": "2026-05-20T12:55:00Z",
+    "customer": {
+      "name": "Amina Yusuf",
+      "email": "amina.y@yahoo.com",
+      "city": "Chicago, IL"
+    },
+    "items": [
+      {
+        "name": "Gold Hoop Earrings",
+        "sku": "JW-HOOP-GD",
+        "qty": 1,
+        "price": 75
+      },
+      {
+        "name": "Silver Cleaning Solution",
+        "sku": "JW-CLEAN-SL",
+        "qty": 1,
+        "price": 15
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Partially Fulfilled",
+    "total": 90,
+    "googleSync": "Synced",
+    "syncMessage": "Synced to Google Merchant Center successfully.",
+    "additionalDetails": "Customer requested silver cleaning instructions to be included in the box.",
+    "currency": "USD"
+  },
+  {
+    "id": "ORD-2043",
+    "date": "2026-05-20T10:40:00Z",
+    "customer": {
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "city": "New York, NY"
+    },
+    "items": [
+      {
+        "name": "Leather Jewelry Travel Case",
+        "sku": "JW-CASE-LTH",
+        "qty": 2,
+        "price": 45
+      }
+    ],
+    "paymentStatus": "Pending",
+    "fulfillmentStatus": "Unfulfilled",
+    "total": 90,
+    "googleSync": "Pending",
+    "syncMessage": "Queued for automated daily batch synchronization.",
+    "currency": "INR"
+  },
+  {
+    "id": "ORD-2042",
+    "date": "2026-05-20T09:15:00Z",
+    "customer": {
+      "name": "Clara Oswald",
+      "email": "clara.o@tardis.co.uk",
+      "city": "Seattle, WA"
+    },
+    "items": [
+      {
+        "name": "Custom Engraved Name Ring",
+        "sku": "JW-RING-ENG",
+        "qty": 1,
+        "price": 120
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Fulfilled",
+    "total": 120,
+    "googleSync": "Error",
+    "syncMessage": "Custom engraving options are not supported in Google Feed Schema.",
+    "currency": "USD"
+  },
+  {
+    "id": "ORD-2041",
+    "date": "2026-05-20T08:00:00Z",
+    "customer": {
+      "name": "Kenji Sato",
+      "email": "kenji.sato@outlook.jp",
+      "city": "Los Angeles, CA"
+    },
+    "items": [
+      {
+        "name": "Obsidian Bead Bracelet",
+        "sku": "JW-BRAC-OBS",
+        "qty": 1,
+        "price": 60
+      },
+      {
+        "name": "Sterling Silver Chain (20\")",
+        "sku": "JW-CHAIN-20",
+        "qty": 1,
+        "price": 40
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Fulfilled",
+    "total": 100,
+    "googleSync": "Synced",
+    "syncMessage": "Synced to Google Merchant Center successfully.",
+    "currency": "EUR"
+  },
+  {
+    "id": "ORD-2040",
+    "date": "2026-05-19T18:30:00Z",
+    "customer": {
+      "name": "Chloe Vance",
+      "email": "chloe.vance@vance.io",
+      "city": "Denver, CO"
+    },
+    "items": [
+      {
+        "name": "Emerald Cut Diamond Ring",
+        "sku": "JW-DIAM-EM",
+        "qty": 1,
+        "price": 1850
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Fulfilled",
+    "total": 1850,
+    "googleSync": "Synced",
+    "syncMessage": "Synced to Google Merchant Center successfully.",
+    "currency": "USD"
+  },
+  {
+    "id": "ORD-2039",
+    "date": "2026-05-19T16:45:00Z",
+    "customer": {
+      "name": "Robert Chen",
+      "email": "robert.chen@gmail.com",
+      "city": "Portland, OR"
+    },
+    "items": [
+      {
+        "name": "Black Diamond Cufflinks",
+        "sku": "JW-CUFF-BD",
+        "qty": 1,
+        "price": 310
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Unfulfilled",
+    "total": 310,
+    "googleSync": "Pending",
+    "syncMessage": "Awaiting checkout compliance clearing.",
+    "currency": "USD"
+  },
+  {
+    "id": "ORD-2038",
+    "date": "2026-05-19T14:20:00Z",
+    "customer": {
+      "name": "Sophie Martin",
+      "email": "sophie.m@orange.fr",
+      "city": "Miami, FL"
+    },
+    "items": [
+      {
+        "name": "Opal Statement Necklace",
+        "sku": "JW-NECK-OP",
+        "qty": 1,
+        "price": 280
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Fulfilled",
+    "total": 280,
+    "googleSync": "Synced",
+    "syncMessage": "Synced to Google Merchant Center successfully.",
+    "currency": "INR"
+  },
+  {
+    "id": "ORD-2037",
+    "date": "2026-05-19T11:10:00Z",
+    "customer": {
+      "name": "Liam Neeson",
+      "email": "taken@gmail.com",
+      "city": "Dallas, TX"
+    },
+    "items": [
+      {
+        "name": "Tactical Metal Watch",
+        "sku": "JW-WTCH-TAC",
+        "qty": 1,
+        "price": 399
+      }
+    ],
+    "paymentStatus": "Refunded",
+    "fulfillmentStatus": "Fulfilled",
+    "total": 399,
+    "googleSync": "Error",
+    "syncMessage": "Product SKU mismatch on synchronized Google Feed.",
+    "currency": "USD"
+  },
+  {
+    "id": "ORD-2036",
+    "date": "2026-05-19T09:40:00Z",
+    "customer": {
+      "name": "Diana Prince",
+      "email": "diana.amazon@themyscira.gov",
+      "city": "Washington, DC"
+    },
+    "items": [
+      {
+        "name": "Golden Tiara Headband",
+        "sku": "JW-TIARA-GD",
+        "qty": 1,
+        "price": 950
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Fulfilled",
+    "total": 950,
+    "googleSync": "Synced",
+    "syncMessage": "Synced to Google Merchant Center successfully.",
+    "currency": "USD"
+  },
+  {
+    "id": "ORD-2035",
+    "date": "2026-05-18T17:15:00Z",
+    "customer": {
+      "name": "Thomas Shelby",
+      "email": "tommy@shelbycompany.co.uk",
+      "city": "Birmingham, AL"
+    },
+    "items": [
+      {
+        "name": "Flat Cap with Silver Pin",
+        "sku": "JW-CAP-SILV",
+        "qty": 3,
+        "price": 85
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Fulfilled",
+    "total": 255,
+    "googleSync": "Synced",
+    "syncMessage": "Synced to Google Merchant Center successfully.",
+    "currency": "USD"
+  },
+  {
+    "id": "ORD-2034",
+    "date": "2026-05-18T15:00:00Z",
+    "customer": {
+      "name": "Isabella Rossi",
+      "email": "isabella.rossi@virgilio.it",
+      "city": "Philadelphia, PA"
+    },
+    "items": [
+      {
+        "name": "Amethyst Ring (18K White Gold)",
+        "sku": "JW-RING-AM",
+        "qty": 1,
+        "price": 420
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Unfulfilled",
+    "total": 420,
+    "googleSync": "Pending",
+    "syncMessage": "Pending batch sync validation.",
+    "currency": "EUR"
+  },
+  {
+    "id": "ORD-2033",
+    "date": "2026-05-18T12:30:00Z",
+    "customer": {
+      "name": "Bruce Wayne",
+      "email": "bruce@wayneenterprises.com",
+      "city": "Gotham, NJ"
+    },
+    "items": [
+      {
+        "name": "Custom Gold Cufflinks",
+        "sku": "JW-CUFF-GOLD",
+        "qty": 2,
+        "price": 600
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Fulfilled",
+    "total": 1200,
+    "googleSync": "Synced",
+    "syncMessage": "Synced to Google Merchant Center successfully.",
+    "currency": "INR"
+  },
+  {
+    "id": "ORD-2032",
+    "date": "2026-05-18T10:05:00Z",
+    "customer": {
+      "name": "Nia Long",
+      "email": "nia.long@icloud.com",
+      "city": "Atlanta, GA"
+    },
+    "items": [
+      {
+        "name": "Pearl Drop Earrings",
+        "sku": "JW-PEARL-DRP",
+        "qty": 1,
+        "price": 165
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Fulfilled",
+    "total": 165,
+    "googleSync": "Error",
+    "syncMessage": "Mismatched landing page URL parameter on target feed.",
+    "currency": "USD"
+  },
+  {
+    "id": "ORD-2031",
+    "date": "2026-05-17T16:50:00Z",
+    "customer": {
+      "name": "Peter Parker",
+      "email": "webhead@dailybugle.com",
+      "city": "Queens, NY"
+    },
+    "items": [
+      {
+        "name": "Camera Wrist Strap (Silver Links)",
+        "sku": "JW-STRAP-CAM",
+        "qty": 1,
+        "price": 49.99
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Fulfilled",
+    "total": 49.99,
+    "googleSync": "Synced",
+    "syncMessage": "Synced to Google Merchant Center successfully.",
+    "currency": "USD"
+  },
+  {
+    "id": "ORD-2030",
+    "date": "2026-05-17T14:30:00Z",
+    "customer": {
+      "name": "Emma Watson",
+      "email": "emma.watson@hefor-she.org",
+      "city": "London, KY"
+    },
+    "items": [
+      {
+        "name": "Recycled Silver Wave Ring",
+        "sku": "JW-RING-WAVE",
+        "qty": 1,
+        "price": 85
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Unfulfilled",
+    "total": 85,
+    "googleSync": "Pending",
+    "syncMessage": "Pending product validation queue.",
+    "currency": "USD"
+  },
+  {
+    "id": "ORD-2029",
+    "date": "2026-05-17T11:00:00Z",
+    "customer": {
+      "name": "Alexander Hamilton",
+      "email": "hamilton.treasury@gmail.com",
+      "city": "Albany, NY"
+    },
+    "items": [
+      {
+        "name": "Vintage Seal Signet Ring",
+        "sku": "JW-RING-SIG",
+        "qty": 1,
+        "price": 320
+      }
+    ],
+    "paymentStatus": "Paid",
+    "fulfillmentStatus": "Fulfilled",
+    "total": 320,
+    "googleSync": "Synced",
+    "syncMessage": "Synced to Google Merchant Center successfully.",
+    "currency": "USD"
+  }
+]

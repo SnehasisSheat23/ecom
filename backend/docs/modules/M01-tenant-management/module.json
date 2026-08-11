@@ -1,0 +1,35 @@
+{
+  "id": "M01",
+  "name": "Tenant Management",
+  "slug": "tenants",
+  "layer": "tenancy",
+  "phase": 1,
+  "status": "not_started",
+  "estimate_days": 1,
+  "depends_on": [],
+  "required_by": ["M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10", "M11", "M12", "M13", "M14", "M15", "M16"],
+  "source_path": "src/layers/tenancy/",
+  "files": {
+    "service": "tenancy.service.ts",
+    "repository": "tenancy.repository.ts",
+    "routes": "tenancy.routes.ts",
+    "schema": "tenancy.schema.ts",
+    "types": "tenancy.types.ts",
+    "validators": "tenancy.validators.ts",
+    "tests": "tenancy.test.ts"
+  },
+  "tables": ["tenants", "tenant_payment_config", "tenant_config"],
+  "queues": [],
+  "redis_keys": [
+    "tenant:{tenantId}:config"
+  ],
+  "events_emitted": ["tenant.created", "tenant.activated", "tenant.suspended"],
+  "events_consumed": [],
+  "data_integrity_rules": ["R9", "R10", "R11"],
+  "docs": {
+    "prd": "PRD-M01.md",
+    "design": "DESIGN-M01.md",
+    "tasks": "TASKS-M01.md",
+    "changelog": "CHANGELOG.md"
+  }
+}

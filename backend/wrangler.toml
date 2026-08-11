@@ -1,0 +1,41 @@
+name = "nexus-api"
+main = "src/worker.ts"
+compatibility_date = "2024-10-01"
+compatibility_flags = [ "nodejs_compat" ]
+
+[vars]
+R2_PUBLIC_DOMAIN = "https://pub-7c6873875e5942d4b9f18b1584b0cace.r2.dev"
+DATABASE_URL = "postgresql://postgres.pckcqsylcjbinthfejoo:Abdullah-Bakheet@aws-1-eu-west-1.pooler.supabase.com:6543/postgres"
+APP_SECRET = "ivsn7yGh7dCdxsM0NC8trHPTEVlZbCmDVF3qLQZZ494="
+API_BASE_URL = "https://nexus-api.snehasisshit2003.workers.dev"
+CACHE_PROVIDER = "upstash"
+JOB_QUEUE_PROVIDER = "qstash"
+UPSTASH_REDIS_REST_URL = "https://intimate-leech-92312.upstash.io"
+UPSTASH_REDIS_REST_TOKEN = "gQAAAAAAAWiYAAIncDJjMThhYzAzNzVmZDQ0YTkyODEzYjBmZDZkZThmMjM2Y3AyOTIzMTI"
+QSTASH_BASE_URL = "https://qstash-eu-central-1.upstash.io"
+QSTASH_TOKEN = "eyJVc2VySUQiOiI3ZjlmNzYzMy0yZDBlLTRiODQtYTIxOS1hNDBmMmZlNTFjNjYiLCJQYXNzd29yZCI6IjcwYzIyNmQ1YTA1OTQyNTNhZGZlZTEwZjZkZWJhMzFhIn0="
+QSTASH_CURRENT_SIGNING_KEY = "sig_6gLuNc3H9rk898dANTxD8Vb6mzyx"
+QSTASH_NEXT_SIGNING_KEY = "sig_6PNVAsKdMPNeUmwrCEbYs5odNv2Q"
+
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+[[r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "product"
+
+[[kv_namespaces]]
+binding = "SEARCH_KV"
+id = "2d1f59ff9cfa4da381607d567b674a9b"
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "b8de7ae3e7f14371ab5bad79d26ec8b4"
+localConnectionString = "postgresql://postgres.pckcqsylcjbinthfejoo:Abdullah-Bakheet@aws-1-eu-west-1.pooler.supabase.com:6543/postgres"
+
+
+
+
+

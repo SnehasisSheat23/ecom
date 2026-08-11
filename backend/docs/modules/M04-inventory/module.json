@@ -1,0 +1,27 @@
+{
+  "id": "M04",
+  "name": "Inventory",
+  "slug": "inventory",
+  "layer": "core",
+  "phase": 1,
+  "status": "not_started",
+  "estimate_days": 1,
+  "depends_on": ["M01", "M03"],
+  "required_by": ["M06", "M07"],
+  "source_path": "src/modules/inventory/",
+  "files": {
+    "service": "inventory.service.ts",
+    "repository": "inventory.repository.ts",
+    "routes": "inventory.routes.ts",
+    "schema": "inventory.schema.ts",
+    "types": "inventory.types.ts",
+    "validators": "inventory.validators.ts",
+    "tests": "inventory.test.ts"
+  },
+  "tables": ["inventory", "inventory_history"],
+  "queues": ["tenant:{tenantId}:inventory-release"],
+  "redis_keys": [],
+  "events_emitted": ["inventory.low_stock"],
+  "events_consumed": [],
+  "data_integrity_rules": ["R5", "R9"]
+}
