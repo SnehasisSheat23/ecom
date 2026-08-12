@@ -6,7 +6,7 @@ const slugSchema = z
   .max(255)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
 
-const positiveMoneySchema = z.number().int().positive()
+const positiveMoneySchema = z.number().int().min(0)
 const nullableIntSchema = z.number().int().nullable()
 
 export const variantPriceSchema = z.object({

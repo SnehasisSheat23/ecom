@@ -300,7 +300,7 @@ export function PricingCard({
             step="1"
             placeholder="e.g. 100"
             className="w-full md:w-1/2 h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono"
-            value={product.specifications?.moq ?? product.specifications?.minOrderQuantity ?? product.specifications?.quantity ?? "100"}
+            value={product.specifications?.moq ?? product.specifications?.minOrderQuantity ?? ""}
             onChange={(e) => {
               const raw = e.target.value
               setProduct(prev => {

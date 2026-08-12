@@ -441,9 +441,8 @@ export function ProductDetails({ id }: { id: string }) {
         status: (product.status.toLowerCase()) as 'draft' | 'active' | 'archived',
         productType: (product.type.toLowerCase()) as 'physical' | 'digital',
         tags: product.tags || [],
-        collections: product.collections || [],
-        categoryIds: product.categoryIds || [],
-        vendorId: product.vendorId === undefined ? undefined : product.vendorId,
+        categoryIds: (product.categoryIds || []).filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)),
+        vendorId: (product.vendorId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(product.vendorId)) ? product.vendorId : null,
         metaTitle: product.seo?.title || null,
         metaDescription: product.seo?.description || null,
         translations: {
