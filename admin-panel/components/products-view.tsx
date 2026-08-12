@@ -84,6 +84,38 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
+interface ProductTypeInfo {
+  lookup: Record<string, { name: string; slug: string }>
+  slugToIdMap: Record<string, string>
+}
+
+let productTypesCache: ProductTypeInfo | null = null
+
+async function getProductTypeData(): Promise<ProductTypeInfo> {
+  if (productTypesCache) return productTypesCache
+  const lookup: Record<string, { name: string; slug: string }> = {}
+  const slugToIdMap: Record<string, string> = {}
+
+  try {
+    const res = await apiRequest("/product-types")
+    if (res.ok) {
+      const body = await res.json()
+      if (body.data?.items) {
+        body.data.items.forEach((t: { id: string; name: string; slug: string }) => {
+          lookup[t.id] = { name: t.name, slug: t.slug }
+          slugToIdMap[t.slug.toLowerCase()] = t.id
+          slugToIdMap[t.slug.toLowerCase().replace("-", "")] = t.id
+        })
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to fetch product-types:", e)
+  }
+
+  productTypesCache = { lookup, slugToIdMap }
+  return productTypesCache
+}
+
 export function ProductsView() {
   const [products, setProducts] = React.useState<Product[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
@@ -91,7 +123,7 @@ export function ProductsView() {
   const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set())
   const router = useRouter()
   const searchParams = useSearchParams()
-  const typeParam = searchParams.get("type") // e.g. "cake", "flower", "plant", "add-on"
+  const typeParam = searchParams.get("type")
   const [isCreating, setIsCreating] = React.useState(false)
 
   // Search & Sort States
@@ -114,26 +146,12 @@ export function ProductsView() {
   const loadProducts = React.useCallback(async () => {
     try {
       setIsLoading(true)
-      const DEFAULT_SLUG_TO_ID: Record<string, string> = {
-        cake: "c92aaec7-4671-478b-9f9d-4c784b33bcb9",
-        flower: "186d443c-9661-489c-8a72-e0453eca7517",
-        plant: "de9ca3b8-1abb-40e4-9ec4-07976c12d037",
-        "add-on": "b207911e-f7a5-4efd-92ea-054ae0aa3dc3",
-        addon: "b207911e-f7a5-4efd-92ea-054ae0aa3dc3",
-      }
-
-      const typeLookup: Record<string, { name: string; slug: string }> = {
-        "c92aaec7-4671-478b-9f9d-4c784b33bcb9": { name: "Cake", slug: "cake" },
-        "186d443c-9661-489c-8a72-e0453eca7517": { name: "Flower", slug: "flower" },
-        "de9ca3b8-1abb-40e4-9ec4-07976c12d037": { name: "Plant", slug: "plant" },
-        "b207911e-f7a5-4efd-92ea-054ae0aa3dc3": { name: "Add-on", slug: "add-on" },
-      }
-      const slugToIdMap: Record<string, string> = { ...DEFAULT_SLUG_TO_ID }
+      const typeData = await getProductTypeData()
 
       let url = "/admin/products?perPage=25&summary=true"
       if (typeParam) {
         const normalizedSlug = typeParam.toLowerCase().trim()
-        const matchingTypeId = slugToIdMap[normalizedSlug] || slugToIdMap[normalizedSlug.replace("-", "")]
+        const matchingTypeId = typeData.slugToIdMap[normalizedSlug] || typeData.slugToIdMap[normalizedSlug.replace("-", "")]
         if (matchingTypeId) {
           url += `&productTypeId=${matchingTypeId}`
         }
@@ -142,29 +160,11 @@ export function ProductsView() {
         url += `&search=${encodeURIComponent(debouncedSearchQuery.trim())}`
       }
 
-      // Fetch products and product-types in parallel to remove waterfall latency
-      const [res, typeRes] = await Promise.all([
-        apiRequest(url),
-        apiRequest("/product-types").catch((e) => {
-          console.warn("Failed to fetch product-types:", e)
-          return null
-        }),
-      ])
-
-      if (typeRes && typeRes.ok) {
-        try {
-          const typeBody = await typeRes.json()
-          if (typeBody.data?.items) {
-            typeBody.data.items.forEach((t: { id: string; name: string; slug: string }) => {
-              typeLookup[t.id] = { name: t.name, slug: t.slug }
-              slugToIdMap[t.slug.toLowerCase()] = t.id
-            })
-          }
-        } catch (_) {}
-      }
+      const res = await apiRequest(url)
       if (res.ok) {
         const body = await res.json()
         if (body.data?.items) {
+          const typeLookup = typeData.lookup
           const mapped = body.data.items.map((p: RawProduct) => {
             const rawStatus = p.status || "draft"
             const capitalizedStatus = (rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1)) as "Active" | "Draft" | "Archived"

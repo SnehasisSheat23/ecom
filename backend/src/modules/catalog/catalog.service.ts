@@ -247,7 +247,7 @@ export class CatalogService {
           await this.ensureVariantSkusAvailable(tenantId, skusToCheck)
         }
 
-        for (const variantInput of scopedInput.variants) {
+        await Promise.all(scopedInput.variants.map(async (variantInput) => {
           const target = variantInput.id
             ? existingById.get(variantInput.id)
             : existingBySku.get(variantInput.sku)
@@ -281,7 +281,7 @@ export class CatalogService {
               })
             }
           }
-        }
+        }))
       }
 
       const [variants, images, categories, collections, vendor] = await Promise.all([
@@ -309,20 +309,21 @@ export class CatalogService {
 
     const { updated, hydrated } = result
     const categoriesChanged = scopedInput.categoryIds !== undefined
-    await this.invalidateProductCaches(tenantId, productId, existing.slug, updated.slug, categoriesChanged)
-    if (this.searchService) {
-      try {
-        await this.searchService.syncTenantIndex(tenantId)
-      } catch (err) {
-        logger.error({ err, tenantId }, 'failed to sync search index')
-      }
-    }
-    await this.events?.publish('product.updated', {
-      tenantId,
-      productId,
-      previousSlug: existing.slug,
-      slug: updated.slug,
+
+    // Non-blocking background invalidation & search re-indexing
+    this.invalidateProductCaches(tenantId, productId, existing.slug, updated.slug, categoriesChanged).catch((err) => {
+      logger.error({ err, tenantId }, 'failed to invalidate product caches')
     })
+    if (this.searchService) {
+      this.searchService.syncTenantIndex(tenantId).catch((err) => {
+        logger.error({ err, tenantId }, 'failed to sync search index')
+      })
+    }
+    if (this.events) {
+      this.events.publish('product.updated', { tenantId, productId, partnerId: updated.partnerId }).catch((err) => {
+        logger.error({ err, tenantId }, 'failed to publish product.updated event')
+      })
+    }
     logger.info({ tenantId, productId, previousSlug: existing.slug, slug: updated.slug }, 'catalog product updated')
 
     await this.cache?.set(this.productCacheKeyById(tenantId, productId), hydrated, PRODUCT_CACHE_TTL_SECONDS)
