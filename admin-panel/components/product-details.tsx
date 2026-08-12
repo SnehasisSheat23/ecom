@@ -511,7 +511,14 @@ export function ProductDetails({ id }: { id: string }) {
 
           const mapped: Product = {
             id: p.id,
-            image: p.images?.[0]?.url || "https://placehold.co/300x300?text=No+Image",
+            image: p.images?.[0]?.url || product.image || "https://placehold.co/300x300?text=No+Image",
+            images: p.images?.map((img: APIProductImage) => ({
+              id: img.id,
+              url: img.url,
+              variantId: img.variantId || null,
+              position: img.position || 0,
+              altText: img.altText || null,
+            })) || product.images || [],
             title: p.title,
             description: p.description || "",
             status: capitalizedStatus,

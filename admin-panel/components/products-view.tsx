@@ -130,21 +130,6 @@ export function ProductsView() {
       }
       const slugToIdMap: Record<string, string> = { ...DEFAULT_SLUG_TO_ID }
 
-      try {
-        const typeRes = await apiRequest("/product-types")
-        if (typeRes.ok) {
-          const typeBody = await typeRes.json()
-          if (typeBody.data?.items) {
-            typeBody.data.items.forEach((t: { id: string; name: string; slug: string }) => {
-              typeLookup[t.id] = { name: t.name, slug: t.slug }
-              slugToIdMap[t.slug.toLowerCase()] = t.id
-            })
-          }
-        }
-      } catch (e) {
-        console.warn("Failed to fetch product-types, using defaults:", e)
-      }
-
       let url = "/admin/products?perPage=25&summary=true"
       if (typeParam) {
         const normalizedSlug = typeParam.toLowerCase().trim()
@@ -157,7 +142,26 @@ export function ProductsView() {
         url += `&search=${encodeURIComponent(debouncedSearchQuery.trim())}`
       }
 
-      const res = await apiRequest(url)
+      // Fetch products and product-types in parallel to remove waterfall latency
+      const [res, typeRes] = await Promise.all([
+        apiRequest(url),
+        apiRequest("/product-types").catch((e) => {
+          console.warn("Failed to fetch product-types:", e)
+          return null
+        }),
+      ])
+
+      if (typeRes && typeRes.ok) {
+        try {
+          const typeBody = await typeRes.json()
+          if (typeBody.data?.items) {
+            typeBody.data.items.forEach((t: { id: string; name: string; slug: string }) => {
+              typeLookup[t.id] = { name: t.name, slug: t.slug }
+              slugToIdMap[t.slug.toLowerCase()] = t.id
+            })
+          }
+        } catch (_) {}
+      }
       if (res.ok) {
         const body = await res.json()
         if (body.data?.items) {
