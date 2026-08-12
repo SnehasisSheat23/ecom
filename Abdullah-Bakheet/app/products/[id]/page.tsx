@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { ALL_PRODUCTS } from '@/lib/data';
 import { useShop } from '@/context/ShopContext';
-import { ChevronLeft, Star, Plus, Minus, Share, Heart, ArrowUpRight, ChevronDown } from 'lucide-react';
+import { ChevronLeft, Star, Plus, Minus, Share, Heart, ArrowUpRight, ChevronDown, FileText, Download } from 'lucide-react';
 import { useState } from 'react';
 
 import { useEffect } from 'react';
@@ -183,9 +183,24 @@ export default function ProductDescriptionPage() {
                         
                         {/* Detailed Specifications Table */}
                         <div className={`mb-10 bg-white p-6 rounded-xl border border-gray-100 shadow-sm ${isArabic ? 'text-right dir-rtl' : 'text-left'}`}>
-                            <h3 className="font-bold text-gray-900 text-lg mb-4 border-b border-gray-100 pb-2">
-                                {isArabic ? 'المواصفات الفنية' : 'Technical Specifications'}
-                            </h3>
+                            <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+                                <h3 className="font-bold text-gray-900 text-lg">
+                                    {isArabic ? 'المواصفات الفنية' : 'Technical Specifications'}
+                                </h3>
+                                {(product.specifications?.mouqFile || product.specifications?.mouq_file) && (
+                                    <a
+                                        href={product.specifications?.mouqFile || product.specifications?.mouq_file}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+                                    >
+                                        <FileText size={14} />
+                                        <span>{isArabic ? 'تحميل ملف المواصفات MOUQ' : 'Download MOUQ File'}</span>
+                                        <Download size={13} />
+                                    </a>
+                                )}
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="p-3 bg-gray-50 rounded-lg">
                                     <span className="text-xs text-gray-400 uppercase font-semibold block">
@@ -249,6 +264,25 @@ export default function ProductDescriptionPage() {
                                         </span>
                                     </div>
                                 )}
+
+                                {/* Render Custom Specifications if any */}
+                                {product.specifications && Object.entries(product.specifications)
+                                    .filter(([k]) => ![
+                                        'mouqFile', 'mouq_file', 'brand', 'brandAr', 'netWeight', 'netWeightAr',
+                                        'packSize', 'origin', 'originAr', 'shelfLife', 'shelfLifeAr', 'storage',
+                                        'storageAr', 'certifications', 'certificationsAr', 'arabicName',
+                                        'descriptionArabic', 'descAr', 'img', 'price'
+                                    ].includes(k))
+                                    .map(([k, v]) => (
+                                        <div key={k} className="p-3 bg-gray-50 rounded-lg">
+                                            <span className="text-xs text-gray-400 uppercase font-semibold block">
+                                                {k}
+                                            </span>
+                                            <span className="font-bold text-gray-900 text-sm">
+                                                {String(v)}
+                                            </span>
+                                        </div>
+                                    ))}
                             </div>
                         </div>
                         

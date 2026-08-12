@@ -16,7 +16,16 @@ const required = (value: string | undefined, name: string) => {
   return value
 }
 
-const normalizePath = (path: string) => path.replace(/^\/+/, '')
+const normalizePath = (path: string) => {
+  let clean = path.replace(/^\/+/, '')
+  if (clean.startsWith('http://') || clean.startsWith('https://')) {
+    try {
+      const u = new URL(clean)
+      clean = u.pathname.replace(/^\/+/, '')
+    } catch (_) {}
+  }
+  return clean
+}
 
 export interface S3StorageConfig {
   bucket: string
@@ -34,10 +43,11 @@ export class S3StorageProvider implements StorageProvider {
   private readonly client: S3Client
 
   constructor(private readonly config: S3StorageConfig) {
+    const isR2 = Boolean(config.endpoint?.includes('r2.cloudflarestorage.com'))
     this.client = new S3Client({
       region: config.region,
       endpoint: config.endpoint,
-      forcePathStyle: config.forcePathStyle ?? Boolean(config.endpoint),
+      forcePathStyle: config.forcePathStyle ?? (isR2 ? false : Boolean(config.endpoint)),
       credentials: {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
@@ -82,7 +92,10 @@ export class S3StorageProvider implements StorageProvider {
       throw new Error(`Failed to upload file to storage: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
 
-    // Generate 7-day presigned GET URL so browsers load R2 objects directly without 401 Unauthorized
+    if (this.config.publicBaseUrl) {
+      return this.publicUrlForKey(key)
+    }
+
     return this.getSignedUrl(_tenantId, key, 604800)
   }
 
@@ -96,8 +109,7 @@ export class S3StorageProvider implements StorageProvider {
         }),
       )
     } catch (error) {
-      console.error(`S3 Delete Failed for key: ${key}`, error)
-      throw new Error(`Failed to delete file from storage: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.warn(`S3 Delete Warning for key: ${key}`, error)
     }
   }
 

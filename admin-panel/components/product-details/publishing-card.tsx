@@ -10,6 +10,13 @@ interface PublishingCardProps {
 }
 
 export function PublishingCard({ product }: PublishingCardProps) {
+  const details = (product.publishingDetails && product.publishingDetails.length > 0)
+    ? product.publishingDetails
+    : [
+        { channel: "Online Store", published: true, date: new Date().toISOString() },
+        { channel: "Point of Sale", published: false, date: null },
+      ]
+
   return (
     <Card>
       <CardHeader className="pb-3 border-b border-border/60 flex flex-row items-center justify-between">
@@ -21,7 +28,7 @@ export function PublishingCard({ product }: PublishingCardProps) {
           <span className="text-foreground">Sales channels</span>
           <span className="text-primary hover:underline cursor-pointer">Manage</span>
         </div>
-        {product.publishingDetails!.map((detail, idx) => (
+        {details.map((detail, idx) => (
           <div key={idx} className="flex items-start gap-3">
             <div className={`mt-1.5 size-1.5 rounded-full shrink-0 ${detail.published ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
             <div className="flex flex-col gap-0.5">

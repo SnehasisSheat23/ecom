@@ -8,7 +8,7 @@
 		"global_fetch_strictly_public"
 	],
 	"vars": {
-		"NEXT_PUBLIC_API_URL": "https://nexus-api.snehasisshit2003.workers.dev",
+		"NEXT_PUBLIC_API_URL": "https://ecom-production-7976.up.railway.app",
 		"NEXT_PUBLIC_TENANT_ID": "1032a84c-b5da-472d-ba78-d4e36e056770"
 	},
 	"assets": {

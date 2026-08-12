@@ -13,6 +13,7 @@ import { toast } from "sonner"
 import { Product, ProductImage, Variant, APIVariant, APICollection, APISalesChannel, APIProductImage, APICategory } from "./product-details/types"
 
 import { GeneralInfoCard } from "./product-details/general-info-card"
+import { SpecificationsCard } from "./product-details/specifications-card"
 import { PricingCard } from "./product-details/pricing-card"
 import { InventoryCard } from "./product-details/inventory-card"
 import { ShippingCard } from "./product-details/shipping-card"
@@ -478,8 +479,8 @@ export function ProductDetails({ id }: { id: string }) {
             costPerItem: v.costPerItem !== undefined && v.costPerItem !== null && v.costPerItem !== "" ? Math.round(Number(v.costPerItem) * 100) : null,
             prices: currencyPrices,
             barcode: v.barcode || null,
-            trackInventory: v.trackInventory ?? true,
-            availableQuantity: v.inventory !== undefined && v.inventory !== "" ? Number(v.inventory) : 0,
+            trackInventory: false,
+            availableQuantity: 999999,
             allowBackorder: v.allowBackorder ?? false,
             countryOfOrigin: v.countryOfOrigin || null,
             hsCode: v.hsCode || null,
@@ -812,14 +813,6 @@ export function ProductDetails({ id }: { id: string }) {
             />
           )}
 
-          {/* Inventory / SKU Card */}
-          {hasInventoryDetails && (
-            <InventoryCard
-              product={product}
-              setProduct={setProduct}
-            />
-          )}
-
           {/* Shipping Card */}
           {hasShipping && (
             <ShippingCard
@@ -877,12 +870,10 @@ export function ProductDetails({ id }: { id: string }) {
             setProduct={setProduct}
           />
 
-          {/* Publishing Card */}
-          {hasPublishing && (
-            <PublishingCard
-              product={product}
-            />
-          )}
+          {/* Publishing Card (Always visible below Status) */}
+          <PublishingCard
+            product={product}
+          />
 
           {/* Category Card */}
           <CategoryCard

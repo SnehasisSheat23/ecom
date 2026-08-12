@@ -291,6 +291,33 @@ export function PricingCard({
             </div>
           </>
         )}
+
+        {/* MOQ (Minimum Order Quantity) Input Saved in Specifications */}
+        <div className="flex flex-col gap-2 md:col-span-2 pt-3 border-t border-border/60">
+          <label className="text-[13px] font-medium text-foreground">MOQ (Minimum Order Quantity)</label>
+          <input
+            type="number"
+            step="1"
+            placeholder="e.g. 100"
+            className="w-full md:w-1/2 h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono"
+            value={product.specifications?.moq ?? product.specifications?.minOrderQuantity ?? product.specifications?.quantity ?? "100"}
+            onChange={(e) => {
+              const raw = e.target.value
+              setProduct(prev => {
+                if (!prev) return null
+                const updatedSpecs = { ...(prev.specifications || {}) }
+                if (raw === "") {
+                  delete updatedSpecs.moq
+                  delete updatedSpecs.minOrderQuantity
+                } else {
+                  updatedSpecs.moq = raw
+                  updatedSpecs.minOrderQuantity = raw
+                }
+                return { ...prev, specifications: updatedSpecs }
+              })
+            }}
+          />
+        </div>
       </CardContent>
     </Card>
   )
