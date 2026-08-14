@@ -48,12 +48,33 @@ export class CustomersService {
       )
     }
 
-    const items = await this.db
+    const rawItems = await this.db
       .select()
       .from(customers)
       .where(conditions.length ? sql.join(conditions, sql` AND `) : undefined)
       .limit(limit)
       .offset(offset)
+
+    // Attach default address info for each customer
+    const items = await Promise.all(
+      rawItems.map(async (c) => {
+        const [defaultAddress] = await this.db
+          .select()
+          .from(customerAddresses)
+          .where(eq(customerAddresses.customerId, c.id))
+          .limit(1)
+
+        return {
+          ...c,
+          addressLine1: defaultAddress?.addressLine1 || null,
+          addressLine2: defaultAddress?.addressLine2 || null,
+          city: defaultAddress?.city || null,
+          country: defaultAddress?.country || null,
+          postalCode: defaultAddress?.postalCode || null,
+          addresses: defaultAddress ? [defaultAddress] : [],
+        }
+      })
+    )
 
     return { items, page, limit }
   }

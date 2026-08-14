@@ -13,13 +13,8 @@ import { apiRequest } from "@/lib/api-client"
 const DEFAULT_ACCOUNTS = [
   {
     email: "admin@example.com",
-    password: "password",
-    name: "Admin User",
-  },
-  {
-    email: "beta-vendor@trugift.in",
     password: "password123",
-    name: "Beta Vendor",
+    name: "Admin User (Default)",
   },
 ]
 
@@ -40,7 +35,8 @@ export default function LoginPage() {
   // Check if already authenticated
   React.useEffect(() => {
     const session = localStorage.getItem("user_session")
-    if (session) {
+    const token = localStorage.getItem("access_token")
+    if (session && token) {
       router.push("/dashboard/products")
     } else {
       // Defer the state update to prevent synchronous cascading renders inside the hook
@@ -69,54 +65,37 @@ export default function LoginPage() {
 
     try {
       if (mode === "login") {
-        try {
-          const res = await apiRequest("/auth/login", {
-            method: "POST",
-            body: JSON.stringify({ email, password }),
-          })
+        const res = await apiRequest("/auth/admin/login", {
+          method: "POST",
+          body: JSON.stringify({ email: email.trim(), password }),
+        })
 
-          const data = await res.json().catch(() => ({}))
+        const data = await res.json().catch(() => ({}))
 
-          if (res.ok && data.data) {
-            const { customer, accessToken } = data.data
-            const displayName =
-              `${customer.firstName || ""} ${customer.lastName || ""}`.trim() ||
-              customer.email.split("@")[0]
+        if (res.ok && data.data) {
+          const { user, accessToken } = data.data
+          const displayName = user.name || `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email.split("@")[0]
 
-            localStorage.setItem("access_token", accessToken)
-            localStorage.setItem(
-              "user_session",
-              JSON.stringify({
-                email: customer.email,
-                name: displayName,
-                isAdmin: customer.isAdmin ?? true,
-              })
-            )
-            toast.success(`Welcome back, ${displayName}!`)
-            router.push("/dashboard/products")
-            return
-          }
-        } catch (err) {
-          // Dev fallback
+          localStorage.setItem("access_token", accessToken)
+          localStorage.setItem(
+            "user_session",
+            JSON.stringify({
+              id: user.id,
+              email: user.email,
+              name: displayName,
+              role: user.role || "admin",
+              isAdmin: true,
+            })
+          )
+          toast.success(`Welcome back, ${displayName}!`)
+          router.push("/dashboard/products")
+          return
+        } else {
+          toast.error(data.error || "Invalid email or password")
         }
-
-        // Direct login fallback during dev mode when Auth API is deferred
-        const displayName = email.split("@")[0]
-        localStorage.setItem("access_token", "dev_token_123")
-        localStorage.setItem(
-          "user_session",
-          JSON.stringify({
-            email,
-            name: displayName,
-            isAdmin: true,
-          })
-        )
-        toast.success(`Welcome back, ${displayName}!`)
-        router.push("/dashboard/products")
-        setLoading(false)
       } else {
-        if (password.length < 8) {
-          toast.error("Password must be at least 8 characters long")
+        if (password.length < 6) {
+          toast.error("Password must be at least 6 characters long")
           setLoading(false)
           return
         }
@@ -124,14 +103,14 @@ export default function LoginPage() {
         const res = await apiRequest("/auth/register", {
           method: "POST",
           body: JSON.stringify({
-            email,
+            email: email.trim(),
             password,
             firstName: firstName.trim() || undefined,
             lastName: lastName.trim() || undefined,
           }),
         })
 
-        const data = await res.json()
+        const data = await res.json().catch(() => ({}))
 
         if (res.ok && data.data) {
           const { customer, accessToken } = data.data
@@ -143,23 +122,22 @@ export default function LoginPage() {
           localStorage.setItem(
             "user_session",
             JSON.stringify({
+              id: customer.id,
               email: customer.email,
               name: displayName,
-              avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-                displayName
-              )}`,
+              isAdmin: true,
             })
           )
           toast.success("Account created successfully!")
           router.push("/dashboard/products")
+          return
         } else {
           toast.error(data.error || "Registration failed")
-          setLoading(false)
         }
       }
-    } catch (err) {
-      console.error("Authentication request failed:", err)
-      toast.error("Failed to connect to authentication server")
+    } catch (err: any) {
+      toast.error(err.message || "Failed to connect to authentication server")
+    } finally {
       setLoading(false)
     }
   }

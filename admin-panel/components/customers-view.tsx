@@ -100,12 +100,10 @@ export function CustomersView() {
               phone: c.phone || "-",
               ordersCount: c.ordersCount || 0,
               totalSpent: c.totalSpent || 0,
-              lastOrderDate: c.lastOrderDate ? new Date(c.lastOrderDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "-",
-              lastOrderId: "-",
-              city: c.city || "Mumbai",
-              province: "Maharashtra",
-              country: "IN",
-              tags: c.isAdmin ? ["Admin"] : [],
+              city: (c as any).city || "-",
+              province: (c as any).province || (c as any).city || "-",
+              country: (c as any).country || "-",
+              tags: (c as any).tags || [],
               marketingConsent: false,
             }))
             setCustomers(mapped)
@@ -321,116 +319,107 @@ export function CustomersView() {
                 <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuRadioGroup value={sortField} onValueChange={(val) => setSortField(val as keyof Customer)}>
-                  <DropdownMenuRadioItem value="name" className="text-xs">Name</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="email" className="text-xs">Email</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="ordersCount" className="text-xs">Orders Count</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="totalSpent" className="text-xs">Total Spent</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="city" className="text-xs">City</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup value={sortOrder} onValueChange={(val) => setSortOrder(val as "asc" | "desc")}>
-                  <DropdownMenuRadioItem value="asc" className="text-xs">Ascending</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="desc" className="text-xs">Descending</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <DropdownMenuRadioItem value="name" className="text-xs">Name</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="email" className="text-xs">Email</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="ordersCount" className="text-xs">Orders Count</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="city" className="text-xs">City</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup value={sortOrder} onValueChange={(val) => setSortOrder(val as "asc" | "desc")}>
+                    <DropdownMenuRadioItem value="asc" className="text-xs">Ascending</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="desc" className="text-xs">Descending</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-        </div>
 
-        {/* Selected Rows Bulk Actions Bar Overlay */}
-        {selectedRows.size > 0 && (
-          <div className="flex items-center gap-2 bg-background border-b border-border/60 text-foreground px-4 h-12 shrink-0 animate-in slide-in-from-top-4 duration-300">
-            <span className="text-xs font-medium mr-2 text-muted-foreground">{selectedRows.size} selected</span>
-            <Button 
-              variant="ghost" 
-              className="h-8 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-              onClick={() => setSelectedRows(new Set())}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="ghost" 
-              className="h-8 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer ml-auto font-semibold"
-              onClick={handleBulkDelete}
-            >
-              Delete
-            </Button>
-          </div>
-        )}
+          {/* Selected Rows Bulk Actions Bar Overlay */}
+          {selectedRows.size > 0 && (
+            <div className="flex items-center gap-2 bg-background border-b border-border/60 text-foreground px-4 h-12 shrink-0 animate-in slide-in-from-top-4 duration-300">
+              <span className="text-xs font-medium mr-2 text-muted-foreground">{selectedRows.size} selected</span>
+              <Button 
+                variant="ghost" 
+                className="h-8 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                onClick={() => setSelectedRows(new Set())}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="h-8 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer ml-auto font-semibold"
+                onClick={handleBulkDelete}
+              >
+                Delete
+              </Button>
+            </div>
+          )}
 
-        {/* Table Body */}
-        <div className="flex-1 overflow-auto min-h-0">
-          <table className="w-full border-collapse text-left text-sm relative font-ui">
-            <thead className="bg-muted/40 border-b border-border/60 text-muted-foreground text-[11px] font-medium uppercase sticky top-0 z-10 backdrop-blur-xs select-none">
-              <tr>
-                <th className="w-10 p-3 text-center">
-                  <Checkbox
-                    checked={selectedRows.size === filteredCustomers.length && filteredCustomers.length > 0}
-                    onCheckedChange={(val) => handleSelectAll(!!val)}
-                  />
-                </th>
-                <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("name")}>
-                  <div className="flex items-center">
-                    Customer {renderSortIcon("name")}
-                  </div>
-                </th>
-                <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("email")}>
-                  <div className="flex items-center">
-                    Email {renderSortIcon("email")}
-                  </div>
-                </th>
-                <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("phone")}>
-                  <div className="flex items-center">
-                    Phone {renderSortIcon("phone")}
-                  </div>
-                </th>
-                <th className="p-3 cursor-pointer select-none hover:text-foreground text-right" onClick={() => toggleSort("ordersCount")}>
-                  <div className="flex items-center justify-end">
-                    Orders {renderSortIcon("ordersCount")}
-                  </div>
-                </th>
-                <th className="p-3 cursor-pointer select-none hover:text-foreground text-right" onClick={() => toggleSort("totalSpent")}>
-                  <div className="flex items-center justify-end">
-                    Total Spent {renderSortIcon("totalSpent")}
-                  </div>
-                </th>
-                <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("city")}>
-                  <div className="flex items-center">
-                    Location {renderSortIcon("city")}
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {isLoading ? (
-                Array.from({ length: 6 }).map((_, idx) => (
-                  <tr key={idx} className="h-[49px] animate-pulse">
-                    <td className="p-3 text-center">
-                      <div className="size-4 bg-muted/60 rounded mx-auto" />
-                    </td>
-                    <td className="p-3">
-                      <div className="h-2.5 w-24 bg-muted/60 rounded-full" />
-                    </td>
-                    <td className="p-3">
-                      <div className="h-2.5 w-40 bg-muted/60 rounded-full" />
-                    </td>
-                    <td className="p-3">
-                      <div className="h-2.5 w-28 bg-muted/60 rounded-full" />
-                    </td>
-                    <td className="p-3 text-right">
-                      <div className="h-2.5 w-8 bg-muted/60 rounded-full ml-auto" />
-                    </td>
-                    <td className="p-3 text-right">
-                      <div className="h-2.5 w-16 bg-muted/60 rounded-full ml-auto" />
-                    </td>
-                    <td className="p-3">
-                      <div className="h-2.5 w-24 bg-muted/60 rounded-full" />
-                    </td>
-                  </tr>
-                ))
-              ) : filteredCustomers.length === 0 ? (
+          {/* Table Body */}
+          <div className="flex-1 overflow-auto min-h-0">
+            <table className="w-full border-collapse text-left text-sm relative font-ui">
+              <thead className="bg-muted/40 border-b border-border/60 text-muted-foreground text-[11px] font-medium uppercase sticky top-0 z-10 backdrop-blur-xs select-none">
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                  <th className="w-10 p-3 text-center">
+                    <Checkbox
+                      checked={selectedRows.size === filteredCustomers.length && filteredCustomers.length > 0}
+                      onCheckedChange={(val) => handleSelectAll(!!val)}
+                    />
+                  </th>
+                  <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("name")}>
+                    <div className="flex items-center">
+                      Customer {renderSortIcon("name")}
+                    </div>
+                  </th>
+                  <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("email")}>
+                    <div className="flex items-center">
+                      Email {renderSortIcon("email")}
+                    </div>
+                  </th>
+                  <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("phone")}>
+                    <div className="flex items-center">
+                      Phone {renderSortIcon("phone")}
+                    </div>
+                  </th>
+                  <th className="p-3 cursor-pointer select-none hover:text-foreground text-right" onClick={() => toggleSort("ordersCount")}>
+                    <div className="flex items-center justify-end">
+                      Orders {renderSortIcon("ordersCount")}
+                    </div>
+                  </th>
+                  <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("city")}>
+                    <div className="flex items-center">
+                      Location {renderSortIcon("city")}
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {isLoading ? (
+                  Array.from({ length: 6 }).map((_, idx) => (
+                    <tr key={idx} className="h-[49px] animate-pulse">
+                      <td className="p-3 text-center">
+                        <div className="size-4 bg-muted/60 rounded mx-auto" />
+                      </td>
+                      <td className="p-3">
+                        <div className="h-2.5 w-24 bg-muted/60 rounded-full" />
+                      </td>
+                      <td className="p-3">
+                        <div className="h-2.5 w-40 bg-muted/60 rounded-full" />
+                      </td>
+                      <td className="p-3">
+                        <div className="h-2.5 w-28 bg-muted/60 rounded-full" />
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="h-2.5 w-8 bg-muted/60 rounded-full ml-auto" />
+                      </td>
+                      <td className="p-3">
+                        <div className="h-2.5 w-24 bg-muted/60 rounded-full" />
+                      </td>
+                    </tr>
+                  ))
+                ) : filteredCustomers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Icon name="group" size={24} className="size-8 text-muted-foreground/60" />
                       <span className="text-sm font-medium">No customers found</span>
@@ -466,11 +455,8 @@ export function CustomersView() {
                       <td className="p-3 text-right font-medium tabular-nums">
                         {customer.ordersCount}
                       </td>
-                      <td className="p-3 text-right font-semibold text-foreground tabular-nums">
-                        {formatPrice(customer.totalSpent, { currency: tenantCurrency })}
-                      </td>
                       <td className="p-3 text-muted-foreground whitespace-nowrap">
-                        {customer.city}, {customer.province}
+                        {customer.city !== "-" && customer.country !== "-" ? `${customer.city}, ${customer.country}` : (customer.city !== "-" ? customer.city : "-")}
                       </td>
                     </tr>
                   )

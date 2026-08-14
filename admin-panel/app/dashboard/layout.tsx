@@ -15,24 +15,22 @@ export default function DashboardLayout({
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
 
   useEffect(() => {
-    let session = localStorage.getItem("user_session")
-    // If no session exists, auto-initialize a default dev session for easy testing
-    if (!session) {
-      const defaultDevSession = JSON.stringify({
-        email: "admin@example.com",
-        name: "Admin User",
-        role: "admin",
-      })
-      localStorage.setItem("user_session", defaultDevSession)
-    }
+    const session = localStorage.getItem("user_session")
+    const token = localStorage.getItem("access_token")
 
-    const timer = setTimeout(() => {
-      setIsAuthenticated(true)
-    }, 0)
-    return () => clearTimeout(timer)
+    if (!session || !token) {
+      router.replace("/")
+      setTimeout(() => {
+        setIsAuthenticated(false)
+      }, 0)
+    } else {
+      setTimeout(() => {
+        setIsAuthenticated(true)
+      }, 0)
+    }
   }, [router])
 
-  if (isAuthenticated === null) {
+  if (!isAuthenticated) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-2">

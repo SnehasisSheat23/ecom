@@ -75,14 +75,32 @@ async function createTables() {
     -- 3. CUSTOMERS & ADDRESSES TABLES
     CREATE TABLE IF NOT EXISTS v2_customers (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      email VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      password_hash VARCHAR(255),
       first_name VARCHAR(100),
       last_name VARCHAR(100),
       phone VARCHAR(50),
       company_name VARCHAR(150),
+      status VARCHAR(20) NOT NULL DEFAULT 'active',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    DO $$ 
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='v2_customers' AND column_name='password_hash'
+      ) THEN
+        ALTER TABLE v2_customers ADD COLUMN password_hash VARCHAR(255);
+      END IF;
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='v2_customers' AND column_name='status'
+      ) THEN
+        ALTER TABLE v2_customers ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active';
+      END IF;
+    END $$;
 
     CREATE TABLE IF NOT EXISTS v2_customer_addresses (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -99,7 +117,29 @@ async function createTables() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
-    -- 4. ORDERS & ORDER ITEMS TABLES
+    -- 4. ADMIN USERS & AUTH SESSIONS TABLES
+    CREATE TABLE IF NOT EXISTS v2_admin_users (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email VARCHAR(255) NOT NULL UNIQUE,
+      password_hash VARCHAR(255) NOT NULL,
+      first_name VARCHAR(100) DEFAULT 'Admin',
+      last_name VARCHAR(100) DEFAULT 'User',
+      role VARCHAR(50) NOT NULL DEFAULT 'admin',
+      status VARCHAR(20) NOT NULL DEFAULT 'active',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS v2_auth_sessions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL,
+      user_type VARCHAR(20) NOT NULL,
+      token_hash VARCHAR(255) NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- 5. ORDERS & ORDER ITEMS TABLES
     CREATE TABLE IF NOT EXISTS v2_orders (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       order_number VARCHAR(100) NOT NULL UNIQUE,
@@ -127,7 +167,19 @@ async function createTables() {
     );
   `)
 
-  console.log('✅ All backend-v2 database tables created successfully!')
+  // Safely seed default admin user if not exists (Zero impact on existing product/category data)
+  const defaultAdminPassword = 'password123'
+  const { hashPassword } = await import('../lib/auth-crypto.js')
+  const adminPasswordHash = await hashPassword(defaultAdminPassword)
+
+  await pool.query(
+    `INSERT INTO v2_admin_users (email, password_hash, first_name, last_name, role, status)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (email) DO NOTHING;`,
+    ['admin@example.com', adminPasswordHash, 'Admin', 'User', 'admin', 'active']
+  )
+
+  console.log('✅ All backend-v2 database tables & default admin user configured successfully!')
   process.exit(0)
 }
 

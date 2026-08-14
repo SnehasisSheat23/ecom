@@ -59,11 +59,13 @@ export const products = pgTable('v2_products', {
 // ==========================================
 export const customers = pgTable('v2_customers', {
   id: uuid('id').primaryKey().defaultRandom(),
-  email: varchar('email', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  passwordHash: varchar('password_hash', { length: 255 }),
   firstName: varchar('first_name', { length: 100 }),
   lastName: varchar('last_name', { length: 100 }),
   phone: varchar('phone', { length: 50 }),
   companyName: varchar('company_name', { length: 150 }),
+  status: varchar('status', { length: 20 }).notNull().default('active'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
@@ -84,7 +86,31 @@ export const customerAddresses = pgTable('v2_customer_addresses', {
 })
 
 // ==========================================
-// 4. ORDERS SCHEMA
+// 4. ADMIN USERS & AUTH SESSIONS SCHEMA
+// ==========================================
+export const adminUsers = pgTable('v2_admin_users', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+  firstName: varchar('first_name', { length: 100 }).default('Admin'),
+  lastName: varchar('last_name', { length: 100 }).default('User'),
+  role: varchar('role', { length: 50 }).notNull().default('admin'), // 'admin' | 'superadmin' | 'staff'
+  status: varchar('status', { length: 20 }).notNull().default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const authSessions = pgTable('v2_auth_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull(),
+  userType: varchar('user_type', { length: 20 }).notNull(), // 'admin' | 'customer'
+  tokenHash: varchar('token_hash', { length: 255 }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// ==========================================
+// 5. ORDERS SCHEMA
 // ==========================================
 export const orders = pgTable('v2_orders', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -111,3 +137,4 @@ export const orderItems = pgTable('v2_order_items', {
   quantity: integer('quantity').notNull(),
   totalPrice: numeric('total_price', { precision: 12, scale: 2 }).notNull(),
 })
+

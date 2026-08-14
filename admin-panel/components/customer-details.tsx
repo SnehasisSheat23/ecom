@@ -122,14 +122,11 @@ export function CustomerDetails({ id }: { id: string }) {
               email: c.email || "",
               phone: c.phone || "",
               ordersCount: 0,
-              totalSpent: 0,
-              lastOrderDate: "-",
-              lastOrderId: "-",
-              address: mainAddress.line1 || "",
+              address: [mainAddress.addressLine1, mainAddress.addressLine2].filter(Boolean).join(', ') || "",
               city: mainAddress.city || "",
-              province: mainAddress.state || "",
+              province: mainAddress.province || mainAddress.state || "",
               zip: mainAddress.postalCode || "",
-              country: mainAddress.country || "IN",
+              country: mainAddress.country || "",
               marketingConsent: false,
               taxExempt: false,
               tags: c.isAdmin ? ["Admin"] : [],
@@ -181,13 +178,51 @@ export function CustomerDetails({ id }: { id: string }) {
     return JSON.stringify(customer) !== JSON.stringify(initialCustomer)
   }, [customer, initialCustomer])
 
-  const handleSave = () => {
+  const [isSaving, setIsSaving] = React.useState(false)
+
+  const handleSave = async () => {
     if (!customer) return
-    setInitialCustomer(JSON.parse(JSON.stringify(customer)))
-    setShowToast(true)
-    setTimeout(() => {
-      setShowToast(false)
-    }, 3000)
+    setIsSaving(true)
+    try {
+      const nameParts = customer.name.trim().split(' ')
+      const firstName = nameParts[0] || ''
+      const lastName = nameParts.slice(1).join(' ') || ''
+
+      // 1. Update customer profile
+      await apiRequest(`/admin/customers/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email: customer.email,
+          phone: customer.phone,
+        }),
+      })
+
+      // 2. Save/update default address
+      if (customer.address || customer.city) {
+        await apiRequest(`/admin/customers/${id}/addresses`, {
+          method: "POST",
+          body: JSON.stringify({
+            addressLine1: customer.address || "Street Address",
+            city: customer.city || "Dubai",
+            country: customer.country || "United Arab Emirates",
+            postalCode: customer.zip || "",
+            isDefault: true,
+          }),
+        })
+      }
+
+      setInitialCustomer(JSON.parse(JSON.stringify(customer)))
+      setShowToast(true)
+      setTimeout(() => {
+        setShowToast(false)
+      }, 3000)
+    } catch (err) {
+      console.error("Failed to save customer:", err)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleDiscard = () => {
@@ -402,34 +437,26 @@ export function CustomerDetails({ id }: { id: string }) {
             <CardContent className="pt-4 flex flex-col gap-3 text-sm">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-medium text-foreground">Street address</label>
-                <input
-                  type="text"
-                  className="w-full h-8 px-2.5 py-1 text-xs bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                <textarea
+                  rows={2}
+                  className="w-full px-2.5 py-1.5 text-xs bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
                   value={customer.address}
                   onChange={(e) => setCustomer(prev => prev ? { ...prev, address: e.target.value } : null)}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-medium text-foreground">City</label>
-                <input
-                  type="text"
-                  className="w-full h-8 px-2.5 py-1 text-xs bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  value={customer.city}
-                  onChange={(e) => setCustomer(prev => prev ? { ...prev, city: e.target.value } : null)}
+                  placeholder="Street address, building, apartment/suite"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-foreground">State/Province</label>
+                  <label className="text-[12px] font-medium text-foreground">City</label>
                   <input
                     type="text"
                     className="w-full h-8 px-2.5 py-1 text-xs bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    value={customer.province}
-                    onChange={(e) => setCustomer(prev => prev ? { ...prev, province: e.target.value } : null)}
+                    value={customer.city}
+                    onChange={(e) => setCustomer(prev => prev ? { ...prev, city: e.target.value } : null)}
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-foreground">ZIP code</label>
+                  <label className="text-[12px] font-medium text-foreground">Pincode / Postal Code</label>
                   <input
                     type="text"
                     className="w-full h-8 px-2.5 py-1 text-xs bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"

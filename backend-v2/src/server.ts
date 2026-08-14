@@ -6,6 +6,8 @@ import { categoriesRoutes } from './modules/categories/categories.routes.js'
 import { customersRoutes } from './modules/customers/customers.routes.js'
 import { ordersRoutes } from './modules/orders/orders.routes.js'
 import { storefrontRoutes } from './modules/storefront/storefront.routes.js'
+import { authRoutes } from './modules/auth/auth.routes.js'
+import { requireAdminAuth } from './middleware/auth.middleware.js'
 import { ProductsService } from './modules/products/products.service.js'
 import { storageService } from './lib/storage.js'
 
@@ -26,14 +28,16 @@ app.get('/health', (c) => {
 })
 
 // Mount Core Modules under /api/v1
+app.route('/api/v1/auth', authRoutes)
+app.route('/api/v1/me', authRoutes)
 app.route('/api/v1/products', productsRoutes)
 app.route('/api/v1/categories', categoriesRoutes)
 app.route('/api/v1/customers', customersRoutes)
 app.route('/api/v1/orders', ordersRoutes)
 app.route('/api/v1/storefront', storefrontRoutes)
 
-// Real Cloudflare R2 Media Upload Route
-app.post('/api/v1/media', async (c) => {
+// Real Cloudflare R2 Media Upload Route (Admin Protected)
+app.post('/api/v1/media', requireAdminAuth, async (c) => {
   try {
     const body = await c.req.parseBody()
     const file = body['file'] as File | undefined
@@ -67,8 +71,8 @@ app.post('/api/v1/media', async (c) => {
   }
 })
 
-// Presigned Upload URL generator for client-side direct R2 uploads
-app.get('/api/v1/media/presigned', async (c) => {
+// Presigned Upload URL generator for client-side direct R2 uploads (Admin Protected)
+app.get('/api/v1/media/presigned', requireAdminAuth, async (c) => {
   try {
     const filename = c.req.query('filename') || 'image.png'
     const contentType = c.req.query('contentType') || 'image/png'
@@ -80,7 +84,7 @@ app.get('/api/v1/media/presigned', async (c) => {
   }
 })
 
-app.delete('/api/v1/images/:id', async (c) => {
+app.delete('/api/v1/images/:id', requireAdminAuth, async (c) => {
   return c.json({ success: true, message: 'Image deleted' })
 })
 
@@ -92,7 +96,7 @@ app.get('/api/v1/collections', (c) => {
   return c.json({ success: true, data: { items: [] } })
 })
 
-app.post('/api/v1/products/bulk-delete', async (c) => {
+app.post('/api/v1/products/bulk-delete', requireAdminAuth, async (c) => {
   try {
     const body = await c.req.json()
     const ids = body.ids || []
