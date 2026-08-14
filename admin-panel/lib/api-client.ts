@@ -1,4 +1,4 @@
-let rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://ecom-production-7976.up.railway.app"
+let rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || ""
 if (rawBaseUrl && !rawBaseUrl.startsWith("http://") && !rawBaseUrl.startsWith("https://")) {
   rawBaseUrl = `https://${rawBaseUrl}`
 }

@@ -189,8 +189,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
             if (savedCart) {
                 const parsed = JSON.parse(savedCart);
                 if (Array.isArray(parsed)) {
-                    initialCart = parsed;
-                    setCart(parsed);
+                    const normalized = parsed.map(item => ({
+                        ...item,
+                        price: typeof item.price === 'number' && item.price > 1000 ? item.price / 1000 : Number(item.price || 0),
+                    }));
+                    initialCart = normalized;
+                    setCart(normalized);
                 }
             }
 
@@ -198,8 +202,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
             if (savedWishlist) {
                 const parsed = JSON.parse(savedWishlist);
                 if (Array.isArray(parsed)) {
-                    initialWishlist = parsed;
-                    setWishlist(parsed);
+                    const normalized = parsed.map(item => ({
+                        ...item,
+                        price: typeof item.price === 'number' && item.price > 1000 ? item.price / 1000 : Number(item.price || 0),
+                    }));
+                    initialWishlist = normalized;
+                    setWishlist(normalized);
                 }
             }
         } catch (e) {
@@ -268,6 +276,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const addToCart = (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
         const minMoq = Math.max(1, item.moq || 1);
         const addQty = item.quantity && item.quantity >= minMoq ? item.quantity : minMoq;
+        const normalizedPrice = typeof item.price === 'number' && item.price > 1000 ? item.price / 1000 : Number(item.price || 0);
 
         setCart(prev => {
             const existingIndex = prev.findIndex(i => i.id === item.id || (item.variantId && i.variantId === item.variantId));
@@ -276,6 +285,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 const existing = updated[existingIndex];
                 updated[existingIndex] = {
                     ...existing,
+                    price: normalizedPrice || existing.price,
                     quantity: existing.quantity + addQty,
                     moq: item.moq || existing.moq || 1,
                 };
@@ -283,6 +293,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
             }
             return [...prev, {
                 ...item,
+                price: normalizedPrice,
                 quantity: addQty,
                 moq: minMoq,
                 moqStep: item.moqStep || 1,
@@ -298,7 +309,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 quantity: addQty,
                 name: item.name,
                 image: item.image,
-                price: item.price,
+                price: normalizedPrice,
                 moq: item.moq,
                 moqStep: item.moqStep,
                 category: item.category,
@@ -350,6 +361,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     };
 
     const toggleWishlist = async (item: WishlistItem): Promise<boolean> => {
+        const normalizedItem: WishlistItem = {
+            ...item,
+            price: typeof item.price === 'number' && item.price > 1000 ? item.price / 1000 : Number(item.price || 0),
+        };
         const exists = wishlist.some(i => i.id === item.id);
         if (exists) {
             setWishlist(prev => prev.filter(i => i.id !== item.id));
@@ -362,7 +377,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
             }
             return false;
         } else {
-            setWishlist(prev => [...prev, item]);
+            setWishlist(prev => [...prev, normalizedItem]);
             if (accessToken) {
                 try {
                     await toggleWishlistApi(item.id, accessToken);

@@ -160,7 +160,13 @@ export class ProductsService {
   }
 
   async getProductByIdOrSlug(idOrSlug: string, lang: 'en' | 'ar' = 'en', currency: string = 'AED') {
-    let item = await this.db.select().from(products).where(eq(products.id, idOrSlug)).limit(1)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug)
+    let item: any[] = []
+
+    if (isUuid) {
+      item = await this.db.select().from(products).where(eq(products.id, idOrSlug)).limit(1)
+    }
+
     if (!item[0]) {
       item = await this.db.select().from(products).where(eq(products.sku, idOrSlug)).limit(1)
     }

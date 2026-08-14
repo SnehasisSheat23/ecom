@@ -1,4 +1,4 @@
-let rawBase = process.env.NEXT_PUBLIC_API_URL || 'https://ecom-production-7976.up.railway.app'
+let rawBase = process.env.NEXT_PUBLIC_API_URL || ''
 if (rawBase && !rawBase.startsWith('http://') && !rawBase.startsWith('https://')) {
   rawBase = `https://${rawBase}`
 }
@@ -233,6 +233,16 @@ function buildHeaders(guestSessionId?: string, accessToken?: string) {
 // ==========================================
 // CART API INTEGRATIONS
 // ==========================================
+function normalizeCartItem(item: any) {
+  if (!item) return item
+  const rawPrice = item.price ?? item.unitPrice ?? 0
+  const price = typeof rawPrice === 'number' && rawPrice > 1000 ? rawPrice / 1000 : Number(rawPrice || 0)
+  return {
+    ...item,
+    price,
+  }
+}
+
 export async function fetchCartApi(accessToken?: string) {
   if (!accessToken) return null
   try {
@@ -241,6 +251,9 @@ export async function fetchCartApi(accessToken?: string) {
     })
     if (!res.ok) return null
     const json = await res.json()
+    if (json.data && Array.isArray(json.data.items)) {
+      json.data.items = json.data.items.map(normalizeCartItem)
+    }
     return json.data
   } catch (e) {
     console.error('fetchCartApi error:', e)
@@ -260,6 +273,9 @@ export async function mergeCartApi(items: any[], accessToken: string) {
     throw new Error(err.error || err.message || 'Failed to merge cart')
   }
   const json = await res.json()
+  if (json.data && Array.isArray(json.data.items)) {
+    json.data.items = json.data.items.map(normalizeCartItem)
+  }
   return json.data
 }
 
@@ -275,6 +291,9 @@ export async function addToCartApi(itemPayload: any, accessToken?: string) {
     throw new Error(err.error || err.message || 'Failed to add item to cart')
   }
   const json = await res.json()
+  if (json.data && Array.isArray(json.data.items)) {
+    json.data.items = json.data.items.map(normalizeCartItem)
+  }
   return json.data
 }
 
@@ -290,6 +309,9 @@ export async function updateCartItemApi(itemId: string, quantity: number, access
     throw new Error(err.error || err.message || 'Failed to update item quantity')
   }
   const json = await res.json()
+  if (json.data && Array.isArray(json.data.items)) {
+    json.data.items = json.data.items.map(normalizeCartItem)
+  }
   return json.data
 }
 
@@ -304,6 +326,9 @@ export async function removeCartItemApi(itemId: string, accessToken?: string) {
     throw new Error(err.error || err.message || 'Failed to remove item from cart')
   }
   const json = await res.json()
+  if (json.data && Array.isArray(json.data.items)) {
+    json.data.items = json.data.items.map(normalizeCartItem)
+  }
   return json.data
 }
 
@@ -332,6 +357,12 @@ export async function fetchWishlistApi(accessToken?: string) {
     })
     if (!res.ok) return null
     const json = await res.json()
+    if (json.data && Array.isArray(json.data.items)) {
+      json.data.items = json.data.items.map((i: any) => ({
+        ...i,
+        price: typeof i.price === 'number' && i.price > 1000 ? i.price / 1000 : Number(i.price || 0),
+      }))
+    }
     return json.data
   } catch (e) {
     console.error('fetchWishlistApi error:', e)
@@ -365,6 +396,12 @@ export async function mergeWishlistApi(productIds: string[], accessToken: string
     throw new Error(err.error || err.message || 'Failed to merge wishlist')
   }
   const json = await res.json()
+  if (json.data && Array.isArray(json.data.items)) {
+    json.data.items = json.data.items.map((i: any) => ({
+      ...i,
+      price: typeof i.price === 'number' && i.price > 1000 ? i.price / 1000 : Number(i.price || 0),
+    }))
+  }
   return json.data
 }
 

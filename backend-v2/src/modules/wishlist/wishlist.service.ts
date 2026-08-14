@@ -35,7 +35,8 @@ export class WishlistService {
 
         const title = prod.translations?.en?.title || 'Product'
         const image = (prod.images && prod.images.length > 0) ? prod.images[0] : ''
-        const price = prod.pricing?.AED?.price ?? 0
+        const rawPrice = prod.pricing?.AED?.price ?? 0
+        const price = typeof rawPrice === 'number' && rawPrice > 1000 ? rawPrice / 1000 : Number(rawPrice || 0)
 
         return {
           id: prod.id,

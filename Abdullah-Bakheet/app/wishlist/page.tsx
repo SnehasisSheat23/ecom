@@ -10,8 +10,22 @@ import { XCircle } from 'lucide-react';
 
 export default function WishlistPage() {
     const router = useRouter();
-    const { wishlist, addToCart, toggleWishlist, language, currency } = useShop();
+    const { wishlist, addToCart, toggleWishlist, language, currency, formatPrice, accessToken } = useShop();
     const isArabic = language.startsWith('Arabic');
+
+    React.useEffect(() => {
+        if (!accessToken) {
+            router.replace('/login?redirect=/wishlist');
+        }
+    }, [accessToken, router]);
+
+    if (!accessToken) {
+        return (
+            <div className="w-full bg-brand-gray min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a2b25]"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col w-full bg-brand-gray min-h-screen">
@@ -79,7 +93,7 @@ export default function WishlistPage() {
                                                 </td>
                                                 <td className="py-5 px-4">
                                                     <span className="font-semibold text-gray-900 text-[15px]">
-                                                        {currency} {item.price.toFixed(2)}
+                                                        {formatPrice(item.price)}
                                                     </span>
                                                 </td>
                                                 <td className="py-5 px-4">

@@ -68,7 +68,8 @@ export class OrdersService {
         unitPrice = unitPrice / 1000
       }
       if (typeof unitPrice !== 'number' || isNaN(unitPrice) || unitPrice <= 0) {
-        unitPrice = item.unitPrice || item.price || 150
+        const rawFallback = item.unitPrice || item.price || 150
+        unitPrice = typeof rawFallback === 'number' && rawFallback > 1000 ? rawFallback / 1000 : Number(rawFallback)
       }
 
       const itemTotal = unitPrice * item.quantity
