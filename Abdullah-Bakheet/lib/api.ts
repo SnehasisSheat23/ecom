@@ -1,8 +1,10 @@
-// Live Storefront API Client - Connected strictly to Hono backend V2 Storefront Endpoints
-
-const RAW_API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'
+let rawBase = process.env.NEXT_PUBLIC_API_URL || 'https://ecom-production-7976.up.railway.app'
+if (rawBase && !rawBase.startsWith('http://') && !rawBase.startsWith('https://')) {
+  rawBase = `https://${rawBase}`
+}
+const RAW_API_BASE = rawBase
 const API_BASE = RAW_API_BASE.endsWith('/api/v1') ? RAW_API_BASE : `${RAW_API_BASE}/api/v1`
-const TENANT_HEADER = { 'X-Tenant-Id': 'abdullah-bakheet' }
+const TENANT_HEADER = { 'X-Tenant-Id': process.env.NEXT_PUBLIC_TENANT_ID || 'abdullah-bakheet' }
 
 export interface StorefrontProduct {
   id: string

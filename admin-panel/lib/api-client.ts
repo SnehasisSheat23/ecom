@@ -1,4 +1,8 @@
-const RAW_API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787"
+let rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://ecom-production-7976.up.railway.app"
+if (rawBaseUrl && !rawBaseUrl.startsWith("http://") && !rawBaseUrl.startsWith("https://")) {
+  rawBaseUrl = `https://${rawBaseUrl}`
+}
+const RAW_API_BASE_URL = rawBaseUrl
 const API_BASE_URL = RAW_API_BASE_URL.endsWith("/api/v1")
   ? RAW_API_BASE_URL
   : `${RAW_API_BASE_URL}/api/v1`
