@@ -304,11 +304,11 @@ export function ProductDetails({ id }: { id: string }) {
             const variantPrices: VariantPrice[] = allCurrencies.map((cCode) => {
               const pData = rawPricing[cCode]
               const rawP = pData?.price
-              const pVal = rawP !== undefined && rawP !== null ? (rawP > 1000 ? rawP / 1000 : rawP) : (cCode === activeCurr ? (p.price ?? "") : "")
+              const pVal = rawP !== undefined && rawP !== null ? rawP : (cCode === activeCurr ? (p.price ?? "") : "")
               const rawC = pData?.compare_at || pData?.compareAtPrice
-              const cVal = rawC !== undefined && rawC !== null ? (rawC > 1000 ? rawC / 1000 : rawC) : undefined
+              const cVal = rawC !== undefined && rawC !== null ? rawC : undefined
               const rawCost = pData?.cost_per_item || pData?.costPerItem
-              const costVal = rawCost !== undefined && rawCost !== null ? (rawCost > 1000 ? rawCost / 1000 : rawCost) : undefined
+              const costVal = rawCost !== undefined && rawCost !== null ? rawCost : undefined
               return {
                 currencyCode: cCode,
                 price: pVal,
@@ -471,19 +471,23 @@ export function ProductDetails({ id }: { id: string }) {
             const cNum = pr.compareAtPrice !== undefined && pr.compareAtPrice !== null && pr.compareAtPrice !== "" && !isNaN(Number(pr.compareAtPrice)) ? Number(pr.compareAtPrice) : undefined
             const costNum = pr.costPerItem !== undefined && pr.costPerItem !== null && pr.costPerItem !== "" && !isNaN(Number(pr.costPerItem)) ? Number(pr.costPerItem) : undefined
             pricingMap[code] = {
-              price: pNum > 0 && pNum < 1000 ? Math.round(pNum * 1000) : pNum,
-              ...(cNum !== undefined ? { compare_at: cNum > 0 && cNum < 1000 ? Math.round(cNum * 1000) : cNum } : {}),
-              ...(costNum !== undefined ? { cost_per_item: costNum > 0 && costNum < 1000 ? Math.round(costNum * 1000) : costNum } : {}),
+              price: pNum,
+              ...(cNum !== undefined ? { compare_at: cNum } : {}),
+              ...(costNum !== undefined ? { cost_per_item: costNum } : {}),
             }
           }
         }
       }
 
       // Always ensure current active currency is up to date in pricingMap
+      const numericActivePrice = typeof activePrice === 'number' ? activePrice : (Number(activePrice) || 0)
+      const numericActiveCompare = typeof activeCompare === 'number' ? activeCompare : (activeCompare ? Number(activeCompare) : undefined)
+      const numericActiveCost = typeof activeCost === 'number' ? activeCost : (activeCost ? Number(activeCost) : undefined)
+
       pricingMap[currentCurr] = {
-        price: activePrice > 0 && activePrice < 1000 ? Math.round(activePrice * 1000) : activePrice,
-        ...(activeCompare !== undefined ? { compare_at: activeCompare > 0 && activeCompare < 1000 ? Math.round(activeCompare * 1000) : activeCompare } : {}),
-        ...(activeCost !== undefined ? { cost_per_item: activeCost > 0 && activeCost < 1000 ? Math.round(activeCost * 1000) : activeCost } : {}),
+        price: numericActivePrice,
+        ...(numericActiveCompare !== undefined ? { compare_at: numericActiveCompare } : {}),
+        ...(numericActiveCost !== undefined ? { cost_per_item: numericActiveCost } : {}),
       }
 
       const patchData = {
@@ -491,8 +495,8 @@ export function ProductDetails({ id }: { id: string }) {
         description: product.description || null,
         status: (product.status.toLowerCase()) as 'draft' | 'active' | 'archived',
         tags: product.tags || [],
-        price: activePrice,
-        compareAtPrice: activeCompare,
+        price: numericActivePrice,
+        compareAtPrice: numericActiveCompare,
         currency: currentCurr,
         pricing: pricingMap,
         moq: (product.moq !== undefined && product.moq !== "") 
@@ -501,7 +505,7 @@ export function ProductDetails({ id }: { id: string }) {
               ? Math.max(1, Number(product.specifications.moq) || 1) 
               : 1),
         moqStep: (product.moqStep !== undefined && product.moqStep !== "") ? Math.max(1, Number(product.moqStep) || 1) : 1,
-        images: (product.images || []).map((img) => typeof img === 'string' ? img : img.url).filter(Boolean),
+        images: (product.images || []).map((img) => typeof img === 'string' ? img : (img as any).url).filter(Boolean),
         categoryIds: (product.categoryIds || []).filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)),
         metaTitle: product.seo?.title || null,
         metaDescription: product.seo?.description || null,
@@ -521,17 +525,17 @@ export function ProductDetails({ id }: { id: string }) {
         })(),
         variants: [
           {
-            id: product.variants?.[0]?.id,
+            id: product.variants?.[0]?.id || "v1",
             sku: product.sku || "AUTO",
             title: "Default",
-            price: activePrice,
-            compareAtPrice: activeCompare,
-            costPerItem: activeCost,
+            price: numericActivePrice,
+            compareAtPrice: numericActiveCompare,
+            costPerItem: numericActiveCost,
             prices: Object.entries(pricingMap).map(([cCode, pData]) => ({
               currencyCode: cCode,
-              price: pData.price > 1000 ? pData.price / 1000 : pData.price,
-              compareAtPrice: pData.compare_at ? (pData.compare_at > 1000 ? pData.compare_at / 1000 : pData.compare_at) : undefined,
-              costPerItem: pData.cost_per_item ? (pData.cost_per_item > 1000 ? pData.cost_per_item / 1000 : pData.cost_per_item) : undefined,
+              price: pData.price,
+              compareAtPrice: pData.compare_at,
+              costPerItem: pData.cost_per_item,
             })),
             barcode: product.variants?.[0]?.barcode || null,
             trackInventory: false,
@@ -568,11 +572,11 @@ export function ProductDetails({ id }: { id: string }) {
           const savedVariantPrices: VariantPrice[] = allCurrencies.map((cCode) => {
             const pData = savedPricing[cCode]
             const rawP = pData?.price
-            const pVal = rawP !== undefined && rawP !== null ? (rawP > 1000 ? rawP / 1000 : rawP) : ""
+            const pVal = rawP !== undefined && rawP !== null ? rawP : ""
             const rawC = pData?.compare_at || pData?.compareAtPrice
-            const cVal = rawC !== undefined && rawC !== null ? (rawC > 1000 ? rawC / 1000 : rawC) : undefined
+            const cVal = rawC !== undefined && rawC !== null ? rawC : undefined
             const rawCost = pData?.cost_per_item || pData?.costPerItem
-            const costVal = rawCost !== undefined && rawCost !== null ? (rawCost > 1000 ? rawCost / 1000 : rawCost) : undefined
+            const costVal = rawCost !== undefined && rawCost !== null ? rawCost : undefined
             return {
               currencyCode: cCode,
               price: pVal,

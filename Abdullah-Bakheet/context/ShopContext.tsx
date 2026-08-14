@@ -15,6 +15,7 @@ import {
     toggleWishlistApi,
     mergeWishlistApi,
     removeWishlistItemApi,
+    fetchShippingMethodsApi,
 } from '@/lib/api';
 
 export interface CartItem {
@@ -41,6 +42,20 @@ export interface WishlistItem {
     image: string;
 }
 
+export interface ShippingMethodItem {
+    id: string;
+    name: string;
+    arabicName?: string;
+    description?: string;
+    arabicDescription?: string;
+    estimatedDays: string;
+    arabicEstimatedDays?: string;
+    isActive: boolean;
+    rates: Record<string, number>;
+    currentRate?: number;
+    currentCurrency?: string;
+}
+
 interface UserProfile {
     id?: string;
     name: string;
@@ -55,6 +70,7 @@ export const CURRENCY_RATES: Record<string, { rate: number; symbol: string; code
     'SAR': { rate: 1.02, symbol: 'ر.س', code: 'SAR' },
     'USD': { rate: 0.272, symbol: '$', code: 'USD' },
     'EUR': { rate: 0.25, symbol: '€', code: 'EUR' },
+    'INR': { rate: 22.7, symbol: '₹', code: 'INR' },
     'ر.س': { rate: 1.02, symbol: 'ر.س', code: 'SAR' },
     'د.إ': { rate: 1.0, symbol: 'AED', code: 'AED' },
 };
@@ -70,6 +86,14 @@ interface ShopContextType {
     clearCart: () => void;
     cartTotal: number;
     cartCount: number;
+
+    // Shipping State
+    shippingMethods: ShippingMethodItem[];
+    selectedShippingMethodId: string;
+    setSelectedShippingMethodId: (id: string) => void;
+    selectedShippingMethod: ShippingMethodItem | null;
+    shippingCost: number;
+    shippingFormatted: string;
 
     // Wishlist State
     wishlist: WishlistItem[];
@@ -136,6 +160,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
     const [language, setLanguage] = useState('English');
     const [currency, setCurrency] = useState('AED');
+    const [shippingMethods, setShippingMethods] = useState<ShippingMethodItem[]>([]);
+    const [selectedShippingMethodId, setSelectedShippingMethodId] = useState<string>('standard');
+
+    // Fetch active shipping methods from backend
+    useEffect(() => {
+        let isMounted = true;
+        fetchShippingMethodsApi(currency).then(methods => {
+            if (isMounted && Array.isArray(methods) && methods.length > 0) {
+                setShippingMethods(methods);
+            }
+        }).catch(err => console.warn('Failed to load shipping methods:', err));
+        return () => { isMounted = false; };
+    }, [currency]);
 
     // Synchronize & Merge Cart + Wishlist upon login or restore
     const syncWithBackendOnAuth = useCallback(async (token: string, localCartSnapshot: CartItem[], localWishlistSnapshot: WishlistItem[]) => {
@@ -191,7 +228,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 if (Array.isArray(parsed)) {
                     const normalized = parsed.map(item => ({
                         ...item,
-                        price: typeof item.price === 'number' && item.price > 1000 ? item.price / 1000 : Number(item.price || 0),
+                        price: Number(item.price || 0),
                     }));
                     initialCart = normalized;
                     setCart(normalized);
@@ -204,7 +241,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 if (Array.isArray(parsed)) {
                     const normalized = parsed.map(item => ({
                         ...item,
-                        price: typeof item.price === 'number' && item.price > 1000 ? item.price / 1000 : Number(item.price || 0),
+                        price: Number(item.price || 0),
                     }));
                     initialWishlist = normalized;
                     setWishlist(normalized);
@@ -276,7 +313,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const addToCart = (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
         const minMoq = Math.max(1, item.moq || 1);
         const addQty = item.quantity && item.quantity >= minMoq ? item.quantity : minMoq;
-        const normalizedPrice = typeof item.price === 'number' && item.price > 1000 ? item.price / 1000 : Number(item.price || 0);
+        const normalizedPrice = Number(item.price || 0);
 
         setCart(prev => {
             const existingIndex = prev.findIndex(i => i.id === item.id || (item.variantId && i.variantId === item.variantId));
@@ -363,7 +400,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const toggleWishlist = async (item: WishlistItem): Promise<boolean> => {
         const normalizedItem: WishlistItem = {
             ...item,
-            price: typeof item.price === 'number' && item.price > 1000 ? item.price / 1000 : Number(item.price || 0),
+            price: Number(item.price || 0),
         };
         const exists = wishlist.some(i => i.id === item.id);
         if (exists) {
@@ -454,6 +491,22 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const cartCount = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
     const wishlistCount = wishlist.length;
 
+    // Calculate active shipping method & cost for current currency directly from DB
+    const selectedShippingMethod: ShippingMethodItem | null = 
+        shippingMethods.find(m => m.id === selectedShippingMethodId && m.isActive) ||
+        shippingMethods.find(m => m.isActive) ||
+        shippingMethods[0] ||
+        null;
+
+    const normCurrency = (currency || 'AED').toUpperCase();
+    const rawMethodRate = selectedShippingMethod?.rates?.[normCurrency] !== undefined
+        ? selectedShippingMethod.rates[normCurrency]
+        : (selectedShippingMethod?.rates?.['AED'] !== undefined ? selectedShippingMethod.rates['AED'] : 0);
+
+    const shippingCost = Number(rawMethodRate);
+    const rateInfo = CURRENCY_RATES[normCurrency] || CURRENCY_RATES['AED'];
+    const shippingFormatted = `${rateInfo.symbol} ${shippingCost.toFixed(2)}`;
+
     return (
         <ShopContext.Provider
             value={{
@@ -466,6 +519,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 clearCart,
                 cartTotal,
                 cartCount,
+                shippingMethods,
+                selectedShippingMethodId,
+                setSelectedShippingMethodId,
+                selectedShippingMethod,
+                shippingCost,
+                shippingFormatted,
                 wishlist,
                 isWishlistOpen,
                 setIsWishlistOpen,

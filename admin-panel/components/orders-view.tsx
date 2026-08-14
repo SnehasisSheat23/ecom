@@ -147,6 +147,7 @@ const mapBackendOrderToFrontend = (item: BackendOrderSummary): Order => {
     total: parseFloat(String(item.total || (item as any).totalAmount || 0)),
     syncMessage: item.syncMessage,
     orderNumber: item.orderNumber,
+    currency: item.currency || (item as any).currency || "AED",
   }
 }
 

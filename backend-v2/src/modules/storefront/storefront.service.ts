@@ -251,9 +251,9 @@ export class StorefrontService {
     const shortDesc = (lang === 'ar' ? (specs.netWeightAr || specs.netWeight) : specs.netWeight) || specs.packSize || specs.size || ''
 
     const rawPrice = priceData.price || 0
-    const price = rawPrice > 1000 ? rawPrice / 1000 : rawPrice
+    const price = rawPrice > 0 ? rawPrice / 100 : 0
     const rawCompare = priceData.compare_at
-    const compareAtPrice = (rawCompare && rawCompare > 1000) ? rawCompare / 1000 : rawCompare
+    const compareAtPrice = (rawCompare && rawCompare > 0) ? rawCompare / 100 : rawCompare
 
     const arabicTitle = translations.ar?.title || translations.ar?.name || (product.specifications as any)?.arabicName || null
     const englishTitle = translations.en?.title || translations.en?.name || product.sku

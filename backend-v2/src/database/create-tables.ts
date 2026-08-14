@@ -195,7 +195,48 @@ async function createTables() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE(customer_id, product_id)
     );
+
+    -- 8. SHIPPING METHODS TABLE
+    CREATE TABLE IF NOT EXISTS v2_shipping_methods (
+      id VARCHAR(100) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      arabic_name VARCHAR(255),
+      description TEXT,
+      arabic_description TEXT,
+      estimated_days VARCHAR(100) NOT NULL DEFAULT '2 - 4 business days',
+      arabic_estimated_days VARCHAR(100),
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      is_default BOOLEAN NOT NULL DEFAULT FALSE,
+      rates JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
   `)
+
+  // Safely seed default standard shipping method in DB if not exists
+  await pool.query(
+    `INSERT INTO v2_shipping_methods (id, name, arabic_name, description, arabic_description, estimated_days, arabic_estimated_days, is_active, is_default, rates)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     ON CONFLICT (id) DO NOTHING;`,
+    [
+      'standard',
+      'Standard Regional Delivery',
+      'الشحن الإقليمي القياسي',
+      'Direct door-to-door delivery with secure refrigerated transit where required.',
+      'توصيل مباشر إلى الباب مع نقل آمن ومبرد عند الحاجة.',
+      '2 - 4 business days',
+      '٢ - ٤ أيام عمل',
+      true,
+      true,
+      JSON.stringify({
+        AED: 110,
+        SAR: 112,
+        USD: 30,
+        EUR: 28,
+        INR: 2500,
+      }),
+    ]
+  )
 
   // Safely seed default admin user if not exists (Zero impact on existing product/category data)
   const defaultAdminPassword = 'password123'
@@ -209,7 +250,7 @@ async function createTables() {
     ['admin@example.com', adminPasswordHash, 'Admin', 'User', 'admin', 'active']
   )
 
-  console.log('✅ All backend-v2 database tables & default admin user configured successfully!')
+  console.log('✅ All backend-v2 database tables, shipping methods & default admin user configured successfully!')
   process.exit(0)
 }
 

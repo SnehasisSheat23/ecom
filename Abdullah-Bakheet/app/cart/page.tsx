@@ -11,10 +11,7 @@ export default function CartPage() {
     const { cart, removeFromCart, updateQuantity, cartTotal, language, currency, formatPrice } = useShop();
     const isArabic = language.startsWith('Arabic');
     
-    const shippingCost = 110;
     const subtotalFormatted = formatPrice(cartTotal);
-    const shippingFormatted = formatPrice(shippingCost);
-    const totalFormatted = formatPrice(cartTotal + (cart.length > 0 ? shippingCost : 0));
 
     return (
         <div className="flex flex-col w-full bg-brand-gray min-h-screen font-sans">
@@ -144,13 +141,13 @@ export default function CartPage() {
                                 </div>
                                 <div className="flex justify-between items-center text-[15px]">
                                     <span className="text-gray-500">{isArabic ? 'الشحن' : 'Shipping'}</span>
-                                    <span className="font-semibold text-gray-800">{shippingFormatted}</span>
+                                    <span className="text-[13px] text-gray-500 font-medium">{isArabic ? 'يُحسب عند الدفع' : 'Calculated at checkout'}</span>
                                 </div>
                             </div>
                             
                             <div className="flex justify-between items-center text-[16px] mb-10">
                                 <span className="text-gray-500">{isArabic ? 'المجموع الكلي' : 'Total'}</span>
-                                <span className="font-bold text-gray-900 text-[18px]">{totalFormatted}</span>
+                                <span className="font-bold text-gray-900 text-[18px]">{subtotalFormatted}</span>
                             </div>
 
                             <Link href="/checkout" className="w-full bg-[#1a2b25] text-white py-4 px-6 flex justify-between items-center hover:bg-[#22322a] transition-colors font-medium text-[15px] uppercase tracking-wider group rounded-md">

@@ -1,0 +1,21 @@
+[
+  {
+    "id": "standard",
+    "name": "Standard Regional Delivery",
+    "arabicName": "الشحن الإقليمي القياسي",
+    "description": "Direct door-to-door delivery with secure refrigerated transit where required.",
+    "arabicDescription": "توصيل مباشر إلى الباب مع نقل آمن ومبرد عند الحاجة.",
+    "estimatedDays": "2 - 4 business days",
+    "arabicEstimatedDays": "٢ - ٤ أيام عمل",
+    "isActive": true,
+    "isDefault": true,
+    "freeAboveAED": null,
+    "rates": {
+      "AED": 110,
+      "SAR": 112,
+      "USD": 30,
+      "EUR": 28,
+      "INR": 2500
+    }
+  }
+]

@@ -236,7 +236,7 @@ function buildHeaders(guestSessionId?: string, accessToken?: string) {
 function normalizeCartItem(item: any) {
   if (!item) return item
   const rawPrice = item.price ?? item.unitPrice ?? 0
-  const price = typeof rawPrice === 'number' && rawPrice > 1000 ? rawPrice / 1000 : Number(rawPrice || 0)
+  const price = Number(rawPrice || 0)
   return {
     ...item,
     price,
@@ -360,7 +360,7 @@ export async function fetchWishlistApi(accessToken?: string) {
     if (json.data && Array.isArray(json.data.items)) {
       json.data.items = json.data.items.map((i: any) => ({
         ...i,
-        price: typeof i.price === 'number' && i.price > 1000 ? i.price / 1000 : Number(i.price || 0),
+        price: Number(i.price || 0),
       }))
     }
     return json.data
@@ -399,7 +399,7 @@ export async function mergeWishlistApi(productIds: string[], accessToken: string
   if (json.data && Array.isArray(json.data.items)) {
     json.data.items = json.data.items.map((i: any) => ({
       ...i,
-      price: typeof i.price === 'number' && i.price > 1000 ? i.price / 1000 : Number(i.price || 0),
+      price: Number(i.price || 0),
     }))
   }
   return json.data
@@ -477,6 +477,35 @@ export async function placeOrderApi(orderPayload: any, guestSessionId?: string, 
   return json.data
 }
 
+export async function fetchShippingMethodsApi(currency?: string) {
+  try {
+    const url = currency ? `${API_BASE}/shipping/methods?currency=${encodeURIComponent(currency)}` : `${API_BASE}/shipping/methods`
+    const res = await fetch(url, { headers: buildHeaders() })
+    if (!res.ok) return []
+    const json = await res.json()
+    return json.data?.items || []
+  } catch (e) {
+    console.error('fetchShippingMethodsApi error:', e)
+    return []
+  }
+}
+
+export async function calculateShippingApi(methodId?: string, currency?: string, subtotal?: number) {
+  try {
+    const params = new URLSearchParams()
+    if (methodId) params.append('methodId', methodId)
+    if (currency) params.append('currency', currency)
+    if (subtotal !== undefined) params.append('subtotal', String(subtotal))
+    const res = await fetch(`${API_BASE}/shipping/calculate?${params.toString()}`, { headers: buildHeaders() })
+    if (!res.ok) return null
+    const json = await res.json()
+    return json.data || null
+  } catch (e) {
+    console.error('calculateShippingApi error:', e)
+    return null
+  }
+}
+
 // Storefront Helper Wrappers
 export async function fetchProducts(options?: FetchProductsOptions | number): Promise<StorefrontProduct[]> {
   const res = await fetchProductsApi(options)
@@ -485,3 +514,4 @@ export async function fetchProducts(options?: FetchProductsOptions | number): Pr
 
 export const fetchProductBySlug = fetchProductBySlugApi;
 export const fetchCategories = fetchCategoriesApi;
+

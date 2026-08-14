@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, integer, jsonb, timestamp, boolean, numeric, AnyPgColumn } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, varchar, integer, jsonb, timestamp, boolean, numeric, text, AnyPgColumn } from 'drizzle-orm/pg-core'
 
 // ==========================================
 // 1. CATEGORIES SCHEMA (Hierarchical Category Tree)
@@ -178,5 +178,24 @@ export const wishlistItems = pgTable('v2_wishlist_items', {
   productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
+
+// ==========================================
+// 8. SHIPPING METHODS SCHEMA
+// ==========================================
+export const shippingMethods = pgTable('v2_shipping_methods', {
+  id: varchar('id', { length: 100 }).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  arabicName: varchar('arabic_name', { length: 255 }),
+  description: text('description'),
+  arabicDescription: text('arabic_description'),
+  estimatedDays: varchar('estimated_days', { length: 100 }).notNull().default('2 - 4 business days'),
+  arabicEstimatedDays: varchar('arabic_estimated_days', { length: 100 }),
+  isActive: boolean('is_active').notNull().default(true),
+  isDefault: boolean('is_default').notNull().default(false),
+  rates: jsonb('rates').$type<Record<string, number>>().notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
 
 

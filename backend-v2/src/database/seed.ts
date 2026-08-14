@@ -295,13 +295,13 @@ async function seed() {
     }
   }
 
-  // Helper to normalize prices to integer thousands
+  // Helper to normalize prices to integer cents (x100)
   const toThousandPricing = (pricing: Record<string, { price: number; compare_at?: number }>) => {
     const out: Record<string, { price: number; compare_at?: number }> = {}
     for (const [k, v] of Object.entries(pricing)) {
       out[k] = {
-        price: v.price > 0 && v.price < 1000 ? Math.round(v.price * 1000) : v.price,
-        ...(v.compare_at ? { compare_at: v.compare_at > 0 && v.compare_at < 1000 ? Math.round(v.compare_at * 1000) : v.compare_at } : {}),
+        price: v.price > 0 && v.price < 1000 ? Math.round(v.price * 100) : v.price,
+        ...(v.compare_at ? { compare_at: v.compare_at > 0 && v.compare_at < 1000 ? Math.round(v.compare_at * 100) : v.compare_at } : {}),
       }
     }
     return out

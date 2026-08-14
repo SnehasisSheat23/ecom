@@ -82,7 +82,7 @@ authRoutes.post('/admin/login', async (c) => {
     })
   } catch (err: any) {
     if (err instanceof z.ZodError) {
-      return c.json({ success: false, error: err.errors.map((e) => e.message).join(', ') }, 400)
+      return c.json({ success: false, error: err.issues.map((e: any) => e.message).join(', ') }, 400)
     }
     return c.json({ success: false, error: err.message || 'Admin login failed' }, 500)
   }
@@ -91,7 +91,7 @@ authRoutes.post('/admin/login', async (c) => {
 // GET /api/v1/auth/admin/me
 authRoutes.get('/admin/me', requireAdminAuth, async (c) => {
   try {
-    const adminPayload = c.get('admin')
+    const adminPayload = (c as any).get('admin')
     const db = getDatabase()
     const users = await db.select().from(adminUsers).where(eq(adminUsers.id, adminPayload.sub)).limit(1)
 
@@ -208,7 +208,7 @@ authRoutes.post('/login', async (c) => {
     })
   } catch (err: any) {
     if (err instanceof z.ZodError) {
-      return c.json({ success: false, error: err.errors.map((e) => e.message).join(', ') }, 400)
+      return c.json({ success: false, error: err.issues.map((e: any) => e.message).join(', ') }, 400)
     }
     return c.json({ success: false, error: err.message || 'Login failed' }, 500)
   }
@@ -294,7 +294,7 @@ authRoutes.post('/register', async (c) => {
     )
   } catch (err: any) {
     if (err instanceof z.ZodError) {
-      return c.json({ success: false, error: err.errors.map((e) => e.message).join(', ') }, 400)
+      return c.json({ success: false, error: err.issues.map((e: any) => e.message).join(', ') }, 400)
     }
     return c.json({ success: false, error: err.message || 'Registration failed' }, 500)
   }

@@ -9,7 +9,23 @@ import { ArrowUpRightIcon, CheckIcon, CreditCardIcon, XIcon } from 'lucide-anima
 import { Banknote, ShieldCheck, Smartphone, Sparkles, Loader2 } from 'lucide-react';
 
 export default function CheckoutPage() {
-    const { cart, cartTotal, formatPrice, guestSessionId, accessToken, clearCart, user, currency } = useShop();
+    const {
+        cart,
+        cartTotal,
+        formatPrice,
+        getConvertedPrice,
+        guestSessionId,
+        accessToken,
+        clearCart,
+        user,
+        currency,
+        shippingCost,
+        shippingFormatted,
+        selectedShippingMethod,
+        selectedShippingMethodId,
+        setSelectedShippingMethodId,
+        shippingMethods,
+    } = useShop();
     const router = useRouter();
 
     const [firstName, setFirstName] = useState(user?.firstName || 'Abdullah');
@@ -36,8 +52,10 @@ export default function CheckoutPage() {
     const [placedOrder, setPlacedOrder] = useState<any | null>(null);
     const [isOrderComplete, setIsOrderComplete] = useState(false);
 
-    const shippingFee = 110;
-    const totalAED = cartTotal + (cart.length > 0 ? shippingFee : 0);
+    const subtotalConverted = getConvertedPrice(cartTotal);
+    const totalConverted = subtotalConverted + (cart.length > 0 ? shippingCost : 0);
+    const currSymbol = currency === 'SAR' ? 'ر.س' : (currency === 'USD' ? '$' : (currency === 'EUR' ? '€' : (currency === 'INR' ? '₹' : 'AED')));
+    const totalFormatted = `${currSymbol} ${totalConverted.toFixed(2)}`;
 
     const handleFillDemoCard = () => {
         setCardNumber('4242 4242 4242 4242');
@@ -81,19 +99,21 @@ export default function CheckoutPage() {
                     p.title.toLowerCase().trim() === i.name.toLowerCase().trim()
                 );
                 const resolvedVariantId = matchedProduct?.id || matchedProduct?.variantId || i.variantId || i.id;
+                const convertedItemPrice = getConvertedPrice(i.price);
                 return {
                     productId: resolvedVariantId,
                     quantity: i.quantity,
-                    unitPrice: i.price,
-                    price: i.price,
+                    unitPrice: Number(convertedItemPrice.toFixed(2)),
+                    price: Number(convertedItemPrice.toFixed(2)),
                     name: i.name,
                     image: i.image,
                 };
             });
 
             const orderPayload: any = {
-                currency: currency || 'AED',
-                shippingCost: shippingFee,
+                currency: (currency || 'AED').toUpperCase(),
+                shippingMethodId: selectedShippingMethodId || 'standard',
+                shippingCost: shippingCost,
                 shippingAddressSnapshot: {
                     fullName: `${firstName} ${lastName}`.trim() || 'Customer',
                     line1: street || 'Street address',
@@ -229,13 +249,13 @@ export default function CheckoutPage() {
                         <section>
                             <div className="bg-[#fbdc3c] py-3 px-6 mb-4 inline-block">
                                 <h2 className="font-heading text-3xl md:text-5xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none pt-2">
-                                    FAKE PAYMENT PROVIDER DEMO
+                                    PAYMENT PROVIDER
                                 </h2>
                             </div>
 
                             <p className="text-xs text-gray-500 mb-6 font-medium flex items-center gap-1.5">
                                 <ShieldCheck size={14} className="text-emerald-600" />
-                                Simulated payment gateway connected to <span className="font-bold text-black">backend-v2</span>. No real charges are made.
+                                Simulated payment gateway.
                             </p>
 
                             <div className="flex flex-wrap gap-3 mb-8">
@@ -288,7 +308,7 @@ export default function CheckoutPage() {
                                             onClick={handleFillDemoCard}
                                             className="text-xs text-amber-900 bg-amber-100 hover:bg-amber-200 font-bold px-3 py-1.5 rounded-md flex items-center gap-1 transition-colors"
                                         >
-                                            <Sparkles size={13} /> Fill Demo Card
+                                             Fill Demo Card
                                         </button>
                                     </div>
                                     
@@ -413,15 +433,20 @@ export default function CheckoutPage() {
                                     <span className="text-gray-600 font-medium">Sub-Total</span>
                                     <span className="font-semibold text-black">{formatPrice(cartTotal)}</span>
                                 </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-600 font-medium">Shipping Fee</span>
-                                    <span className="font-semibold text-black">{formatPrice(shippingFee)}</span>
+                                <div className="flex justify-between items-start text-sm">
+                                    <div>
+                                        <span className="text-gray-600 font-medium block">Shipping Fee</span>
+                                        <span className="text-[11px] text-gray-400 font-medium">
+                                            {selectedShippingMethod?.name || 'Standard Regional Delivery'}
+                                        </span>
+                                    </div>
+                                    <span className="font-semibold text-black">{shippingFormatted}</span>
                                 </div>
                             </div>
 
                             <div className="border-t border-gray-100 pt-6 mb-8 flex justify-between items-end">
                                 <span className="text-sm font-medium text-gray-600">Total</span>
-                                <span className="text-2xl font-black text-black">{formatPrice(totalAED)}</span>
+                                <span className="text-2xl font-black text-black">{totalFormatted}</span>
                             </div>
 
                             <button 
@@ -516,7 +541,14 @@ export default function CheckoutPage() {
                                 </div>
                                 <div className="flex justify-between items-center text-sm font-medium text-gray-700">
                                     <span>Total Amount</span>
-                                    <span className="font-bold text-black">{formatPrice(placedOrder?.totalAmount || placedOrder?.total || totalAED)}</span>
+                                    <span className="font-bold text-black">
+                                        {(() => {
+                                            const rawVal = parseFloat(String(placedOrder?.totalAmount || placedOrder?.total || totalConverted));
+                                            const ordCurr = (placedOrder?.currency || currency || 'AED').toUpperCase();
+                                            const sym = ordCurr === 'SAR' ? 'ر.س' : (ordCurr === 'USD' ? '$' : (ordCurr === 'EUR' ? '€' : (ordCurr === 'INR' ? '₹' : 'AED')));
+                                            return `${sym} ${rawVal.toFixed(2)}`;
+                                        })()}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between items-center text-sm font-medium text-gray-700">
                                     <span>Payment Method</span>

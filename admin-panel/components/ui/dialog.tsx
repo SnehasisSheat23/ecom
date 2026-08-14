@@ -20,7 +20,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
         onClick={() => onOpenChange(false)}
       />
       {/* Modal Container */}
-      <div className="relative z-50 w-full max-w-3xl">
+      <div className="relative z-50 w-full flex items-center justify-center pointer-events-auto">
         {children}
       </div>
     </div>
@@ -36,7 +36,7 @@ export function DialogContent({
 }) {
   return (
     <div
-      className={`relative w-full rounded-xl border bg-card p-6 shadow-xl transition-all animate-in zoom-in-95 ${className}`}
+      className={`relative w-full mx-auto rounded-xl border bg-card p-6 shadow-xl transition-all animate-in zoom-in-95 ${className}`}
     >
       {children}
     </div>

@@ -11,8 +11,11 @@ const handleGetOrders = async (c: any) => {
   const customerId = c.req.query('customerId')
   const limit = c.req.query('perPage') ? parseInt(c.req.query('perPage')!) : (c.req.query('limit') ? parseInt(c.req.query('limit')!) : 20)
   const page = c.req.query('page') ? parseInt(c.req.query('page')!) : 1
+  const sortBy = c.req.query('sortBy')
+  const sortOrder = c.req.query('sortOrder')
+  const search = c.req.query('search') || c.req.query('q')
 
-  const result = await ordersService.getOrders({ status, customerId, limit, page })
+  const result = await ordersService.getOrders({ status, customerId, limit, page, sortBy, sortOrder, search })
   return c.json({ success: true, data: result })
 }
 

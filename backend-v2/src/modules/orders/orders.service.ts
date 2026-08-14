@@ -1,7 +1,8 @@
-import { eq, or, sql } from 'drizzle-orm'
+import { eq, or, sql, desc, asc } from 'drizzle-orm'
 import { getDatabase } from '../../lib/db.js'
 import { orders, orderItems, products, customers } from '../../database/schema.js'
 import { ProductsService } from '../products/products.service.js'
+import { shippingService } from '../shipping/shipping.service.js'
 
 export interface CreateOrderItemInput {
   productId: string
@@ -15,12 +16,13 @@ export interface CreateOrderItemInput {
 export interface CreateOrderInput {
   customerId?: string
   currency?: 'AED' | 'SAR' | 'INR' | 'GBP' | 'USD' | 'EUR' | string
+  shippingMethodId?: string
   shippingAddressSnapshot?: Record<string, any>
   billingAddressSnapshot?: Record<string, any>
+  paymentMethod?: string
+  notes?: string
   shippingCost?: number
   items: CreateOrderItemInput[]
-  notes?: string
-  paymentMethod?: string
 }
 
 export class OrdersService {
@@ -28,8 +30,7 @@ export class OrdersService {
   private productsService = new ProductsService()
 
   async createOrder(input: CreateOrderInput) {
-    const currency = input.currency || 'AED'
-    const shippingCost = input.shippingCost !== undefined ? input.shippingCost : 110
+    const currency = (input.currency || 'AED').toUpperCase()
 
     if (!input.items || input.items.length === 0) {
       throw new Error('Order must contain at least one product item.')
@@ -62,14 +63,30 @@ export class OrdersService {
 
       const p = product[0]
       const rawPricing = (p?.pricing || {}) as any
-      const priceObj = rawPricing[currency] || rawPricing['AED'] || rawPricing['SAR'] || {}
-      let unitPrice = typeof priceObj === 'object' && priceObj !== null ? (priceObj.price ?? 0) : Number(priceObj)
-      if (unitPrice > 1000) {
-        unitPrice = unitPrice / 1000
+      let unitPrice: number | null = null
+
+      // 1. If explicit pricing exists in DB for this exact currency (e.g. SAR, USD)
+      if (rawPricing && rawPricing[currency]) {
+        const priceObj = rawPricing[currency]
+        const raw = typeof priceObj === 'object' && priceObj !== null ? (priceObj.price ?? 0) : Number(priceObj)
+        if (typeof raw === 'number' && !isNaN(raw) && raw > 0) {
+          unitPrice = raw / 100
+        }
       }
-      if (typeof unitPrice !== 'number' || isNaN(unitPrice) || unitPrice <= 0) {
-        const rawFallback = item.unitPrice || item.price || 150
-        unitPrice = typeof rawFallback === 'number' && rawFallback > 1000 ? rawFallback / 1000 : Number(rawFallback)
+
+      // 2. If no explicit currency object in DB, use the price sent by storefront
+      if (unitPrice === null || isNaN(unitPrice) || unitPrice <= 0) {
+        const passedPrice = item.unitPrice !== undefined ? item.unitPrice : item.price
+        if (typeof passedPrice === 'number' && !isNaN(passedPrice) && passedPrice > 0) {
+          unitPrice = passedPrice
+        }
+      }
+
+      // 3. Fallback to AED price
+      if (unitPrice === null || isNaN(unitPrice) || unitPrice <= 0) {
+        const aedObj = rawPricing?.['AED'] || rawPricing?.['SAR'] || 1500
+        const aedRaw = typeof aedObj === 'object' && aedObj !== null ? (aedObj.price ?? 0) : Number(aedObj)
+        unitPrice = aedRaw > 0 ? aedRaw / 100 : Number(aedRaw)
       }
 
       const itemTotal = unitPrice * item.quantity
@@ -95,8 +112,27 @@ export class OrdersService {
       })
     }
 
-    const totalAmount = subtotal + shippingCost
+    const shippingCalculation = await shippingService.calculateShippingCost({
+      methodId: input.shippingMethodId,
+      currency,
+      subtotal,
+    })
+
+    const finalShippingCost = input.shippingCost !== undefined ? input.shippingCost : shippingCalculation.cost
+    const totalAmount = subtotal + finalShippingCost
     const orderNumber = `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`
+
+    const shippingSnapshot = {
+      ...(input.shippingAddressSnapshot || {}),
+      shippingMethod: {
+        id: shippingCalculation.methodId,
+        name: shippingCalculation.methodName,
+        arabicName: shippingCalculation.arabicMethodName,
+        estimatedDays: shippingCalculation.estimatedDays,
+        cost: finalShippingCost,
+        currency,
+      },
+    }
 
     const [newOrder] = await this.db
       .insert(orders)
@@ -106,9 +142,9 @@ export class OrdersService {
         status: 'pending',
         currency,
         subtotal: subtotal.toFixed(2),
-        shippingCost: shippingCost.toFixed(2),
+        shippingCost: finalShippingCost.toFixed(2),
         totalAmount: totalAmount.toFixed(2),
-        shippingAddressSnapshot: input.shippingAddressSnapshot || {},
+        shippingAddressSnapshot: shippingSnapshot,
         billingAddressSnapshot: input.billingAddressSnapshot || {},
       })
       .returning()
@@ -142,23 +178,57 @@ export class OrdersService {
     return this.getOrderById(newOrder.id)
   }
 
-  async getOrders(options: { status?: string; customerId?: string; limit?: number; page?: number }) {
+  async getOrders(options: {
+    status?: string
+    customerId?: string
+    limit?: number
+    page?: number
+    sortBy?: string
+    sortOrder?: string
+    search?: string
+  }) {
     const limit = options.limit || 20
     const page = options.page || 1
     const offset = (page - 1) * limit
+    const sortOrder = options.sortOrder?.toLowerCase() === 'asc' ? 'asc' : 'desc'
+    const sortBy = options.sortBy || 'date'
 
     const conditions = []
     if (options.status) {
-      conditions.push(eq(orders.status, options.status.toLowerCase()))
+      const statuses = options.status.split(',').map((s) => s.trim().toLowerCase())
+      if (statuses.length === 1) {
+        conditions.push(eq(orders.status, statuses[0]))
+      } else {
+        conditions.push(sql`${orders.status} IN (${sql.join(statuses.map((s) => sql`${s}`), sql`, `)})`)
+      }
     }
     if (options.customerId) {
       conditions.push(eq(orders.customerId, options.customerId))
+    }
+    if (options.search && options.search.trim()) {
+      const q = `%${options.search.trim()}%`
+      conditions.push(sql`(${orders.orderNumber} ILIKE ${q} OR (${orders.shippingAddressSnapshot}->>'fullName') ILIKE ${q} OR (${orders.shippingAddressSnapshot}->>'email') ILIKE ${q})`)
+    }
+
+    const whereClause = conditions.length ? sql.join(conditions, sql` AND `) : undefined
+
+    const [totalCountResult] = await this.db
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(orders)
+      .where(whereClause)
+
+    let orderExpr = sortOrder === 'asc' ? asc(orders.createdAt) : desc(orders.createdAt)
+    if (sortBy === 'total') {
+      orderExpr = sortOrder === 'asc' ? asc(orders.totalAmount) : desc(orders.totalAmount)
+    } else if (sortBy === 'id' || sortBy === 'orderNumber') {
+      orderExpr = sortOrder === 'asc' ? asc(orders.orderNumber) : desc(orders.orderNumber)
     }
 
     const items = await this.db
       .select()
       .from(orders)
-      .where(conditions.length ? sql.join(conditions, sql` AND `) : undefined)
+      .where(whereClause)
+      .orderBy(orderExpr)
       .limit(limit)
       .offset(offset)
 
@@ -208,7 +278,8 @@ export class OrdersService {
       })
     )
 
-    return { items: enriched, page, limit, total: enriched.length }
+    const total = totalCountResult?.count ?? enriched.length
+    return { items: enriched, page, limit, total }
   }
 
   async getOrderById(id: string) {

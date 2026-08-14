@@ -44,11 +44,11 @@ export class ProductsService {
         let p = typeof data === 'object' ? data.price : (data as any)
         let c = typeof data === 'object' ? data.compare_at : undefined
 
-        if (typeof p === 'number' && p > 0 && p < 1000) {
-          p = Math.round(p * 1000)
+        if (typeof p === 'number' && !isNaN(p) && p > 0) {
+          p = Math.round(p * 100)
         }
-        if (typeof c === 'number' && c > 0 && c < 1000) {
-          c = Math.round(c * 1000)
+        if (typeof c === 'number' && !isNaN(c) && c > 0) {
+          c = Math.round(c * 100)
         }
 
         result[code] = {
@@ -57,8 +57,8 @@ export class ProductsService {
         }
       }
     } else if (defaultPrice !== undefined) {
-      let p = defaultPrice > 0 && defaultPrice < 1000 ? Math.round(defaultPrice * 1000) : defaultPrice
-      let c = defaultCompareAt && defaultCompareAt > 0 && defaultCompareAt < 1000 ? Math.round(defaultCompareAt * 1000) : defaultCompareAt
+      let p = defaultPrice > 0 ? Math.round(defaultPrice * 100) : defaultPrice
+      let c = defaultCompareAt && defaultCompareAt > 0 ? Math.round(defaultCompareAt * 100) : defaultCompareAt
 
       result[defaultCurrency] = {
         price: p || 0,
@@ -67,7 +67,7 @@ export class ProductsService {
     }
 
     if (!result['AED']) {
-      result['AED'] = { price: 65000, compare_at: 75000 }
+      result['AED'] = { price: 6500, compare_at: 7500 }
     }
 
     return result
@@ -211,8 +211,8 @@ export class ProductsService {
         const code = pr.currencyCode.toUpperCase()
         let p = Number(pr.price) || 0
         let c = pr.compareAtPrice !== undefined && pr.compareAtPrice !== null && pr.compareAtPrice !== "" ? Number(pr.compareAtPrice) : undefined
-        if (p > 0 && p < 1000) p = Math.round(p * 1000)
-        if (c !== undefined && c > 0 && c < 1000) c = Math.round(c * 1000)
+        if (p > 0) p = Math.round(p * 100)
+        if (c !== undefined && c > 0) c = Math.round(c * 100)
         updatedPricing[code] = {
           price: p,
           ...(c !== undefined ? { compare_at: c } : {}),
@@ -222,8 +222,8 @@ export class ProductsService {
 
     if (input.price !== undefined) {
       const activeCurrency = (input.currency || 'SAR').toUpperCase()
-      let p = input.price > 0 && input.price < 1000 ? Math.round(input.price * 1000) : input.price
-      let c = input.compareAtPrice && input.compareAtPrice > 0 && input.compareAtPrice < 1000 ? Math.round(input.compareAtPrice * 1000) : input.compareAtPrice
+      let p = input.price > 0 ? Math.round(input.price * 100) : input.price
+      let c = input.compareAtPrice && input.compareAtPrice > 0 ? Math.round(input.compareAtPrice * 100) : input.compareAtPrice
       updatedPricing[activeCurrency] = {
         price: p,
         ...(c !== undefined ? { compare_at: c } : {}),
@@ -286,11 +286,11 @@ export class ProductsService {
     const langData = (product.translations?.[lang] || product.translations?.['en'] || product.translations?.['ar'] || {}) as any
     const priceData = product.pricing[currency] || product.pricing['SAR'] || product.pricing['AED'] || { price: 0 }
 
-    // Stored as integer thousands (x1000). Convert to standard decimal units (val / 1000) for API response
+    // Stored as integer cents/fils (x100). Convert to standard decimal units (val / 100) for API response
     const rawPrice = priceData.price || 0
-    const price = rawPrice > 1000 ? rawPrice / 1000 : rawPrice
+    const price = rawPrice > 0 ? rawPrice / 100 : 0
     const rawCompare = priceData.compare_at
-    const compareAtPrice = (rawCompare && rawCompare > 1000) ? rawCompare / 1000 : rawCompare
+    const compareAtPrice = (rawCompare && rawCompare > 0) ? rawCompare / 100 : rawCompare
 
     let categoryName = '-'
     let categoryArabic = ''
@@ -306,9 +306,9 @@ export class ProductsService {
 
     const variantPrices = Object.entries(product.pricing || {}).map(([cCode, pData]: [string, any]) => {
       const rawP = pData?.price || 0
-      const pVal = rawP > 1000 ? rawP / 1000 : rawP
+      const pVal = rawP > 0 ? rawP / 100 : 0
       const rawC = pData?.compare_at
-      const cVal = (rawC && rawC > 1000) ? rawC / 1000 : rawC
+      const cVal = (rawC && rawC > 0) ? rawC / 100 : rawC
       return {
         currencyCode: cCode,
         price: pVal,

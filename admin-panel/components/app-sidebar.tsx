@@ -65,6 +65,13 @@ const data = {
         <Icon name="article" />
       ),
     },
+    {
+      title: "Shipping",
+      url: "/dashboard/shipping",
+      icon: (
+        <Icon name="local_shipping" />
+      ),
+    },
   ],
 }
 
