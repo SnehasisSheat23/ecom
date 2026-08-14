@@ -233,7 +233,7 @@ async function bootstrap() {
             approvalStatus: 'APPROVED',
             productType: 'physical',
             catalogType: 'REGULAR',
-            specifications: { arabicName: p.arabic, packSize: p.size, img: p.img, price: p.price.toString() },
+            specifications: { arabicName: p.arabic, packSize: p.size, img: p.img },
           })
           .returning()
 
@@ -249,6 +249,14 @@ async function bootstrap() {
             position: 0,
           })
           .returning()
+
+        // Create Variant Prices (in halalas/base unit, e.g. 310 SAR = 31000)
+        await db.insert(variantPrices).values({
+          tenantId: tenant.id,
+          variantId: createdVariant.id,
+          currencyCode: 'SAR',
+          price: p.price * 100,
+        }).onConflictDoNothing()
 
         // Create Inventory Record
         await db.insert(inventory).values({

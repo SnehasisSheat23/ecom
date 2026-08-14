@@ -7,15 +7,35 @@ import { ChevronLeft, Eye, EyeOff, ArrowUpRight } from 'lucide-react';
 import { useShop } from '@/context/ShopContext';
 
 export default function RegisterPage() {
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const router = useRouter();
-    const { setUser } = useShop();
+    const [isLoading, setIsLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const handleRegister = (e: React.FormEvent) => {
+    const router = useRouter();
+    const { register } = useShop();
+
+    const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        setUser({ name: 'New User', email: 'user@example.com' });
-        router.push('/');
+        if (password !== confirmPassword) {
+            setErrorMessage('Passwords do not match');
+            return;
+        }
+        setIsLoading(true);
+        setErrorMessage(null);
+        try {
+            await register({ firstName, lastName, email, password });
+            router.push('/');
+        } catch (err: any) {
+            setErrorMessage(err.message || 'Registration failed. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -39,9 +59,15 @@ export default function RegisterPage() {
                         </h1>
                     </div>
                     
-                    <p className="text-gray-500 mb-10 text-[15px]">
+                    <p className="text-gray-500 mb-6 text-[15px]">
                         Already have an account? <Link href="/login" className="text-black font-bold hover:underline">Sign in</Link>
                     </p>
+
+                    {errorMessage && (
+                        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-md">
+                            {errorMessage}
+                        </div>
+                    )}
 
                     <form onSubmit={handleRegister} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -52,6 +78,8 @@ export default function RegisterPage() {
                                 <input 
                                     type="text" 
                                     required
+                                    value={firstName}
+                                    onChange={(e) => setFirstName(e.target.value)}
                                     className="w-full bg-white border border-gray-200 rounded p-3.5 text-[15px] focus:outline-none focus:border-gray-400 transition-colors"
                                     placeholder="First Name" 
                                 />
@@ -63,6 +91,8 @@ export default function RegisterPage() {
                                 <input 
                                     type="text" 
                                     required
+                                    value={lastName}
+                                    onChange={(e) => setLastName(e.target.value)}
                                     className="w-full bg-white border border-gray-200 rounded p-3.5 text-[15px] focus:outline-none focus:border-gray-400 transition-colors"
                                     placeholder="Last Name" 
                                 />
@@ -76,6 +106,8 @@ export default function RegisterPage() {
                             <input 
                                 type="email" 
                                 required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 className="w-full bg-white border border-gray-200 rounded p-3.5 text-[15px] focus:outline-none focus:border-gray-400 transition-colors"
                                 placeholder="Email" 
                             />
@@ -89,6 +121,8 @@ export default function RegisterPage() {
                                 <input 
                                     type={showPassword ? "text" : "password"} 
                                     required
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
                                     className="w-full bg-white border border-gray-200 rounded p-3.5 text-[15px] focus:outline-none focus:border-gray-400 transition-colors pr-10"
                                     placeholder="Password" 
                                 />
@@ -110,6 +144,8 @@ export default function RegisterPage() {
                                 <input 
                                     type={showConfirmPassword ? "text" : "password"} 
                                     required
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
                                     className="w-full bg-white border border-gray-200 rounded p-3.5 text-[15px] focus:outline-none focus:border-gray-400 transition-colors pr-10"
                                     placeholder="Password" 
                                 />
@@ -126,9 +162,10 @@ export default function RegisterPage() {
                         <div className="pt-6">
                             <button 
                                 type="submit"
-                                className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-black transition-colors group"
+                                disabled={isLoading}
+                                className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-black transition-colors group disabled:opacity-50"
                             >
-                                CREATE ACCOUNT
+                                {isLoading ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}
                                 <ArrowUpRight size={16} className="text-gray-400 group-hover:text-white transition-colors" />
                             </button>
                         </div>

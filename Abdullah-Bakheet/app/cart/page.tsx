@@ -8,14 +8,16 @@ import { ArrowUpRightIcon, DeleteIcon, PlusIcon } from 'lucide-animated';
 import { Minus } from 'lucide-react';
 
 export default function CartPage() {
-    const { cart, removeFromCart, updateQuantity, cartTotal, language, currency } = useShop();
+    const { cart, removeFromCart, updateQuantity, cartTotal, language, currency, formatPrice } = useShop();
     const isArabic = language.startsWith('Arabic');
     
-    const shipping = 110;
-    const total = cartTotal + (cart.length > 0 ? shipping : 0);
+    const shippingCost = 110;
+    const subtotalFormatted = formatPrice(cartTotal);
+    const shippingFormatted = formatPrice(shippingCost);
+    const totalFormatted = formatPrice(cartTotal + (cart.length > 0 ? shippingCost : 0));
 
     return (
-        <div className="flex flex-col w-full bg-brand-gray min-h-screen">
+        <div className="flex flex-col w-full bg-brand-gray min-h-screen font-sans">
             
             {/* Header Section */}
             <div className="pt-20 pb-12 flex justify-center items-center px-4">
@@ -57,60 +59,73 @@ export default function CartPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
-                                        {cart.map((item) => (
-                                            <tr key={item.id} className="hover:bg-gray-50/30 transition-colors">
-                                                <td className="py-6 px-6">
-                                                    <div className={`flex items-center gap-4 ${isArabic ? 'flex-row-reverse text-right' : ''}`}>
-                                                        <div className="flex items-center gap-3 shrink-0">
-                                                            <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-50 rounded-lg p-2 flex items-center justify-center border border-gray-100 shrink-0">
-                                                                <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
+                                        {cart.map((item) => {
+                                            const minMoq = Math.max(1, item.moq || 1);
+                                            const isAtMoq = item.quantity <= minMoq;
+                                            return (
+                                                <tr key={item.id} className="hover:bg-gray-50/30 transition-colors">
+                                                    <td className="py-6 px-6">
+                                                        <div className={`flex items-center gap-4 ${isArabic ? 'flex-row-reverse text-right' : ''}`}>
+                                                            <div className="flex items-center gap-3 shrink-0">
+                                                                <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-50 rounded-lg p-2 flex items-center justify-center border border-gray-100 shrink-0">
+                                                                    <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
+                                                                </div>
+                                                                <button 
+                                                                    onClick={() => removeFromCart(item.id)}
+                                                                    className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                                                                    title={isArabic ? 'إزالة العنصر' : 'Remove item'}
+                                                                >
+                                                                    <DeleteIcon size={14} />
+                                                                </button>
                                                             </div>
-                                                            <button 
-                                                                onClick={() => removeFromCart(item.id)}
-                                                                className="text-gray-400 hover:text-red-500 transition-colors p-1"
-                                                                title={isArabic ? 'إزالة العنصر' : 'Remove item'}
-                                                            >
-                                                                <DeleteIcon size={14} />
-                                                            </button>
+                                                            <div className="flex flex-col">
+                                                                <p className="font-semibold text-gray-800 text-[14px] md:text-[15px] uppercase tracking-wide leading-snug mb-1">
+                                                                    {item.name}
+                                                                </p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="text-gray-500 text-[13px]">
+                                                                        {formatPrice(item.price)} / {isArabic ? 'وحدة' : 'unit'}
+                                                                    </p>
+                                                                    {item.moq && item.moq > 1 && (
+                                                                        <span className="text-[10px] text-amber-800 bg-amber-50 font-bold px-1.5 py-0.5 rounded border border-amber-200">
+                                                                            {isArabic ? `الحد الأدنى: ${item.moq}` : `MOQ: ${item.moq}`}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex flex-col">
-                                                            <p className="font-semibold text-gray-800 text-[14px] md:text-[15px] uppercase tracking-wide leading-snug mb-1">
-                                                                {item.name}
-                                                            </p>
-                                                            <p className="text-gray-500 text-[13px]">
-                                                                {currency} {item.price.toFixed(2)}
-                                                            </p>
+                                                    </td>
+                                                    <td className="py-6 px-4">
+                                                        <div className="flex items-center justify-center gap-4">
+                                                            <div className="flex items-center border border-gray-200 rounded-md bg-gray-50/50 p-1">
+                                                                <button 
+                                                                    onClick={() => updateQuantity(item.id, -1)}
+                                                                    disabled={isAtMoq}
+                                                                    className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-black hover:bg-white rounded-md transition-all shadow-sm disabled:opacity-40 disabled:hover:bg-transparent"
+                                                                    title={isAtMoq ? `Minimum order quantity is ${minMoq}` : undefined}
+                                                                >
+                                                                    <Minus size={16} />
+                                                                </button>
+                                                                <span className="w-10 text-center font-semibold text-gray-800 text-[15px]">
+                                                                    {item.quantity}
+                                                                </span>
+                                                                <button 
+                                                                    onClick={() => updateQuantity(item.id, 1)}
+                                                                    className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-black hover:bg-white rounded-md transition-all shadow-sm"
+                                                                >
+                                                                    <PlusIcon size={16} />
+                                                                </button>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className="py-6 px-4">
-                                                    <div className="flex items-center justify-center gap-4">
-                                                        <div className="flex items-center border border-gray-200 rounded-md bg-gray-50/50 p-1">
-                                                            <button 
-                                                                onClick={() => updateQuantity(item.id, -1)}
-                                                                className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-black hover:bg-white rounded-md transition-all shadow-sm"
-                                                            >
-                                                                <Minus size={16} />
-                                                            </button>
-                                                            <span className="w-10 text-center font-semibold text-gray-800 text-[15px]">
-                                                                {item.quantity}
-                                                            </span>
-                                                            <button 
-                                                                onClick={() => updateQuantity(item.id, 1)}
-                                                                className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-black hover:bg-white rounded-md transition-all shadow-sm"
-                                                            >
-                                                                <PlusIcon size={16} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className={`py-6 px-4 ${isArabic ? 'text-left' : 'text-right'}`}>
-                                                    <span className="font-semibold text-gray-900 text-[15px] md:text-[17px]">
-                                                        {currency} {(item.price * item.quantity).toFixed(2)}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                    </td>
+                                                    <td className={`py-6 px-4 ${isArabic ? 'text-left' : 'text-right'}`}>
+                                                        <span className="font-semibold text-gray-900 text-[15px] md:text-[17px]">
+                                                            {formatPrice(item.price * item.quantity)}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
@@ -125,20 +140,20 @@ export default function CartPage() {
                             <div className="flex flex-col gap-5 border-b border-gray-100 pb-6 mb-6">
                                 <div className="flex justify-between items-center text-[15px]">
                                     <span className="text-gray-500">{isArabic ? 'المجموع الفرعي' : 'Sub-Total'}</span>
-                                    <span className="font-semibold text-gray-800">{currency} {cartTotal.toFixed(2)}</span>
+                                    <span className="font-semibold text-gray-800">{subtotalFormatted}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-[15px]">
                                     <span className="text-gray-500">{isArabic ? 'الشحن' : 'Shipping'}</span>
-                                    <span className="font-semibold text-gray-800">{currency} {shipping.toFixed(2)}</span>
+                                    <span className="font-semibold text-gray-800">{shippingFormatted}</span>
                                 </div>
                             </div>
                             
                             <div className="flex justify-between items-center text-[16px] mb-10">
                                 <span className="text-gray-500">{isArabic ? 'المجموع الكلي' : 'Total'}</span>
-                                <span className="font-bold text-gray-900 text-[18px]">{currency} {total.toFixed(2)}</span>
+                                <span className="font-bold text-gray-900 text-[18px]">{totalFormatted}</span>
                             </div>
 
-                            <Link href="/checkout" className="w-full bg-[#1a2b25] text-white py-4 px-6 flex justify-between items-center hover:bg-[#22322a] transition-colors font-medium text-[15px] uppercase tracking-wider group">
+                            <Link href="/checkout" className="w-full bg-[#1a2b25] text-white py-4 px-6 flex justify-between items-center hover:bg-[#22322a] transition-colors font-medium text-[15px] uppercase tracking-wider group rounded-md">
                                 <span>{isArabic ? 'إتمام الشراء' : 'Checkout'}</span>
                                 <ArrowUpRightIcon size={20} className="stroke-[1.5] group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                             </Link>
@@ -155,4 +170,3 @@ export default function CartPage() {
         </div>
     );
 }
-

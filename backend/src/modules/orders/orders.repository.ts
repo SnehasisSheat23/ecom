@@ -172,6 +172,7 @@ export class OrdersRepository {
         variantTitle: variants.title,
         productTitle: products.title,
         price: variantPrices.price,
+        specifications: products.specifications,
         trackInventory: variants.trackInventory,
         weightGrams: variants.weightGrams,
         productType: products.productType,
@@ -190,6 +191,9 @@ export class OrdersRepository {
     const byVariant = new Map<string, OrderVariantSnapshot>()
     for (const row of rows) {
       if (!byVariant.has(row.variantId)) {
+        const specPrice = (row.specifications as any)?.price ? parseInt(String((row.specifications as any).price), 10) * 100 : 0
+        const resolvedPrice = row.price && row.price > 0 ? row.price : specPrice
+
         byVariant.set(row.variantId, {
           variantId: row.variantId,
           productId: row.productId,
@@ -197,7 +201,7 @@ export class OrdersRepository {
           sku: row.sku,
           variantTitle: row.variantTitle,
           productTitle: row.productTitle,
-          price: row.price ?? 0,
+          price: resolvedPrice,
           trackInventory: row.trackInventory,
           weightGrams: row.weightGrams,
           productType: row.productType,
@@ -218,7 +222,11 @@ export class OrdersRepository {
   }
 
   async createOrderItems(input: Array<typeof orderItems.$inferInsert>): Promise<OrderItemRecord[]> {
-    const rows = await this.db.insert(orderItems).values(input).returning()
+    const sanitizedInput = input.map((item) => ({
+      ...item,
+      imageUrlSnapshot: item.imageUrlSnapshot ? item.imageUrlSnapshot.split('?')[0] : null,
+    }))
+    const rows = await this.db.insert(orderItems).values(sanitizedInput).returning()
     return rows.map(mapOrderItem)
   }
 

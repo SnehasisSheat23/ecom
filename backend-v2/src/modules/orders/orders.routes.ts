@@ -1,0 +1,61 @@
+import { Hono } from 'hono'
+import { OrdersService } from './orders.service.js'
+
+const ordersService = new OrdersService()
+
+export const ordersRoutes = new Hono()
+
+// GET /api/v1/orders or /api/v1/orders/list-summary - List orders
+const handleGetOrders = async (c: any) => {
+  const status = c.req.query('status')
+  const customerId = c.req.query('customerId')
+  const limit = c.req.query('perPage') ? parseInt(c.req.query('perPage')!) : (c.req.query('limit') ? parseInt(c.req.query('limit')!) : 20)
+  const page = c.req.query('page') ? parseInt(c.req.query('page')!) : 1
+
+  const result = await ordersService.getOrders({ status, customerId, limit, page })
+  return c.json({ success: true, data: result })
+}
+
+ordersRoutes.get('/', handleGetOrders)
+ordersRoutes.get('/list-summary', handleGetOrders)
+ordersRoutes.get('/summary', handleGetOrders)
+
+// POST /api/v1/orders - Create order
+ordersRoutes.post('/', async (c) => {
+  try {
+    const body = await c.req.json()
+    const order = await ordersService.createOrder(body)
+    return c.json({ success: true, data: order }, 201)
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message || 'Failed to place order' }, 400)
+  }
+})
+
+// GET /api/v1/orders/:id - Get single order details
+ordersRoutes.get('/:id', async (c) => {
+  const id = c.req.param('id')
+  const order = await ordersService.getOrderById(id)
+  if (!order) {
+    return c.json({ success: false, error: 'Order not found' }, 404)
+  }
+  return c.json({ success: true, data: order })
+})
+
+// PATCH /api/v1/orders/:id/status - Update order status
+ordersRoutes.patch('/:id/status', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const body = await c.req.json()
+    if (!body.status) {
+      return c.json({ success: false, error: 'Status field is required' }, 400)
+    }
+
+    const updated = await ordersService.updateOrderStatus(id, body.status)
+    if (!updated) {
+      return c.json({ success: false, error: 'Order not found' }, 404)
+    }
+    return c.json({ success: true, data: updated })
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message || 'Failed to update order status' }, 400)
+  }
+})

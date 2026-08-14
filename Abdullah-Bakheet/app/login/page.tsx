@@ -7,15 +7,28 @@ import { ChevronLeft, Eye, EyeOff, ArrowUpRight } from 'lucide-react';
 import { useShop } from '@/context/ShopContext';
 
 export default function LoginPage() {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
     const router = useRouter();
-    const { setUser, language } = useShop();
+    const { login, language } = useShop();
     const isArabic = language.startsWith('Arabic');
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        setUser({ name: 'User', email: 'user@example.com' });
-        router.push('/');
+        setIsLoading(true);
+        setErrorMessage(null);
+        try {
+            await login(email, password);
+            router.push('/');
+        } catch (err: any) {
+            setErrorMessage(err.message || 'Login failed. Please check your credentials.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -39,12 +52,18 @@ export default function LoginPage() {
                         </h1>
                     </div>
                     
-                    <p className={`text-gray-500 mb-10 text-[15px] ${isArabic ? 'text-right' : 'text-left'}`}>
+                    <p className={`text-gray-500 mb-6 text-[15px] ${isArabic ? 'text-right' : 'text-left'}`}>
                         {isArabic ? 'ليس لديك حساب بعد؟ ' : "Don't have an account yet? "}
                         <Link href="/register" className="text-black font-bold hover:underline">
                             {isArabic ? 'سجل هنا' : 'Register here'}
                         </Link>
                     </p>
+
+                    {errorMessage && (
+                        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-md">
+                            {errorMessage}
+                        </div>
+                    )}
 
                     <form onSubmit={handleLogin} className="space-y-6">
                         <div className="space-y-2">
@@ -54,6 +73,8 @@ export default function LoginPage() {
                             <input 
                                 type="email" 
                                 required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 className={`w-full bg-white border border-gray-200 rounded p-3.5 text-[15px] focus:outline-none focus:border-gray-400 transition-colors ${isArabic ? 'text-right' : 'text-left'}`}
                                 placeholder="abc@gmail.com" 
                             />
@@ -67,6 +88,8 @@ export default function LoginPage() {
                                 <input 
                                     type={showPassword ? "text" : "password"} 
                                     required
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
                                     className={`w-full bg-white border border-gray-200 rounded p-3.5 text-[15px] focus:outline-none focus:border-gray-400 transition-colors ${isArabic ? 'pr-3.5 pl-10 text-right' : 'pr-10 text-left'}`}
                                     placeholder="••••••••" 
                                 />
@@ -85,46 +108,12 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-4 pt-2">
-                            <button 
-                                type="button"
-                                className="w-full bg-white border border-gray-200 rounded p-3.5 flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
-                            >
-                                <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                                </svg>
-                                <span className="text-[14px] font-medium text-black">
-                                    {isArabic ? 'المتابعة باستخدام جوجل' : 'Continue with Google'}
-                                </span>
-                            </button>
-                            
-                            <button 
-                                type="button"
-                                className="w-full bg-white border border-gray-200 rounded p-3.5 flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
-                            >
-                                <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="black">
-                                    <path d="M17.05 13.97c-.01-2.48 2.03-3.66 2.12-3.72-1.15-1.68-2.93-1.93-3.58-1.96-1.52-.15-2.97.9-3.75.9-.77 0-1.96-.88-3.21-.86-1.63.03-3.14.95-3.98 2.42-1.7 2.96-.44 7.33 1.22 9.73.8 1.16 1.76 2.45 3.02 2.41 1.21-.04 1.67-.78 3.13-.78 1.45 0 1.88.78 3.14.75 1.29-.03 2.12-1.19 2.92-2.35 1.05-1.54 1.48-3.03 1.5-3.11-.03-.01-2.52-.97-2.53-3.43zm-1.89-6.42c.69-.84 1.16-2.01 1.03-3.18-1.01.04-2.22.67-2.93 1.51-.57.67-1.11 1.87-.96 3.01 1.13.09 2.17-.51 2.86-1.34z"/>
-                                </svg>
-                                <span className="text-[14px] font-medium text-black">
-                                    {isArabic ? 'المتابعة باستخدام فيسبوك' : 'Continue with Facebook'}
-                                </span>
-                            </button>
-                        </div>
-
-                        <div className="flex items-center gap-4 my-6">
-                            <div className="flex-1 border-t border-gray-200"></div>
-                            <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">{isArabic ? 'أو' : 'OR'}</span>
-                            <div className="flex-1 border-t border-gray-200"></div>
-                        </div>
-
                         <button 
                             type="submit"
-                            className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-black transition-colors group"
+                            disabled={isLoading}
+                            className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-black transition-colors group disabled:opacity-50"
                         >
-                            {isArabic ? 'تسجيل الدخول' : 'SIGN IN'}
+                            {isLoading ? (isArabic ? 'جاري التحقق...' : 'SIGNING IN...') : (isArabic ? 'تسجيل الدخول' : 'SIGN IN')}
                             <ArrowUpRight size={16} className="text-gray-400 group-hover:text-white transition-colors" />
                         </button>
                     </form>

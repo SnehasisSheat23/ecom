@@ -12,18 +12,32 @@ import { cn } from "@/lib/utils"
 interface CategoryTreeNode {
   id: string
   name: string
+  arabicName?: string
+  englishName?: string
   parentId?: string | null
   translations?: Record<string, Record<string, any>>
+  rawTranslations?: Record<string, Record<string, any>>
   children?: CategoryTreeNode[]
 }
 
 function flattenCategories(nodes: CategoryTreeNode[]): { id: string; name: string; arabicName: string }[] {
   let flat: { id: string; name: string; arabicName: string }[] = []
   for (const node of nodes) {
+    const rawAr =
+      node.arabicName ||
+      node.translations?.ar?.name ||
+      node.rawTranslations?.ar?.name ||
+      node.name
+    const rawEn =
+      node.englishName ||
+      node.translations?.en?.name ||
+      node.rawTranslations?.en?.name ||
+      node.name
+
     flat.push({
       id: node.id,
-      name: node.name,
-      arabicName: node.translations?.ar?.name || node.name,
+      name: rawEn,
+      arabicName: rawAr,
     })
     if (node.children && node.children.length > 0) {
       flat = flat.concat(flattenCategories(node.children))
@@ -43,15 +57,22 @@ export function CategoryCard({
   setProduct,
   activeTab = 'en',
 }: CategoryCardProps) {
-  const [categories, setCategories] = React.useState<{ id: string; name: string; arabicName?: string }[]>([])
+  const [categories, setCategories] = React.useState<{ id: string; name: string; arabicName: string }[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
   const [isOpen, setIsOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
   const dropdownRef = React.useRef<HTMLDivElement>(null)
 
   const isArabic = activeTab === 'ar'
-  const getDisplayName = (cat: { name: string; arabicName?: string }) =>
-    isArabic ? cat.arabicName || cat.name : cat.name
+  const getDisplayName = React.useCallback(
+    (cat: { name: string; arabicName?: string }) => {
+      if (isArabic) {
+        return cat.arabicName && cat.arabicName.trim() !== "" ? cat.arabicName : cat.name
+      }
+      return cat.name && cat.name.trim() !== "" ? cat.name : cat.arabicName || ""
+    },
+    [isArabic]
+  )
 
   React.useEffect(() => {
     async function fetchCategories() {
@@ -60,8 +81,9 @@ export function CategoryCard({
         const res = await apiRequest("/categories")
         if (res.ok) {
           const body = await res.json()
-          if (body.data) {
-            const flat = flattenCategories(body.data)
+          const rawList = body.data?.items || body.data || []
+          if (Array.isArray(rawList)) {
+            const flat = flattenCategories(rawList)
             setCategories(flat)
           }
         }
@@ -84,45 +106,56 @@ export function CategoryCard({
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  const filteredCategories = categories.filter(cat =>
-    cat.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredCategories = categories.filter((cat) => {
+    const q = searchQuery.toLowerCase().trim()
+    if (!q) return true
+    return (
+      cat.name.toLowerCase().includes(q) ||
+      (cat.arabicName && cat.arabicName.toLowerCase().includes(q))
+    )
+  })
 
-  const handleToggleCategory = (id: string, name: string) => {
-    setProduct(prev => {
+  const handleToggleCategory = (id: string, name: string, arabicName?: string) => {
+    setProduct((prev) => {
       if (!prev) return null
       const currentIds = prev.categoryIds || []
       const isSelected = currentIds.includes(id)
-      
-      const newIds = isSelected 
-        ? currentIds.filter(x => x !== id)
+
+      const newIds = isSelected
+        ? currentIds.filter((x) => x !== id)
         : [...currentIds, id]
 
-      const matchedCats = categories.filter(c => newIds.includes(c.id))
-      const fallbackName = matchedCats[0]?.name || "-"
+      const matchedCats = categories.filter((c) => newIds.includes(c.id))
+      const fallbackEn = matchedCats[0]?.name || "-"
+      const fallbackAr = matchedCats[0]?.arabicName || ""
 
       return {
         ...prev,
-        category: fallbackName,
-        categoryIds: newIds
+        category: fallbackEn,
+        categoryEnglish: fallbackEn,
+        categoryArabic: fallbackAr,
+        categoryIds: newIds,
       }
     })
   }
 
   const handleRemoveCategory = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    setProduct(prev => {
+    setProduct((prev) => {
       if (!prev) return null
       const currentIds = prev.categoryIds || []
-      const newIds = currentIds.filter(x => x !== id)
+      const newIds = currentIds.filter((x) => x !== id)
 
-      const matchedCats = categories.filter(c => newIds.includes(c.id))
-      const fallbackName = matchedCats[0]?.name || "-"
+      const matchedCats = categories.filter((c) => newIds.includes(c.id))
+      const fallbackEn = matchedCats[0]?.name || "-"
+      const fallbackAr = matchedCats[0]?.arabicName || ""
 
       return {
         ...prev,
-        category: fallbackName,
-        categoryIds: newIds
+        category: fallbackEn,
+        categoryEnglish: fallbackEn,
+        categoryArabic: fallbackAr,
+        categoryIds: newIds,
       }
     })
   }
@@ -137,7 +170,7 @@ export function CategoryCard({
     try {
       const res = await apiRequest("/admin/categories", {
         method: "POST",
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name }),
       })
 
       if (res.ok) {
@@ -145,8 +178,13 @@ export function CategoryCard({
         const newCat = body.data
         if (newCat && newCat.id) {
           toast.success(`Category "${name}" created successfully`)
-          setCategories(prev => [...prev, { id: newCat.id, name: newCat.name, arabicName: newCat.translations?.ar?.name || newCat.name }])
-          handleToggleCategory(newCat.id, newCat.name)
+          const catObj = {
+            id: newCat.id,
+            name: newCat.name,
+            arabicName: newCat.arabicName || newCat.translations?.ar?.name || newCat.name,
+          }
+          setCategories((prev) => [...prev, catObj])
+          handleToggleCategory(newCat.id, newCat.name, catObj.arabicName)
           setSearchQuery("")
         }
       } else {
@@ -163,16 +201,38 @@ export function CategoryCard({
     }
   }
 
-  const selectedCats = categories.filter(cat => product.categoryIds?.includes(cat.id))
+  const selectedCats = categories.filter((cat) => product.categoryIds?.includes(cat.id))
   let displayBadges: { id: string; name: string; arabicName?: string }[] = selectedCats
   if (displayBadges.length === 0 && product.category && product.category !== "-") {
-    displayBadges = [{ id: "temp", name: product.category, arabicName: product.category }]
+    const matched = categories.find(
+      (c) =>
+        c.name.toLowerCase() === product.category.toLowerCase() ||
+        (c.arabicName && c.arabicName.toLowerCase() === product.category.toLowerCase())
+    )
+    if (matched) {
+      displayBadges = [matched]
+    } else {
+      displayBadges = [
+        {
+          id: "temp",
+          name: product.categoryEnglish || product.category,
+          arabicName: product.categoryArabic || product.category,
+        },
+      ]
+    }
   }
 
   return (
     <Card className="gap-0">
-      <CardHeader className="pb-2.5 border-b border-border/60">
-        <CardTitle className="text-base font-semibold font-heading text-foreground">Product category</CardTitle>
+      <CardHeader className="pb-2.5 border-b border-border/60 flex flex-row items-center justify-between">
+        <CardTitle className="text-base font-semibold font-heading text-foreground">
+          {isArabic ? "فئة المنتج (Category)" : "Product category"}
+        </CardTitle>
+        {isArabic && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold font-arabic">
+            بالعربية
+          </span>
+        )}
       </CardHeader>
       <CardContent className="pt-3 pb-3 flex flex-col gap-3 text-sm">
         <div className="flex flex-col gap-2 relative" ref={dropdownRef}>
@@ -181,8 +241,12 @@ export function CategoryCard({
               <Icon name="search" size={16} className="size-4 text-muted-foreground/60" />
               <input
                 type="text"
-                placeholder="Search and add categories..."
-                className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+                placeholder={isArabic ? "ابحث عن فئة أو أضفها..." : "Search and add categories..."}
+                dir={isArabic ? "rtl" : "ltr"}
+                className={cn(
+                  "w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/60",
+                  isArabic && "text-right font-arabic"
+                )}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsOpen(true)}
@@ -190,12 +254,15 @@ export function CategoryCard({
             </div>
 
             {isOpen && (
-              <div className="w-full bg-background border border-border/60 rounded-md flex flex-col mt-1.5 max-h-48 overflow-y-auto py-1 text-sm animate-in fade-in duration-200">
+              <div className="w-full bg-background border border-border/60 rounded-md flex flex-col mt-1.5 max-h-48 overflow-y-auto py-1 text-sm animate-in fade-in duration-200 shadow-lg z-20">
                 {isLoading ? (
-                  <div className="px-3 py-2 text-muted-foreground text-xs">Loading categories...</div>
+                  <div className="px-3 py-2 text-muted-foreground text-xs">
+                    {isArabic ? "جارٍ تحميل الفئات..." : "Loading categories..."}
+                  </div>
                 ) : filteredCategories.length > 0 ? (
                   filteredCategories.map((cat) => {
                     const isSelected = product.categoryIds?.includes(cat.id)
+                    const label = getDisplayName(cat)
                     return (
                       <div
                         key={cat.id}
@@ -204,11 +271,16 @@ export function CategoryCard({
                           isArabic && "text-right font-arabic"
                         )}
                         dir={isArabic ? "rtl" : "ltr"}
-                        onClick={() => handleToggleCategory(cat.id, cat.name)}
+                        onClick={() => handleToggleCategory(cat.id, cat.name, cat.arabicName)}
                       >
-                        <span className={isSelected ? "font-medium text-foreground" : "text-muted-foreground"}>
-                          {getDisplayName(cat)}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className={isSelected ? "font-medium text-foreground" : "text-muted-foreground"}>
+                            {label}
+                          </span>
+                          {isArabic && cat.name && cat.name !== label && (
+                            <span className="text-[10px] text-muted-foreground/70">{cat.name}</span>
+                          )}
+                        </div>
                         {isSelected && <Icon name="check" size={16} className="size-4 text-primary" />}
                       </div>
                     )
@@ -219,10 +291,12 @@ export function CategoryCard({
                     onClick={handleCreateCategory}
                   >
                     <Icon name="add" size={16} className="size-4" />
-                    <span>Create &quot;{searchQuery.trim()}&quot;</span>
+                    <span>{isArabic ? `إنشاء "${searchQuery.trim()}"` : `Create "${searchQuery.trim()}"`}</span>
                   </div>
                 ) : (
-                  <div className="px-3 py-2 text-muted-foreground text-xs">No categories found</div>
+                  <div className="px-3 py-2 text-muted-foreground text-xs">
+                    {isArabic ? "لم يتم العثور على فئات" : "No categories found"}
+                  </div>
                 )}
               </div>
             )}
@@ -230,26 +304,29 @@ export function CategoryCard({
 
           {displayBadges.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-1">
-              {displayBadges.map((cat) => (
-                <div
-                  key={cat.id}
-                  className={cn(
-                    "bg-muted hover:bg-muted/80 px-3.5 py-1.5 rounded-md text-sm font-medium text-foreground flex items-center gap-2 select-none transition-colors animate-in duration-200",
-                    isArabic && "font-arabic"
-                  )}
-                  dir={isArabic ? "rtl" : "ltr"}
-                >
-                  {getDisplayName(cat)}
-                  {cat.id !== "temp" && (
-                    <Icon
-                      name="close"
-                      size={14}
-                      className="size-3.5 text-muted-foreground cursor-pointer hover:text-foreground"
-                      onClick={(e) => handleRemoveCategory(cat.id, e)}
-                    />
-                  )}
-                </div>
-              ))}
+              {displayBadges.map((cat) => {
+                const label = getDisplayName(cat)
+                return (
+                  <div
+                    key={cat.id}
+                    className={cn(
+                      "bg-muted hover:bg-muted/80 px-3.5 py-1.5 rounded-md text-sm font-medium text-foreground flex items-center gap-2 select-none transition-colors animate-in duration-200",
+                      isArabic && "font-arabic flex-row-reverse"
+                    )}
+                    dir={isArabic ? "rtl" : "ltr"}
+                  >
+                    <span>{label}</span>
+                    {cat.id !== "temp" && (
+                      <Icon
+                        name="close"
+                        size={14}
+                        className="size-3.5 text-muted-foreground cursor-pointer hover:text-foreground"
+                        onClick={(e) => handleRemoveCategory(cat.id, e)}
+                      />
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

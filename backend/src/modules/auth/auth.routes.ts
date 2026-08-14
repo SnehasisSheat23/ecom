@@ -7,6 +7,7 @@ import { AppError } from '../../lib/errors.js'
 import type { AppBindings } from '../../lib/http.js'
 
 import { createPlatformAuthInstance } from './providers/platform-better-auth.js'
+import { createCustomerAuthInstance } from './providers/customer-better-auth.js'
 
 const updateAuthConfigSchema = z.object({
   enableEmailPassword: z.boolean().optional(),
@@ -22,7 +23,16 @@ export const createAuthRoutes = (
 ) => {
   const router = new Hono<AppBindings>()
 
-  // Mount Native Better Auth Handler
+  // Mount Native Better Auth Handlers
+  router.on(['POST', 'GET'], '/api/auth/customer/*', async (c) => {
+    const env = (c.env as Record<string, string>) || (process.env as Record<string, string>) || {}
+    if (!env.DATABASE_URL) {
+      throw new AppError('Database URL required for auth', 500, 'auth-config-error')
+    }
+    const auth = createCustomerAuthInstance(env)
+    return auth.handler(c.req.raw)
+  })
+
   router.on(['POST', 'GET'], '/api/auth/*', async (c) => {
     const env = (c.env as Record<string, string>) || (process.env as Record<string, string>) || {}
     if (!env.DATABASE_URL) {

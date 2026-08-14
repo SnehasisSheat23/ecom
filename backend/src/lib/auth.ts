@@ -61,9 +61,8 @@ export const verifyAccessToken = async (token: string): Promise<AuthTokenPayload
     if (
       typeof payload.sub !== 'string' ||
       typeof payload.tenantId !== 'string' ||
-      typeof payload.email !== 'string' ||
-      !('activePartnerId' in payload) ||
-      (payload.activePartnerId !== null && typeof payload.activePartnerId !== 'string') ||
+      (payload.email !== null && typeof payload.email !== 'string' && payload.email !== undefined) ||
+      (payload.activePartnerId !== null && typeof payload.activePartnerId !== 'string' && payload.activePartnerId !== undefined) ||
       payload.type !== 'access' ||
       typeof payload.exp !== 'number' ||
       typeof payload.iat !== 'number'

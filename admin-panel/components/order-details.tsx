@@ -144,17 +144,27 @@ const mapBackendOrderToFrontend = (item: BackendOrder): Order => {
   const email = item.guestEmail || custRec?.email || shippingAddress.email || "guest@example.com"
   const phone = custRec?.phone || shippingAddress.phone || (item.metadata?.altPhone as string) || null
 
-  const items: LineItem[] = (item.items || []).map((li: BackendOrderItem) => ({
-    name: li.productTitle || "Bakery Item",
-    variantTitle: li.variantTitle || null,
-    sku: li.sku || "LEGACY-SKU",
-    qty: li.quantity || 1,
-    price: (li.unitPrice || 0) / 100,
-    imageUrl: li.imageUrl || null,
-    metadata: li.metadata || {},
-  }))
+  const items: LineItem[] = (item.items || []).map((li: any) => {
+    const title = li.productTitle || li.name || li.productNameSnapshot?.en || li.productNameSnapshot?.title || li.sku || "Product Item"
+    const priceVal = parseFloat(String(li.unitPrice || li.price || 0))
+    const img = li.imageUrl || li.image || li.productNameSnapshot?.imageUrl || li.productNameSnapshot?.image || "https://pub-2ba7d836ec824f9096f19eb3bcbaa81e.r2.dev/products/extra-virgin-olive-oil.jpg"
+
+    return {
+      name: title,
+      variantTitle: li.variantTitle || null,
+      sku: li.sku || "PROD-SKU",
+      qty: li.quantity || li.qty || 1,
+      price: priceVal,
+      imageUrl: img,
+      metadata: li.metadata || {},
+    }
+  })
 
   const meta = (item.metadata || {}) as Record<string, unknown>
+
+  const subtotalVal = parseFloat(String(item.subtotal || 0))
+  const shippingVal = parseFloat(String(item.shippingAmount || (item as any).shippingCost || 0))
+  const totalVal = parseFloat(String(item.total || (item as any).totalAmount || 0))
 
   return {
     id: item.id,
@@ -172,12 +182,12 @@ const mapBackendOrderToFrontend = (item: BackendOrder): Order => {
     items,
     paymentStatus,
     fulfillmentStatus,
-    subtotal: (item.subtotal || 0) / 100,
-    shippingAmount: (item.shippingAmount || 0) / 100,
+    subtotal: subtotalVal,
+    shippingAmount: shippingVal,
     discountAmount: (item.discountAmount || 0) / 100,
-    total: (item.total || 0) / 100,
+    total: totalVal,
     notes: item.notes || null,
-    currency: item.currency || "INR",
+    currency: item.currency || "AED",
     orderNumber: item.orderNumber || item.id,
     status: status as OrderStatus,
     shippingMethodName: item.shippingMethodSnapshot?.name || item.shippingMethodSnapshot?.label || (meta.deliveryType as string) || "Standard Delivery",

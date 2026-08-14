@@ -22,6 +22,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export interface CategoryItem {
   id: string
@@ -577,7 +584,7 @@ export function CategoriesView() {
               </button>
 
               {/* Cover Image */}
-              {cat.imageUrl ? (
+              {(cat.imageUrl && cat.imageUrl.trim()) ? (
                 <img
                   src={cat.imageUrl}
                   alt={cat.name}
@@ -861,7 +868,7 @@ export function CategoriesView() {
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-3">
-                          {cat.imageUrl ? (
+                          {(cat.imageUrl && cat.imageUrl.trim()) ? (
                             <img
                               src={cat.imageUrl}
                               alt={cat.name}
@@ -1194,16 +1201,31 @@ export function CategoriesView() {
               )}
             </div>
 
-            {/* Active Storefront Visibility */}
-            <div className="flex items-center gap-2.5 mt-2">
-              <Checkbox
-                id="catActiveCheck"
-                checked={formIsActive}
-                onCheckedChange={(checked) => setFormIsActive(Boolean(checked))}
-              />
-              <label htmlFor="catActiveCheck" className="text-[13px] font-medium text-foreground cursor-pointer select-none">
-                Active & visible on storefront
-              </label>
+            {/* Category Status Selection */}
+            <div className="flex flex-col gap-1.5 mt-2">
+              <label className="text-[13px] font-medium text-foreground">Category Status</label>
+              <Select
+                value={formIsActive ? "active" : "draft"}
+                onValueChange={(val) => setFormIsActive(val === "active")}
+              >
+                <SelectTrigger className="w-full h-9 justify-between flex text-sm">
+                  <SelectValue>{formIsActive ? "Active" : "Draft"}</SelectValue>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl p-1.5 min-w-[200px]">
+                  <SelectItem value="active" className="rounded-lg py-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="size-2 rounded-full bg-emerald-500" />
+                      <span>Active</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="draft" className="rounded-lg py-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="size-2 rounded-full bg-zinc-400" />
+                      <span>Draft / Inactive</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

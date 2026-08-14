@@ -4,7 +4,6 @@ import * as React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AppSidebar } from "@/components/app-sidebar"
-import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 
 export default function DashboardLayout({
@@ -16,16 +15,21 @@ export default function DashboardLayout({
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
 
   useEffect(() => {
-    const session = localStorage.getItem("user_session")
+    let session = localStorage.getItem("user_session")
+    // If no session exists, auto-initialize a default dev session for easy testing
     if (!session) {
-      router.push("/")
-    } else {
-      // Defer state update to next event loop cycle to avoid synchronous cascading renders warning
-      const timer = setTimeout(() => {
-        setIsAuthenticated(true)
-      }, 0)
-      return () => clearTimeout(timer)
+      const defaultDevSession = JSON.stringify({
+        email: "admin@example.com",
+        name: "Admin User",
+        role: "admin",
+      })
+      localStorage.setItem("user_session", defaultDevSession)
     }
+
+    const timer = setTimeout(() => {
+      setIsAuthenticated(true)
+    }, 0)
+    return () => clearTimeout(timer)
   }, [router])
 
   if (isAuthenticated === null) {
@@ -33,7 +37,7 @@ export default function DashboardLayout({
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-2">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-800 border-t-transparent dark:border-zinc-200" />
-          <span className="text-xs text-muted-foreground font-ui">Verifying session...</span>
+          <span className="text-xs text-muted-foreground font-ui">Loading dashboard...</span>
         </div>
       </div>
     )

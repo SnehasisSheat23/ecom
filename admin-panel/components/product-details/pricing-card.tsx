@@ -39,15 +39,15 @@ export function PricingCard({
 
   const activePrice = currentPriceEntry?.price !== undefined
     ? currentPriceEntry.price
-    : (product.currency === currentCurrency ? product.price : "")
+    : (product.price !== undefined && product.price !== null ? product.price : "")
 
   const activeCompareAtPrice = currentPriceEntry?.compareAtPrice !== undefined
     ? currentPriceEntry.compareAtPrice
-    : (product.currency === currentCurrency ? product.compareAtPrice : undefined)
+    : (product.compareAtPrice !== undefined && product.compareAtPrice !== null ? product.compareAtPrice : undefined)
 
   const activeCostPerItem = currentPriceEntry?.costPerItem !== undefined
     ? currentPriceEntry.costPerItem
-    : (product.currency === currentCurrency ? product.costPerItem : undefined)
+    : (product.costPerItem !== undefined && product.costPerItem !== null ? product.costPerItem : undefined)
 
   const handlePriceFieldChange = (
     field: "price" | "compareAtPrice" | "costPerItem",
@@ -55,50 +55,61 @@ export function PricingCard({
   ) => {
     setProduct((prev) => {
       if (!prev) return null
-      const variants = [...(prev.variants || [])]
-      if (!variants[0]) return prev
 
-      const existingPrices = [...(variants[0].prices || [])]
-      const priceIdx = existingPrices.findIndex(
-        (p) => p.currencyCode.toUpperCase() === currentCurrency.toUpperCase()
-      )
-
-      const updatedPrices = [...existingPrices]
-      if (priceIdx >= 0) {
-        updatedPrices[priceIdx] = {
-          ...updatedPrices[priceIdx],
-          [field]: val,
-        }
-      } else {
-        updatedPrices.push({
-          currencyCode: currentCurrency,
-          price: field === "price" ? val : (activePrice || ""),
-          compareAtPrice: field === "compareAtPrice" ? val : (activeCompareAtPrice || ""),
-          costPerItem: field === "costPerItem" ? val : (activeCostPerItem || ""),
-        })
-      }
-
-      variants[0] = { ...variants[0], prices: updatedPrices }
-
+      // Always update top-level product field directly
       const updatedProd: Product = {
         ...prev,
-        variants,
+        [field]: val,
       }
 
-      // If editing main currency, also update top-level product/variant shortcuts
-      if (currentCurrency === (prev.currency || "SAR")) {
-        if (field === "price") {
-          updatedProd.price = val
-          variants[0].price = val
-        } else if (field === "compareAtPrice") {
-          updatedProd.compareAtPrice = val
-          variants[0].compareAtPrice = val
-        } else if (field === "costPerItem") {
-          updatedProd.costPerItem = val
-          variants[0].costPerItem = val
+      // Ensure variants array exists
+      const variants = [...(prev.variants || [])]
+      if (variants.length === 0) {
+        variants.push({
+          id: `var-${Date.now()}`,
+          name: "Default Variant",
+          sku: prev.sku || "",
+          trackInventory: true,
+          inventory: prev.quantity || 100,
+          allowBackorder: false,
+          price: field === "price" ? val : 0,
+          prices: [
+            {
+              currencyCode: currentCurrency,
+              price: field === "price" ? (Number(val) || 0) : 0,
+              ...(field !== "price" ? { [field]: val } : {}),
+            },
+          ],
+        })
+      } else {
+        const targetVar = { ...variants[0] }
+        const existingPrices = [...(targetVar.prices || [])]
+        const priceIdx = existingPrices.findIndex(
+          (p) => p.currencyCode.toUpperCase() === currentCurrency.toUpperCase()
+        )
+
+        const updatedPrices = [...existingPrices]
+        if (priceIdx >= 0) {
+          updatedPrices[priceIdx] = {
+            ...updatedPrices[priceIdx],
+            [field]: val,
+          }
+        } else {
+          updatedPrices.push({
+            currencyCode: currentCurrency,
+            price: field === "price" ? val : (activePrice || 0),
+            compareAtPrice: field === "compareAtPrice" ? val : activeCompareAtPrice,
+            costPerItem: field === "costPerItem" ? val : activeCostPerItem,
+            [field]: val,
+          })
         }
+
+        targetVar[field] = val
+        targetVar.prices = updatedPrices
+        variants[0] = targetVar
       }
 
+      updatedProd.variants = variants
       return updatedProd
     })
   }
@@ -112,7 +123,19 @@ export function PricingCard({
           <Select
             value={currentCurrency}
             onValueChange={(newCurr) => {
-              setProduct(prev => prev ? { ...prev, currency: newCurr } : null)
+              setProduct((prev) => {
+                if (!prev) return null
+                const newPriceEntry = prev.variants?.[0]?.prices?.find(
+                  (p) => p.currencyCode.toUpperCase() === newCurr.toUpperCase()
+                )
+                return {
+                  ...prev,
+                  currency: newCurr,
+                  price: newPriceEntry?.price !== undefined && newPriceEntry?.price !== "" ? newPriceEntry.price : "",
+                  compareAtPrice: newPriceEntry?.compareAtPrice !== undefined ? newPriceEntry.compareAtPrice : undefined,
+                  costPerItem: newPriceEntry?.costPerItem !== undefined ? newPriceEntry.costPerItem : undefined,
+                }
+              })
             }}
           >
             <SelectTrigger size="sm" className="h-7 text-xs px-2.5 font-medium min-w-[80px]">
@@ -292,17 +315,19 @@ export function PricingCard({
           </>
         )}
 
-        {/* MOQ (Minimum Order Quantity) Input Saved in Specifications */}
+        {/* MOQ (Minimum Order Quantity) Input */}
         <div className="flex flex-col gap-2 md:col-span-2 pt-3 border-t border-border/60">
           <label className="text-[13px] font-medium text-foreground">MOQ (Minimum Order Quantity)</label>
           <input
             type="number"
             step="1"
-            placeholder="e.g. 100"
+            min="1"
+            placeholder="e.g. 1"
             className="w-full md:w-1/2 h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono"
-            value={product.specifications?.moq ?? product.specifications?.minOrderQuantity ?? ""}
+            value={product.moq === "" ? "" : (product.moq ?? product.specifications?.moq ?? 1)}
             onChange={(e) => {
               const raw = e.target.value
+              const val = raw === "" ? "" : Math.max(1, parseInt(raw, 10) || 1)
               setProduct(prev => {
                 if (!prev) return null
                 const updatedSpecs = { ...(prev.specifications || {}) }
@@ -313,7 +338,7 @@ export function PricingCard({
                   updatedSpecs.moq = raw
                   updatedSpecs.minOrderQuantity = raw
                 }
-                return { ...prev, specifications: updatedSpecs }
+                return { ...prev, moq: val, specifications: updatedSpecs }
               })
             }}
           />

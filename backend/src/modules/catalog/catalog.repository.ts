@@ -247,10 +247,15 @@ export class CatalogRepository {
   }
 
   async findProductBySlug(tenantId: string, slug: string): Promise<CatalogProduct | null> {
+    const isUuid = /^[0-9a-fA-F-]{36}$/.test(slug)
+    const matchCondition = isUuid
+      ? or(eq(products.slug, slug), eq(products.id, slug))
+      : eq(products.slug, slug)
+
     const [row] = await this.db
       .select()
       .from(products)
-      .where(and(eq(products.tenantId, tenantId), eq(products.slug, slug)))
+      .where(and(eq(products.tenantId, tenantId), matchCondition))
       .limit(1)
     return row ? mapProduct(row) : null
   }

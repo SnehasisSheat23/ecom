@@ -105,6 +105,8 @@ export interface Product {
   salesChannels: number
   markets: number
   category: string
+  categoryArabic?: string
+  categoryEnglish?: string
   categoryIds?: string[]
   type: string
   vendor: string
@@ -125,12 +127,14 @@ export interface Product {
   publishingDetails?: PublishingDetail[]
   variants?: Variant[]
   seo?: SEO
-  tags?: string[]
+  moq?: number | ""
+  moqStep?: number | ""
   currency?: string
   arabicTitle?: string
   arabicDescription?: string
   translations?: Record<string, Record<string, any>>
   specifications?: Record<string, string>
+  tags?: string[]
 }
 
 export interface MediaAsset {

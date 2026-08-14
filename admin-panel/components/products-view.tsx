@@ -38,6 +38,11 @@ interface ProductVariant {
   sku?: string
   price: number
   compareAtPrice?: number | null
+  prices?: Array<{
+    currencyCode: string
+    price: number
+    compareAtPrice?: number | null
+  }>
 }
 
 interface APISalesChannel {
@@ -58,6 +63,7 @@ interface RawProduct {
   variants?: ProductVariant[]
   salesChannels?: APISalesChannel[]
   currency?: string
+  specifications?: Record<string, any>
 }
 
 const TABS = ["All", "Active", "Draft", "Archived"]
@@ -148,51 +154,53 @@ export function ProductsView() {
       setIsLoading(true)
       const typeData = await getProductTypeData()
 
-      let url = "/admin/products?perPage=25&summary=true"
-      if (typeParam) {
-        const normalizedSlug = typeParam.toLowerCase().trim()
-        const matchingTypeId = typeData.slugToIdMap[normalizedSlug] || typeData.slugToIdMap[normalizedSlug.replace("-", "")]
-        if (matchingTypeId) {
-          url += `&productTypeId=${matchingTypeId}`
-        }
-      }
+      let url = "/products?limit=50"
       if (debouncedSearchQuery.trim()) {
-        url += `&search=${encodeURIComponent(debouncedSearchQuery.trim())}`
+        url += `&q=${encodeURIComponent(debouncedSearchQuery.trim())}`
       }
 
       const res = await apiRequest(url)
       if (res.ok) {
         const body = await res.json()
-        if (body.data?.items) {
+        const itemsList = body.data?.items || body.data || []
+        if (Array.isArray(itemsList)) {
           const typeLookup = typeData.lookup
-          const mapped = body.data.items.map((p: RawProduct) => {
-            const rawStatus = p.status || "draft"
+          const mapped = itemsList.map((p: any) => {
+            const rawStatus = p.status || "active"
             const capitalizedStatus = (rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1)) as "Active" | "Draft" | "Archived"
             
             const typeInfo = p.productTypeId ? typeLookup[p.productTypeId] : null
             const typeName = typeInfo?.name || (p.productType ? p.productType.charAt(0).toUpperCase() + p.productType.slice(1) : "Physical")
             const typeSlug = typeInfo?.slug || (p.productType ? p.productType.toLowerCase() : "")
 
-            const defaultVariant = p.variants?.find((v: ProductVariant) => v.isDefault) || p.variants?.[0]
-            const priceFormatted = defaultVariant 
-              ? formatPrice(defaultVariant.price, { currency: p.currency || "INR", isMinorUnit: true }) 
+            const title = p.title || p.translations?.en?.title || p.sku || "Untitled Product"
+            const numericPrice = typeof p.price === "number" ? p.price : (p.variants?.[0]?.price ?? 0)
+            const activeCurrency = p.currency || "AED"
+            
+            const priceFormatted = numericPrice > 0 
+              ? formatPrice(numericPrice, { currency: activeCurrency, isMinorUnit: false }) 
               : "-"
-            const compareAtFormatted = defaultVariant?.compareAtPrice 
-              ? formatPrice(defaultVariant.compareAtPrice, { currency: p.currency || "INR", isMinorUnit: true }) 
+            const rawCompareAt = p.compareAtPrice ?? p.variants?.[0]?.compareAtPrice
+            const compareAtFormatted = rawCompareAt 
+              ? formatPrice(rawCompareAt, { currency: activeCurrency, isMinorUnit: false }) 
               : null
+
+            const imageUrl = Array.isArray(p.images) && p.images.length > 0 
+              ? (typeof p.images[0] === "string" ? p.images[0] : p.images[0]?.url)
+              : "https://placehold.co/100x100?text=No+Image"
 
             return {
               id: p.id,
-              image: p.images?.[0]?.url || "https://placehold.co/100x100?text=No+Image",
-              title: p.title,
+              image: imageUrl,
+              title: title,
               status: capitalizedStatus,
               price: priceFormatted,
               compareAtPrice: compareAtFormatted,
-              category: p.categories?.[0]?.name || "-",
+              category: p.categoryName || p.categories?.[0]?.name || "-",
               type: typeName,
               typeSlug: typeSlug,
               productTypeId: p.productTypeId,
-              vendor: p.vendorName || "-",
+              vendor: p.vendorName || p.attributes?.origin || "Store",
             }
           })
           setProducts(mapped)

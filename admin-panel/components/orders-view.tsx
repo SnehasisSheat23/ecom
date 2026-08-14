@@ -144,9 +144,8 @@ const mapBackendOrderToFrontend = (item: BackendOrderSummary): Order => {
     itemCount: item.itemCount || 0,
     paymentStatus,
     fulfillmentStatus,
-    total: (item.total || 0) / 100,
+    total: parseFloat(String(item.total || (item as any).totalAmount || 0)),
     syncMessage: item.syncMessage,
-    currency: item.currency,
     orderNumber: item.orderNumber,
   }
 }
@@ -173,7 +172,7 @@ export function OrdersView() {
   const [pageSize, setPageSize] = React.useState(20)
   const [totalOrders, setTotalOrders] = React.useState(0)
   const [summaryStats, setSummaryStats] = React.useState<OrderSummaryStatsProps | null>(null)
-  const [tenantCurrency, setTenantCurrency] = React.useState<string>("INR")
+  const [tenantCurrency, setTenantCurrency] = React.useState<string>("AED")
   const [debouncedSearch, setDebouncedSearch] = React.useState(searchQuery)
 
   React.useEffect(() => {
@@ -261,7 +260,7 @@ export function OrdersView() {
         const backendItems = json.data?.items || []
         const total = json.data?.total || 0
         const stats = json.data?.stats
-        const currency = json.data?.currency || backendItems[0]?.currency || "INR"
+        const currency = json.data?.currency || backendItems[0]?.currency || "AED"
         const mapped = backendItems.map(mapBackendOrderToFrontend)
         setOrders(mapped)
         setTotalOrders(total)
@@ -309,37 +308,7 @@ export function OrdersView() {
     setSelectedRows(new Set())
   }
 
-  // Add Mock Order
-  const handleAddMockOrder = () => {
-    const nextNum = orders.length > 0
-      ? Math.max(...orders.map(o => parseInt(o.id.replace("ORD-", "")))) + 1
-      : 2049
 
-    const newOrder: Order = {
-      id: `ORD-${nextNum}`,
-      date: new Date().toISOString(),
-      customer: {
-        name: "Snehasish Hit",
-        email: "snehasisshit@gmail.com",
-        city: "Kolkata, West Bengal"
-      },
-      itemCount: 1,
-      paymentStatus: "Paid",
-      fulfillmentStatus: "Unfulfilled",
-      total: 999.00,
-      syncMessage: "Pending product validation queue.",
-      additionalDetails: "Customer requested premium express air shipping."
-    }
-
-    setOrders(prev => [newOrder, ...prev])
-    toast.success(`Successfully created mock order #${nextNum}!`, {
-      description: "Added to the top of the table list.",
-      action: {
-        label: "View details",
-        onClick: () => router.push(`/dashboard/orders/ORD-${nextNum}`)
-      }
-    })
-  }
 
   // Row Selection Handlers
   const handleSelectAll = (checked: boolean) => {
@@ -429,13 +398,7 @@ export function OrdersView() {
                 {tab}
               </Button>
             ))}
-            <Button 
-              variant="ghost" 
-              className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:bg-muted/50 cursor-pointer shrink-0"
-              onClick={handleAddMockOrder}
-            >
-              <Icon name="add" size={16} className="size-4!" />
-            </Button>
+
 
             {/* Clear All Filters Tag */}
             {(paymentFilter !== "All" || fulfillmentFilter !== "All" || searchQuery) && (
@@ -744,7 +707,7 @@ export function OrdersView() {
                       </td>
                       <td className="p-3 text-foreground">{order.customer.name}</td>
                       <td className="p-3 text-foreground font-mono">
-                        {formatPrice(order.total, { currency: order.currency || "INR" })}
+                        {formatPrice(order.total, { currency: order.currency || "AED" })}
                       </td>
                       <td className="p-3">
                         <StatusBadge status={order.paymentStatus} />

@@ -9,6 +9,8 @@ interface FormatPriceOptions {
 }
 
 const CURRENCY_LOCALE_MAP: Record<string, string> = {
+  AED: 'en-AE',
+  SAR: 'en-SA',
   USD: 'en-US',
   INR: 'en-IN',
   EUR: 'de-DE',
@@ -17,7 +19,7 @@ const CURRENCY_LOCALE_MAP: Record<string, string> = {
 
 /**
  * Formats a monetary value safely.
- * @param value The value from the database (either minor units like 16000 cents, or decimal if already parsed)
+ * @param value The value from the database
  * @param options Configuration for currency, locale, and unit conversion
  */
 export function formatPrice(
@@ -25,7 +27,7 @@ export function formatPrice(
   options: FormatPriceOptions = {}
 ): string {
   const {
-    currency = 'INR',
+    currency = 'AED',
     locale = CURRENCY_LOCALE_MAP[currency.toUpperCase()] || 'en-US',
     isMinorUnit = false, // Default to false for existing decimal-based mock JSON data
     maximumFractionDigits,

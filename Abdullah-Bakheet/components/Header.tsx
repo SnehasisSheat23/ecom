@@ -30,6 +30,8 @@ export default function Header() {
 
     const pathname = usePathname();
 
+    const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
+
     const {
         cartCount,
         wishlistCount,
@@ -42,6 +44,7 @@ export default function Header() {
         currency,
         setCurrency,
         user,
+        logout,
     } = useShop();
 
     const isArabic = language.startsWith('Arabic');
@@ -204,17 +207,49 @@ export default function Header() {
                             <SearchIcon size={22} className="text-white" />
                         </button>
 
-                        {/* User Account Link */}
-                        <Link 
-                            href={user ? "#" : "/login"}
-                            className={cn('text-white hover:text-gray-300 transition-colors cursor-pointer relative')}
-                            title={user ? `Logged in as ${user.name}` : "Sign In"}
-                        >
-                            <UserIcon size={22} className="text-white" />
-                            {user && (
-                                <span className="absolute -top-1 -right-1 bg-green-500 w-2 h-2 rounded-full border border-brand-dark" />
+                        {/* User Account Link & Dropdown */}
+                        <div className="relative">
+                            {user ? (
+                                <div>
+                                    <button 
+                                        onClick={() => setAccountDropdownOpen(!accountDropdownOpen)}
+                                        className={cn('text-white hover:text-gray-300 transition-colors cursor-pointer flex items-center gap-2 text-xs font-semibold')}
+                                        title={`Logged in as ${user.name}`}
+                                    >
+                                        <div className="relative">
+                                            <UserIcon size={22} className="text-white" />
+                                            <span className="absolute -top-1 -right-1 bg-green-500 w-2.5 h-2.5 rounded-full border-2 border-brand-dark" />
+                                        </div>
+                                        <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
+                                    </button>
+                                    {accountDropdownOpen && (
+                                        <div className="absolute right-0 top-full mt-2 w-44 bg-white border border-gray-200 rounded-md shadow-xl py-2 z-50 text-gray-900">
+                                            <div className="px-4 py-2 border-b border-gray-100">
+                                                <p className="text-xs font-bold truncate">{user.name}</p>
+                                                <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    logout();
+                                                    setAccountDropdownOpen(false);
+                                                }}
+                                                className="w-full text-left px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                                            >
+                                                {isArabic ? 'تسجيل الخروج' : 'Sign Out'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <Link 
+                                    href="/login"
+                                    className={cn('text-white hover:text-gray-300 transition-colors cursor-pointer relative block')}
+                                    title="Sign In"
+                                >
+                                    <UserIcon size={22} className="text-white" />
+                                </Link>
                             )}
-                        </Link>
+                        </div>
 
                         {/* Wishlist Icon Link */}
                         <Link 

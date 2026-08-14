@@ -223,41 +223,49 @@ export function GeneralInfoCard({
         <div className="flex flex-col gap-2 mt-4">
           <label className="text-[13px] font-medium text-foreground">Media</label>
           <div className="flex flex-wrap gap-4 items-center">
-            {product.images?.map((img) => (
-              <div key={img.id} className="relative size-24 group rounded-lg overflow-hidden border border-border/60 bg-muted/20">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.url} alt={img.altText || product.title} className="w-full h-full object-cover" />
-                
-                {img.position === 0 && (
-                  <div className="absolute top-1 left-1 bg-blue-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                    Primary
-                  </div>
-                )}
+            {product.images?.map((img: any, idx: number) => {
+              const rawUrl = typeof img === "string" ? img : (img?.url || img?.src || "")
+              const url = (rawUrl && rawUrl.trim() !== "") ? rawUrl : "https://placehold.co/100x100?text=No+Image"
+              const imgId = typeof img === "object" ? (img.id || url || `img-${idx}`) : (img || `img-${idx}`)
+              const isPrimary = typeof img === "object" ? img.position === 0 : idx === 0
+              const alt = typeof img === "object" ? (img.altText || product.title) : product.title
 
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute inset-0 bg-black/60 flex items-center justify-center gap-1.5">
-                  {img.position !== 0 && (
+              return (
+                <div key={imgId || `img-${idx}`} className="relative size-24 group rounded-lg overflow-hidden border border-border/60 bg-muted/20">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt={alt} className="w-full h-full object-cover" />
+                  
+                  {isPrimary && (
+                    <div className="absolute top-1 left-1 bg-blue-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                      Primary
+                    </div>
+                  )}
+
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute inset-0 bg-black/60 flex items-center justify-center gap-1.5">
+                    {!isPrimary && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-white hover:text-yellow-400 hover:bg-white/10 cursor-pointer"
+                        title="Make Primary"
+                        onClick={() => handleMakePrimary(imgId)}
+                      >
+                        <Icon name="star" className="size-3.5" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 w-7 p-0 text-white hover:text-yellow-400 hover:bg-white/10 cursor-pointer"
-                      title="Make Primary"
-                      onClick={() => handleMakePrimary(img.id)}
+                      className="h-7 w-7 p-0 text-white hover:text-red-400 hover:bg-white/10 cursor-pointer"
+                      title="Delete Image"
+                      onClick={() => handleDeleteImage(imgId)}
                     >
-                      <Icon name="star" className="size-3.5" />
+                      <Icon name="delete" className="size-3.5" />
                     </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 text-white hover:text-red-400 hover:bg-white/10 cursor-pointer"
-                    title="Delete Image"
-                    onClick={() => handleDeleteImage(img.id)}
-                  >
-                    <Icon name="delete" className="size-3.5" />
-                  </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
 
             <input
               type="file"

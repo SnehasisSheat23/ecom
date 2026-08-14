@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -7,21 +7,20 @@ import { useShop } from '@/context/ShopContext';
 import { fetchProducts, fetchCategories, StorefrontProduct } from '@/lib/api';
 import Link from 'next/link';
 
-// Reusable Custom Toggle Switch
-const ToggleSwitch = ({ label, isActive, onClick, isArabic }: { label: string, isActive?: boolean, onClick?: () => void, isArabic?: boolean }) => (
+const ToggleSwitch = ({ label, isActive, onClick, isArabic }: { label: string; isActive?: boolean; onClick?: () => void; isArabic?: boolean }) => (
     <button onClick={onClick} className={`flex items-center gap-3 w-full group py-1.5 cursor-pointer ${isArabic ? 'flex-row-reverse text-right' : 'text-left'}`}>
         <div className={`w-8 h-4 rounded-full relative transition-colors duration-300 ${isActive ? 'bg-[#1a2b25]' : 'bg-gray-200'}`}>
             <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-300 ${isActive ? 'translate-x-4' : 'translate-x-0 shadow-sm'}`} />
         </div>
         <span className={`text-[11px] font-bold tracking-wide uppercase transition-colors ${isActive ? 'text-black' : 'text-gray-400 group-hover:text-gray-600'}`}>
-      {label}
-    </span>
+            {label}
+        </span>
     </button>
 );
 
 export default function ProductListing() {
     const router = useRouter();
-    const { addToCart, currency, language } = useShop();
+    const { addToCart, currency, language, formatPrice } = useShop();
     const isArabic = language.startsWith('Arabic');
 
     const [isLoading, setIsLoading] = useState(true);
@@ -47,31 +46,16 @@ export default function ProductListing() {
                         setProducts(backendProds);
                     }
                     if (backendCats.length > 0) {
-                        setCategories([
-                            { name: 'ALL', arabicName: 'الكل', slug: 'ALL' },
-                            ...backendCats.map((c) => ({
-                                name: c.name.toUpperCase(),
-                                arabicName: c.arabicName || c.name,
-                                slug: c.name.toUpperCase(),
-                            }))
-                        ]);
-                    } else if (backendProds.length > 0) {
-                        const uniqueCats = Array.from(new Set(backendProds.map((p) => p.category.toUpperCase())));
-                        setCategories([
-                            { name: 'ALL', arabicName: 'الكل', slug: 'ALL' },
-                            ...uniqueCats.map((cName) => {
-                                const matched = backendProds.find(p => p.category.toUpperCase() === cName);
-                                return {
-                                    name: cName,
-                                    arabicName: matched?.categoryArabic || cName,
-                                    slug: cName
-                                };
-                            })
-                        ]);
+                        const formattedCats = backendCats.map(c => ({
+                            name: c.name.toUpperCase(),
+                            arabicName: c.arabicName || c.name,
+                            slug: c.slug || c.id,
+                        }));
+                        setCategories([{ name: 'ALL', arabicName: 'الكل', slug: 'ALL' }, ...formattedCats]);
                     }
                 }
             } catch (err) {
-                console.error('Error loading products from backend API:', err);
+                console.error('Error fetching live product data:', err);
             } finally {
                 if (isMounted) setIsLoading(false);
             }
@@ -170,7 +154,7 @@ export default function ProductListing() {
                         {/* Categories Filter */}
                         <div className="mb-10">
                             <h4 className={`font-black text-lg uppercase text-black tracking-wide mb-6 ${isArabic ? 'text-right' : 'text-left'}`}>
-                                {isArabic ? 'الأقسام' : 'Catogeries'}
+                                {isArabic ? 'الأقسام' : 'Categories'}
                             </h4>
                             <div className="flex flex-col gap-3">
                                 {categories.map((catObj) => (
@@ -247,11 +231,11 @@ export default function ProductListing() {
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                                 {filteredProducts.map((product) => (
-                                <Link
-                                    href={`/products/${product.id}`}
-                                    key={product.id}
-                                    className="bg-white p-5 rounded-md shadow-[0_2px_15px_-5px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.1)] transition-shadow border border-gray-50 flex flex-col group relative block"
-                                >
+                                    <Link
+                                        href={`/products/${product.id}`}
+                                        key={product.id}
+                                        className="bg-white p-5 rounded-md shadow-[0_2px_15px_-5px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.1)] transition-shadow border border-gray-50 flex flex-col group relative block"
+                                    >
                                         {/* Featured / On Sale Tag */}
                                         <div className="flex items-center gap-1.5 absolute top-5 left-5">
                                             <span className="text-[10px] font-medium text-gray-500">{isArabic ? 'مميز' : 'Featured'}</span>
@@ -284,21 +268,27 @@ export default function ProductListing() {
                                                 )
                                             )}
 
-                                            {/* Price and Cart Row */}
                                             <div className="flex justify-between items-center border-t border-gray-100 pt-4 mt-2">
-                                                <span className="font-bold text-[15px] text-black">{currency} {product.price}</span>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-[15px] text-black">{formatPrice(product.price)}</span>
+                                                    {product.moq && product.moq > 1 && (
+                                                        <span className="text-[10px] font-bold text-amber-700">
+                                                            {isArabic ? `الحد الأدنى: ${product.moq}` : `MOQ: ${product.moq}`}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <button 
                                                     onClick={(e) => {
                                                         e.preventDefault();
-
                                                         addToCart({
                                                             id: product.id,
-                                                            name: product.title,
+                                                            variantId: product.variantId,
+                                                            name: isArabic ? (product.arabic || product.title) : product.title,
                                                             category: product.category,
                                                             price: product.price,
-                                                            image: product.img || ''
+                                                            image: product.img || '',
+                                                            moq: product.moq,
                                                         });
-                                                        router.push('/cart');
                                                     }}
                                                     className="flex items-center gap-1.5 border border-gray-200 rounded-full px-3 py-1.5 hover:bg-[#1a2b25] hover:text-white hover:border-[#1a2b25] transition-all group/btn cursor-pointer z-10 relative"
                                                 >
@@ -309,7 +299,7 @@ export default function ProductListing() {
                                                 </button>
                                             </div>
                                         </div>
-                                </Link>
+                                    </Link>
                                 ))}
                             </div>
                         )}
@@ -320,4 +310,3 @@ export default function ProductListing() {
         </section>
     );
 }
-

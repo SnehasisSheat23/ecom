@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { logger as honoLogger } from 'hono/logger'
 import { ZodError } from 'zod'
 
 import { createTenantMiddleware } from '../middleware/tenant.middleware.js'
@@ -63,7 +64,8 @@ import { createMediaRoutes } from '../modules/media/media.routes.js'
 import { ActivityLogRepository } from '../modules/activity-log/activity-log.repository.js'
 import { ActivityLogService } from '../modules/activity-log/activity-log.service.js'
 import { createActivityLogRoutes } from '../modules/activity-log/activity-log.routes.js'
-import type { ShippingService } from '../modules/shipping/shipping.service.js'
+import { ShippingService } from '../modules/shipping/shipping.service.js'
+import { ShippingRepository } from '../modules/shipping/shipping.repository.js'
 import { createAuthRoutes } from '../modules/auth/auth.routes.js'
 import { createAuthMiddleware, createPlatformAuthMiddleware } from '../middleware/auth.middleware.js'
 import { UsersService } from '../modules/users/users.service.js'
@@ -173,13 +175,17 @@ export const createApp = ({
           getCacheProvider(),
         )
       : undefined)
+  const resolvedShippingService =
+    shippingService ??
+    (db ? new ShippingService(new ShippingRepository(db), resolvedDeliveryService, db) : undefined)
+
   const resolvedCartService =
     cartService ??
-    (db && resolvedInventoryService && shippingService
+    (db && resolvedInventoryService && resolvedShippingService
       ? new CartService(
           new CartRepository(db),
           resolvedInventoryService,
-          shippingService,
+          resolvedShippingService,
           undefined,
           createCartExpiryScheduler(getJobQueueProvider(), {
             url: `${requireEnv('API_BASE_URL').replace(/\/$/, '')}/internal/jobs/cart/expiry`,
@@ -206,12 +212,12 @@ export const createApp = ({
 
   const resolvedOrdersService =
     ordersService ??
-    (db && resolvedCartService && shippingService
+    (db && resolvedCartService && resolvedShippingService
       ? new OrdersService(
           new OrdersRepository(db),
           new CartRepository(db),
           new AddressRepository(db),
-          shippingService,
+          resolvedShippingService,
           getEventPublisher(),
           orderHooks,
           new IdempotencyStore(getCacheProvider()),
@@ -239,6 +245,8 @@ export const createApp = ({
     analyticsService ?? (db ? new AnalyticsService(new AnalyticsRepository(db)) : undefined)
   
   const resolvedNotificationsService = notificationsService
+
+  app.use('*', honoLogger())
 
   app.use(
     '*',
@@ -286,18 +294,17 @@ export const createApp = ({
       credentials: true,
     })
   )
+
   app.onError((error, c) => {
     // Ensure CORS headers are sent even on error
     c.header('Access-Control-Allow-Origin', c.req.header('origin') || '*')
     c.header('Access-Control-Allow-Credentials', 'true')
 
-    // Force error log to console for Cloudflare Observability
-    console.error('[Application Error]:', error)
-    if (error instanceof Error) {
-      console.error('[Error Stack]:', error.stack)
-    }
+    // Force error log to console for Cloudflare Observability & Terminal
+    console.error(`❌ [API Error] ${c.req.method} ${c.req.url}:`, error)
 
     if (error instanceof ZodError) {
+      console.error('❌ [Validation Issues]:', JSON.stringify(error.issues, null, 2))
       return c.json(
         {
           error: 'Validation failed',
@@ -309,8 +316,13 @@ export const createApp = ({
     }
 
     if (error instanceof AppError) {
+      console.error(`❌ [AppError ${error.statusCode}]: ${error.code} - ${error.message}`)
       c.status(error.statusCode as 400 | 401 | 403 | 404 | 409 | 429 | 500 | 503)
       return c.json({ error: error.message, code: error.code })
+    }
+
+    if (error instanceof Error && error.stack) {
+      console.error('❌ [Error Stack]:', error.stack)
     }
 
     c.status(500)
@@ -370,8 +382,8 @@ export const createApp = ({
   if (resolvedInventoryService) {
     app.route('/', createInventoryRoutes(resolvedInventoryService))
   }
-  if (shippingService) {
-    app.route('/', createShippingRoutes(shippingService))
+  if (resolvedShippingService) {
+    app.route('/', createShippingRoutes(resolvedShippingService))
   }
   if (resolvedOrdersService && resolvedCustomersService) {
     app.route('/', createOrdersRoutes(resolvedOrdersService, resolvedCustomersService))

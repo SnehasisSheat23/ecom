@@ -31,15 +31,15 @@ export const createTenantMiddleware = (
     if (!tenant) {
       const hostname = new URL(c.req.url).hostname
       tenant = await service.resolveByHostname(hostname)
-      
-      // Fallback for local development when running on localhost / 127.0.0.1
-      if (!tenant && (hostname === 'localhost' || hostname === '127.0.0.1')) {
-        tenant = await service.resolveBySlug('abdullah-bakheet')
-      }
+    }
+
+    // Default fallback to 'abdullah-bakheet' single tenant
+    if (!tenant) {
+      tenant = await service.resolveBySlug('abdullah-bakheet')
     }
 
     if (!tenant) {
-      throw new AppError(tenantIdHeader ? 'Tenant not found for ID' : 'Tenant not found for hostname', 404, 'tenant-not-found')
+      throw new AppError('Default tenant (abdullah-bakheet) not found in system', 404, 'tenant-not-found')
     }
 
     const isPlatformAdmin = await hasSuperAdminToken(c, usersService)

@@ -1,4 +1,4 @@
-import { boolean, index, integer, jsonb, pgTable, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core'
 
 import { tenants } from '../../layers/tenancy/tenancy.schema.js'
 import { partners } from '../partner/partner.schema.js'
@@ -66,7 +66,7 @@ export const orderItems = pgTable(
     unitPriceSnapshot: integer('unit_price_snapshot').notNull(),
     quantity: integer('quantity').notNull(),
     lineTotal: integer('line_total').notNull(),
-    imageUrlSnapshot: varchar('image_url_snapshot', { length: 500 }),
+    imageUrlSnapshot: text('image_url_snapshot'),
     metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
     returnStatus: varchar('return_status', { length: 20 }).$type<
       'NONE' | 'REQUESTED' | 'APPROVED' | 'REJECTED'

@@ -9,12 +9,40 @@ import type { Database } from '../lib/db.js'
 import type { CustomersService } from '../modules/customers/customers.service.js'
 import type { UsersService } from '../modules/users/users.service.js'
 import { createPlatformAuthInstance } from '../modules/auth/providers/platform-better-auth.js'
+import { createCustomerAuthInstance } from '../modules/auth/providers/customer-better-auth.js'
 
 export const createAuthMiddleware = (
   service: CustomersService,
   options: { optional?: boolean } = {},
 ): MiddlewareHandler<AppBindings> => {
   return async (c, next) => {
+    const env = (c.env as Record<string, string>) || (process.env as Record<string, string>) || {}
+    const tenant = c.get('tenant')
+
+    // 1. Primary Engine: Better Auth Session Verification
+    if (env.DATABASE_URL && tenant) {
+      try {
+        const auth = createCustomerAuthInstance(env)
+        const session = await auth.api.getSession({
+          headers: c.req.raw.headers,
+        })
+        if (session && session.user) {
+          const customer = await service.getAuthenticatedCustomer(session.user.id, tenant.tenantId)
+          c.set('customer', customer)
+          c.set('isAdmin', customer.isAdmin)
+          c.set('isSuperAdmin', customer.isSuperAdmin)
+          if (customer.activePartnerId) {
+            c.set('activePartnerId', customer.activePartnerId)
+          }
+          await next()
+          return
+        }
+      } catch (err) {
+        // Fall back to token verification if Better Auth session check errors
+      }
+    }
+
+    // 2. Token / Header Check Fallback
     const header = c.req.header('authorization')
     const cookieToken = getCookie(c, 'vendor_auth_token')
     
@@ -29,33 +57,23 @@ export const createAuthMiddleware = (
     try {
       const token = header ? header.replace(/^Bearer\s+/i, '') : cookieToken!
       const payload = await verifyAccessToken(token)
-      const tenant = c.get('tenant')
       const isSuperAdmin = isSuperAdminEmail(payload.email)
 
       if (tenant.status === 'suspended' && !isSuperAdmin) {
         throw new AppError('Tenant is suspended', 403, 'tenant-suspended')
       }
 
-      if (payload.tenantId !== tenant.tenantId && !isSuperAdmin) {
-        throw new AppError('Invalid token', 401, 'invalid-token')
-      }
-
-      const customer =
-        isSuperAdmin && payload.tenantId !== tenant.tenantId
-          ? {
-              customerId: payload.sub,
-              tenantId: tenant.tenantId,
-              partnerMemberships: [],
-              activePartnerId: null,
-              email: payload.email,
-              isAdmin: true,
-              isSuperAdmin: true,
-            }
-          : await service.getAuthenticatedCustomer(payload.sub, tenant.tenantId, payload.activePartnerId)
-
-      if (customer.tenantId !== payload.tenantId && !customer.isSuperAdmin) {
-        throw new AppError('Invalid token', 401, 'invalid-token')
-      }
+      const customer = isSuperAdmin && payload.tenantId !== tenant.tenantId
+        ? {
+            customerId: payload.sub,
+            tenantId: tenant.tenantId,
+            partnerMemberships: [],
+            activePartnerId: null,
+            email: payload.email,
+            isAdmin: true,
+            isSuperAdmin: true,
+          }
+        : await service.getAuthenticatedCustomer(payload.sub, tenant.tenantId, payload.activePartnerId)
 
       c.set('customer', customer)
       c.set('isAdmin', customer.isAdmin)

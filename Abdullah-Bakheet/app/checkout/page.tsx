@@ -2,25 +2,128 @@
 
 import React, { useState } from 'react';
 import { useShop } from '@/context/ShopContext';
+import { placeOrderApi, fetchProducts } from '@/lib/api';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowUpRightIcon, CheckIcon, CreditCardIcon,  XIcon } from 'lucide-animated';
-import { Banknote } from 'lucide-react';
+import { ArrowUpRightIcon, CheckIcon, CreditCardIcon, XIcon } from 'lucide-animated';
+import { Banknote, ShieldCheck, Smartphone, Sparkles, Loader2 } from 'lucide-react';
 
 export default function CheckoutPage() {
-    const { cart, cartTotal, currency } = useShop();
+    const { cart, cartTotal, formatPrice, guestSessionId, accessToken, clearCart, user, currency } = useShop();
     const router = useRouter();
-    const [paymentMethod, setPaymentMethod] = useState<'credit' | 'cod'>('credit');
+
+    const [firstName, setFirstName] = useState(user?.firstName || 'Abdullah');
+    const [lastName, setLastName] = useState(user?.lastName || 'Bakheet');
+    const [email, setEmail] = useState(user?.email || 'demo@dubai-ecom.com');
+    const [phone, setPhone] = useState(user?.phone || '+971 50 123 4567');
+    const [street, setStreet] = useState('Sheikh Zayed Road, Tower 4');
+    const [pinCode, setPinCode] = useState('00000');
+    const [city, setCity] = useState('Dubai');
+    const [country, setCountry] = useState('UAE');
+
+    // Payment Form state
+    const [paymentMethod, setPaymentMethod] = useState<'credit' | 'applepay' | 'cod'>('credit');
+    const [cardNumber, setCardNumber] = useState('4242 4242 4242 4242');
+    const [cardHolder, setCardHolder] = useState('Abdullah Bakheet');
+    const [expiry, setExpiry] = useState('12/28');
+    const [cvv, setCvv] = useState('123');
+
+    // Fake Gateway Processing state
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    const [paymentStepText, setPaymentStepText] = useState('Initializing DubaiPay Gateway...');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [placedOrder, setPlacedOrder] = useState<any | null>(null);
     const [isOrderComplete, setIsOrderComplete] = useState(false);
 
-    const shippingFee = 200;
-    const subTotal = cartTotal;
-    const total = subTotal + (cart.length > 0 ? shippingFee : 0);
+    const shippingFee = 110;
+    const totalAED = cartTotal + (cart.length > 0 ? shippingFee : 0);
 
-    const handleCheckout = (e: React.FormEvent) => {
+    const handleFillDemoCard = () => {
+        setCardNumber('4242 4242 4242 4242');
+        setCardHolder('Abdullah Bakheet Demo');
+        setExpiry('12/28');
+        setCvv('123');
+    };
+
+    const handleCheckout = async (e: React.FormEvent) => {
         e.preventDefault();
-        // In a real app, process payment here
-        setIsOrderComplete(true);
+        setIsSubmitting(true);
+        setErrorMessage(null);
+        setIsProcessingPayment(true);
+
+        const countryCode = country === 'Saudi Arabia' ? 'SA' : (country === 'UAE' ? 'AE' : 'IN');
+
+        // Fake Payment Gateway Simulation
+        try {
+            setPaymentStepText('Connecting to DubaiPay Secure Gateway...');
+            await new Promise(r => setTimeout(r, 600));
+
+            if (paymentMethod === 'credit') {
+                setPaymentStepText(`Verifying Demo Card (${cardNumber.slice(-4) || '4242'})...`);
+                await new Promise(r => setTimeout(r, 600));
+            } else if (paymentMethod === 'applepay') {
+                setPaymentStepText('Authorizing 1-Tap Apple Pay Demo...');
+                await new Promise(r => setTimeout(r, 600));
+            } else {
+                setPaymentStepText('Securing Cash on Delivery Order...');
+                await new Promise(r => setTimeout(r, 600));
+            }
+
+            setPaymentStepText('Authorizing payment & creating order in backend-v2...');
+
+            // Resolve fresh live DB product IDs and include item details so unitPrice and image are never lost
+            const freshProducts = await fetchProducts().catch(() => []);
+            const validItems = cart.map(i => {
+                const matchedProduct = freshProducts.find(p =>
+                    p.variantId === i.variantId ||
+                    p.id === i.id ||
+                    p.title.toLowerCase().trim() === i.name.toLowerCase().trim()
+                );
+                const resolvedVariantId = matchedProduct?.id || matchedProduct?.variantId || i.variantId || i.id;
+                return {
+                    productId: resolvedVariantId,
+                    quantity: i.quantity,
+                    unitPrice: i.price,
+                    price: i.price,
+                    name: i.name,
+                    image: i.image,
+                };
+            });
+
+            const orderPayload: any = {
+                currency: currency || 'AED',
+                shippingCost: shippingFee,
+                shippingAddressSnapshot: {
+                    fullName: `${firstName} ${lastName}`.trim() || 'Customer',
+                    line1: street || 'Street address',
+                    city: city || 'Dubai',
+                    state: city || 'Dubai',
+                    postalCode: pinCode || '00000',
+                    country: countryCode,
+                    phone: phone || null,
+                },
+                guestEmail: email || user?.email || undefined,
+                paymentMethod: paymentMethod,
+                notes: `Fake Payment Provider Demo Gateway - Method: ${paymentMethod.toUpperCase()} (Txn Ref: TXN_DEMO_${Date.now().toString().slice(-6)})`,
+                items: validItems,
+            };
+
+            const result = await placeOrderApi(orderPayload, guestSessionId, accessToken || undefined);
+            
+            setPaymentStepText('Payment Approved! Finalizing receipt...');
+            await new Promise(r => setTimeout(r, 400));
+
+            setPlacedOrder(result?.order || result);
+            clearCart();
+            setIsOrderComplete(true);
+        } catch (err: any) {
+            console.error('Order placement error:', err);
+            setErrorMessage(err.message || 'Failed to place order. Please try again.');
+        } finally {
+            setIsProcessingPayment(false);
+            setIsSubmitting(false);
+        }
     };
 
     if (cart.length === 0 && !isOrderComplete) {
@@ -39,6 +142,12 @@ export default function CheckoutPage() {
         <div className="w-full bg-brand-gray min-h-screen font-sans py-12 relative">
             <div className="max-w-[1200px] mx-auto px-4 md:px-8">
                 
+                {errorMessage && (
+                    <div className="mb-8 p-4 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold rounded-md">
+                        {errorMessage}
+                    </div>
+                )}
+
                 <form onSubmit={handleCheckout} className="flex flex-col lg:flex-row gap-10">
                     
                     {/* Left Column - Forms */}
@@ -55,52 +164,57 @@ export default function CheckoutPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
                                 <div className="space-y-2">
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">First Name</label>
-                                    <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="abc" />
+                                    <input required type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="First name" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Last Name</label>
-                                    <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Joe" />
+                                    <input required type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Last name" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Email</label>
-                                    <input required type="email" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="abc@gmail.com" />
+                                    <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="abc@gmail.com" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Phone</label>
-                                    <input required type="tel" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="+91 6345427444" />
+                                    <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="+971 50 123 4567" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Street</label>
-                                    <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Phase 7 road" />
+                                    <input required type="text" value={street} onChange={(e) => setStreet(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Sheikh Zayed Road" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Pin Code</label>
-                                    <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="242424" />
+                                    <input required type="text" value={pinCode} onChange={(e) => setPinCode(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="00000" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">City</label>
-                                    <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Chandigarh" />
+                                    <input required type="text" value={city} onChange={(e) => setCity(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Dubai" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Country</label>
-                                    <select className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm appearance-none">
-                                        <option>India</option>
-                                        <option>Saudi Arabia</option>
+                                    <select value={country} onChange={(e) => setCountry(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm appearance-none">
                                         <option>UAE</option>
+                                        <option>Saudi Arabia</option>
+                                        <option>India</option>
                                     </select>
                                 </div>
                             </div>
                         </section>
 
-                        {/* CHECKOUT INFORMATION (Payment) */}
+                        {/* CHECKOUT INFORMATION (Fake Payment Provider Demo) */}
                         <section>
-                            <div className="bg-[#fbdc3c] py-3 px-6 mb-8 inline-block">
+                            <div className="bg-[#fbdc3c] py-3 px-6 mb-4 inline-block">
                                 <h2 className="font-heading text-3xl md:text-5xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none pt-2">
-                                    CHECKOUT INFORMATION
+                                    FAKE PAYMENT PROVIDER DEMO
                                 </h2>
                             </div>
 
-                            <div className="flex gap-4 mb-8">
+                            <p className="text-xs text-gray-500 mb-6 font-medium flex items-center gap-1.5">
+                                <ShieldCheck size={14} className="text-emerald-600" />
+                                Simulated payment gateway connected to <span className="font-bold text-black">backend-v2</span>. No real charges are made.
+                            </p>
+
+                            <div className="flex flex-wrap gap-3 mb-8">
                                 <button 
                                     type="button"
                                     onClick={() => setPaymentMethod('credit')}
@@ -110,8 +224,21 @@ export default function CheckoutPage() {
                                             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                                     }`}
                                 >
-                                    <CreditCardIcon size={16} /> Credit card
+                                    <CreditCardIcon size={16} /> DubaiPay Gateway
                                 </button>
+
+                                <button 
+                                    type="button"
+                                    onClick={() => setPaymentMethod('applepay')}
+                                    className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors ${
+                                        paymentMethod === 'applepay' 
+                                            ? 'bg-[#fbdc3c] text-black shadow-sm' 
+                                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <Smartphone size={16} /> Apple Pay 1-Tap
+                                </button>
+
                                 <button 
                                     type="button"
                                     onClick={() => setPaymentMethod('cod')}
@@ -121,26 +248,38 @@ export default function CheckoutPage() {
                                             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                                     }`}
                                 >
-                                    <Banknote size={16} /> Cash on delivery
+                                    <Banknote size={16} /> Cash on Delivery
                                 </button>
                             </div>
 
                             {paymentMethod === 'credit' && (
-                                <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
-                                    <div className="flex items-center gap-4 mb-6">
-                                        <h3 className="text-xl font-bold text-black">Credit Card</h3>
-                                        <div className="flex gap-2">
-                                            {/* Mocking Mastercard/Visa icons */}
-                                            <div className="w-8 h-5 bg-gradient-to-r from-red-500 to-yellow-500 rounded-sm"></div>
-                                            <div className="w-8 h-5 bg-blue-600 text-[8px] text-white font-bold flex items-center justify-center rounded-sm italic">VISA</div>
+                                <div className="space-y-6 bg-white p-6 rounded-xl border border-gray-100 shadow-xs">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <h3 className="text-lg font-bold text-black">DubaiPay Demo Gateway</h3>
+                                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">SIMULATOR</span>
                                         </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleFillDemoCard}
+                                            className="text-xs text-amber-900 bg-amber-100 hover:bg-amber-200 font-bold px-3 py-1.5 rounded-md flex items-center gap-1 transition-colors"
+                                        >
+                                            <Sparkles size={13} /> Fill Demo Card
+                                        </button>
                                     </div>
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 col-span-1 md:col-span-2">
                                             <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Card Number</label>
                                             <div className="relative">
-                                                <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm pr-10" placeholder="1944 2811 5422 9076" />
+                                                <input 
+                                                    required 
+                                                    type="text" 
+                                                    value={cardNumber} 
+                                                    onChange={(e) => setCardNumber(e.target.value)} 
+                                                    className="w-full bg-gray-50 border border-gray-200 rounded-md p-3 text-sm font-mono tracking-wider focus:outline-none focus:border-gray-400" 
+                                                    placeholder="4242 4242 4242 4242" 
+                                                />
                                                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500">
                                                     <CheckIcon size={16} />
                                                 </div>
@@ -148,80 +287,61 @@ export default function CheckoutPage() {
                                         </div>
                                         <div className="space-y-2">
                                             <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Card Holder</label>
-                                            <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Sohom Das" />
+                                            <input 
+                                                required 
+                                                type="text" 
+                                                value={cardHolder} 
+                                                onChange={(e) => setCardHolder(e.target.value)} 
+                                                className="w-full bg-gray-50 border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400" 
+                                                placeholder="Card Holder Name" 
+                                            />
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Expiry Date</label>
-                                            <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="15/32" />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Expiry</label>
+                                                <input 
+                                                    required 
+                                                    type="text" 
+                                                    value={expiry} 
+                                                    onChange={(e) => setExpiry(e.target.value)} 
+                                                    className="w-full bg-gray-50 border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400" 
+                                                    placeholder="12/28" 
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">CVV</label>
+                                                <input 
+                                                    required 
+                                                    type="text" 
+                                                    value={cvv} 
+                                                    onChange={(e) => setCvv(e.target.value)} 
+                                                    className="w-full bg-gray-50 border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400" 
+                                                    placeholder="123" 
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">CVV</label>
-                                            <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="1974" />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 pt-2">
-                                        <div className="w-5 h-5 rounded bg-[#fbdc3c] flex items-center justify-center cursor-pointer">
-                                            <CheckIcon size={12} className="text-black" />
-                                        </div>
-                                        <span className="text-sm font-medium text-gray-700">Save this Credit card</span>
                                     </div>
                                 </div>
                             )}
 
-                            {paymentMethod === 'cod' && (
-                                <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
-                                    <div className="bg-[#fbdc3c] py-2 px-4 mb-4 inline-block mt-4">
-                                        <h3 className="font-heading text-2xl md:text-3xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none pt-1">
-                                            BILLINGS
-                                        </h3>
+                            {paymentMethod === 'applepay' && (
+                                <div className="bg-black text-white p-6 rounded-xl text-center space-y-4">
+                                    <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mx-auto">
+                                        <Smartphone size={24} />
                                     </div>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
-                                        <div className="space-y-2">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">First Name</label>
-                                            <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="abc" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Last Name</label>
-                                            <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Joe" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Email</label>
-                                            <input required type="email" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="abc@gmail.com" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Phone</label>
-                                            <input required type="tel" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="+91 6345427444" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Street</label>
-                                            <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Phase 7 road" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Pin Code</label>
-                                            <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="242424" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">City</label>
-                                            <input required type="text" className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Chandigarh" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Country</label>
-                                            <select className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm appearance-none">
-                                                <option>India</option>
-                                                <option>Saudi Arabia</option>
-                                                <option>UAE</option>
-                                            </select>
-                                        </div>
-                                    </div>
+                                    <h4 className="font-bold text-lg">Apple Pay Demo Authorization</h4>
+                                    <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                                        1-Tap Instant Demo Authentication enabled. Click BUY NOW to simulate TouchID / FaceID payment authorization.
+                                    </p>
+                                </div>
+                            )}
 
-                                    <div className="flex items-center gap-3 pt-2">
-                                        <div className="w-5 h-5 rounded bg-[#fbdc3c] flex items-center justify-center cursor-pointer">
-                                            <CheckIcon size={12} className="text-black" />
-                                        </div>
-                                        <span className="text-sm font-medium text-gray-700">Make this as a default address</span>
-                                    </div>
+                            {paymentMethod === 'cod' && (
+                                <div className="bg-amber-50 border border-amber-200 text-amber-900 p-6 rounded-xl text-center space-y-2">
+                                    <h4 className="font-bold text-base">Cash on Delivery</h4>
+                                    <p className="text-xs text-amber-800">
+                                        Pay via Cash, Card, or Business Check upon delivery at your warehouse or restaurant.
+                                    </p>
                                 </div>
                             )}
 
@@ -238,7 +358,7 @@ export default function CheckoutPage() {
                                 </h3>
                             </div>
 
-                            <div className="space-y-6 mb-8">
+                            <div className="space-y-6 mb-8 max-h-60 overflow-y-auto pr-1">
                                 {cart.map((item) => (
                                     <div key={item.id} className="flex gap-4 border-b border-gray-50 pb-6 last:border-0 last:pb-0">
                                         <div className="w-16 h-16 bg-white border border-gray-200 rounded-sm p-1 shrink-0">
@@ -247,10 +367,17 @@ export default function CheckoutPage() {
                                         <div className="flex-1 flex flex-col justify-between">
                                             <div className="flex justify-between items-start gap-2">
                                                 <h4 className="text-[12px] font-bold uppercase text-black leading-snug">{item.name}</h4>
-                                                <span className="text-[13px] font-semibold shrink-0">{currency} {(item.price * item.quantity).toFixed(0)}</span>
+                                                <span className="text-[13px] font-semibold shrink-0">{formatPrice(item.price * item.quantity)}</span>
                                             </div>
-                                            <div className="text-[11px] font-semibold text-gray-500 border border-gray-200 rounded px-2 py-0.5 inline-block w-fit mt-2">
-                                                Qty : {item.quantity}
+                                            <div className="flex justify-between items-center mt-2">
+                                                <span className="text-[11px] font-semibold text-gray-500 border border-gray-200 rounded px-2 py-0.5">
+                                                    Qty: {item.quantity}
+                                                </span>
+                                                {item.moq && item.moq > 1 && (
+                                                    <span className="text-[10px] text-amber-700 font-bold">
+                                                        MOQ: {item.moq}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -260,25 +387,34 @@ export default function CheckoutPage() {
                             <div className="space-y-4 border-t border-gray-100 pt-6 mb-6">
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-gray-600 font-medium">Sub-Total</span>
-                                    <span className="font-semibold text-black">{currency} {subTotal.toFixed(0)}</span>
+                                    <span className="font-semibold text-black">{formatPrice(cartTotal)}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-600 font-medium">Shipping</span>
-                                    <span className="font-semibold text-black">{currency} {shippingFee.toFixed(0)}</span>
+                                    <span className="text-gray-600 font-medium">Shipping Fee</span>
+                                    <span className="font-semibold text-black">{formatPrice(shippingFee)}</span>
                                 </div>
                             </div>
 
                             <div className="border-t border-gray-100 pt-6 mb-8 flex justify-between items-end">
                                 <span className="text-sm font-medium text-gray-600">Total</span>
-                                <span className="text-2xl font-black text-black">{currency} {total.toFixed(0)}</span>
+                                <span className="text-2xl font-black text-black">{formatPrice(totalAED)}</span>
                             </div>
 
                             <button 
                                 type="submit"
-                                className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-black transition-colors group"
+                                disabled={isSubmitting}
+                                className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-black transition-colors group disabled:opacity-50"
                             >
-                                BUY NOW
-                                <ArrowUpRightIcon size={16} className="text-gray-400 group-hover:text-white transition-colors" />
+                                {isSubmitting ? (
+                                    <span className="flex items-center gap-2">
+                                        <Loader2 size={16} className="animate-spin" /> PROCESSING...
+                                    </span>
+                                ) : (
+                                    <>
+                                        BUY NOW (DEMO GATEWAY)
+                                        <ArrowUpRightIcon size={16} className="text-gray-400 group-hover:text-white transition-colors" />
+                                    </>
+                                )}
                             </button>
 
                         </div>
@@ -287,9 +423,30 @@ export default function CheckoutPage() {
                 </form>
             </div>
 
-            {/* Success Modal Overlay */}
+            {/* Fake Payment Gateway Processing Overlay */}
+            {isProcessingPayment && !isOrderComplete && (
+                <div className="fixed inset-0 z-[120] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center space-y-6 shadow-2xl border border-gray-100">
+                        <div className="relative w-16 h-16 mx-auto">
+                            <div className="absolute inset-0 rounded-full border-4 border-amber-300 border-t-brand-dark animate-spin" />
+                            <div className="absolute inset-0 flex items-center justify-center font-bold text-xs">
+                                🔒
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg text-gray-900 mb-1">DubaiPay Gateway</h3>
+                            <p className="text-xs text-gray-500 font-medium">{paymentStepText}</p>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                            <div className="bg-[#fbdc3c] h-full animate-pulse w-3/4 rounded-full" />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Order Complete Success Receipt Overlay */}
             {isOrderComplete && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 relative animate-in zoom-in-95 duration-300">
                         
                         <button 
@@ -303,54 +460,47 @@ export default function CheckoutPage() {
                         </button>
 
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-16 h-16 bg-[#fbdc3c] rounded-full flex items-center justify-center mb-6">
+                            <div className="w-16 h-16 bg-[#fbdc3c] rounded-full flex items-center justify-center mb-4 shadow-sm">
                                 <CheckIcon size={32} className="text-black" />
                             </div>
                             
-                            <h2 className="font-heading text-4xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none mb-4 pt-2">
+                            <h2 className="font-heading text-4xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none mb-2 pt-2">
                                 Order Completed
                             </h2>
-                            <p className="text-sm text-gray-600 mb-8 max-w-[200px] leading-relaxed font-medium">
-                                You have successfully placed your order
+                            <p className="text-xs text-gray-500 mb-6 font-medium">
+                                Demo Payment Provider Gateway transaction approved!
                             </p>
 
-                            <div className="w-full border border-gray-100 rounded-lg p-5 mb-8 space-y-4 shadow-sm text-left">
-                                <div className="flex justify-between items-start border-b border-gray-50 pb-4">
+                            <div className="w-full border border-gray-100 bg-gray-50/50 rounded-lg p-5 mb-6 space-y-3.5 text-left">
+                                <div className="flex justify-between items-start border-b border-gray-200/60 pb-3">
                                     <div>
                                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1">Status</p>
                                         <div className="bg-[#fbdc3c] text-black text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 w-fit">
-                                            Completed <CheckIcon size={12} />
+                                            {placedOrder?.status || 'PAID (DEMO)'} <CheckIcon size={12} />
                                         </div>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1">Order ID</p>
-                                        <p className="text-[12px] font-medium text-gray-600">ABLH-9876543210-XYZ</p>
+                                        <p className="text-[12px] font-bold text-gray-900 font-mono truncate max-w-[150px]">
+                                            {placedOrder?.orderNumber || placedOrder?.id || 'ABLH-ORDER-OK'}
+                                        </p>
                                     </div>
                                 </div>
-                                <div className="flex justify-between items-center text-sm font-semibold text-black">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-4 h-4 rounded border border-gray-300 flex items-center justify-center"><CheckIcon size={10} /></span>
-                                        Date
-                                    </div>
-                                    <span>01.07.2024</span>
+                                <div className="flex justify-between items-center text-sm font-medium text-gray-700">
+                                    <span>Date</span>
+                                    <span className="font-semibold text-black">{new Date().toLocaleDateString()}</span>
                                 </div>
-                                <div className="flex justify-between items-center text-sm font-semibold text-black">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-4 h-4 rounded border border-gray-300 flex items-center justify-center"><Banknote size={10} /></span>
-                                        Total
-                                    </div>
-                                    <span>${total.toFixed(0)}</span>
+                                <div className="flex justify-between items-center text-sm font-medium text-gray-700">
+                                    <span>Total Amount</span>
+                                    <span className="font-bold text-black">{formatPrice(placedOrder?.totalAmount || placedOrder?.total || totalAED)}</span>
                                 </div>
-                                <div className="flex justify-between items-center text-sm font-semibold text-black">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-4 h-4 rounded border border-gray-300 flex items-center justify-center"><CreditCardIcon size={10} /></span>
-                                        Payment
-                                    </div>
-                                    <span>{paymentMethod === 'credit' ? 'Credit Card' : 'Cash on delivery'}</span>
+                                <div className="flex justify-between items-center text-sm font-medium text-gray-700">
+                                    <span>Payment Method</span>
+                                    <span className="font-semibold text-black capitalize">{paymentMethod === 'credit' ? 'DubaiPay Demo Gateway' : paymentMethod}</span>
                                 </div>
                             </div>
 
-                            <div className="w-full flex gap-4">
+                            <div className="w-full flex gap-3">
                                 <button 
                                     onClick={() => router.push('/')}
                                     className="flex-1 bg-white text-black border border-gray-200 py-3.5 rounded-md font-bold text-[12px] uppercase tracking-wide flex justify-center items-center gap-2 hover:border-black transition-colors"
@@ -359,10 +509,10 @@ export default function CheckoutPage() {
                                     <ArrowUpRightIcon size={14} className="text-gray-400" />
                                 </button>
                                 <button 
-                                    onClick={() => router.push('/track-order')}
+                                    onClick={() => router.push('/products')}
                                     className="flex-1 bg-[#1a2b25] text-white py-3.5 rounded-md font-bold text-[12px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-black transition-colors"
                                 >
-                                    TRACK ORDER
+                                    SHOP MORE
                                     <ArrowUpRightIcon size={14} className="text-gray-400" />
                                 </button>
                             </div>

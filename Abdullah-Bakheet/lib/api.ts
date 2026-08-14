@@ -1,11 +1,12 @@
-import RAW_BACKEND_PRODUCTS from './products_fallback.json'
-import { ALL_PRODUCTS } from './data'
+// Live Storefront API Client - Connected strictly to Hono backend V2 Storefront Endpoints
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'
+const RAW_API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'
+const API_BASE = RAW_API_BASE.endsWith('/api/v1') ? RAW_API_BASE : `${RAW_API_BASE}/api/v1`
 const TENANT_HEADER = { 'X-Tenant-Id': 'abdullah-bakheet' }
 
 export interface StorefrontProduct {
   id: string
+  variantId?: string
   slug: string
   title: string
   arabic: string
@@ -14,9 +15,13 @@ export interface StorefrontProduct {
   categorySlug: string
   size: string
   price: number
+  compareAtPrice?: number | null
+  moq?: number
+  moqStep?: number
   inStock: boolean
   onSale: boolean
   img: string
+  images?: string[]
   description?: string
   descriptionEn?: string
   descriptionAr?: string
@@ -30,29 +35,13 @@ export interface StorefrontCategory {
   slug: string
 }
 
-interface BackendProductItem {
-  id: string
-  title: string
-  slug: string
-  description?: string
-  shortDescription?: string
-  translations?: Record<string, Record<string, any>>
-  specifications?: Record<string, any>
-  variants?: Array<{
-    id: string
-    price?: number
-    compareAtPrice?: number
-    prices?: Array<{ price: number }>
-  }>
-  categories?: Array<{
-    id: string
-    name: string
-    slug: string
-    translations?: Record<string, Record<string, any>>
-  }>
-  images?: Array<{
-    url: string
-  }>
+export interface FetchProductsOptions {
+  page?: number
+  limit?: number
+  categorySlug?: string
+  q?: string
+  currency?: string
+  lang?: string
 }
 
 const CATEGORY_ARABIC_MAP: Record<string, string> = {
@@ -68,191 +57,299 @@ const CATEGORY_ARABIC_MAP: Record<string, string> = {
   'DAIRY ITEMS': 'منتجات الألبان',
 }
 
-export function parseBackendItemsToStorefront(rawItems: BackendProductItem[]): StorefrontProduct[] {
-  return rawItems.map((item) => {
-    const firstVariant = item.variants?.[0]
-    const spec = item.specifications || {}
-    const catObj = item.categories?.[0]
-    const categoryName = catObj?.translations?.en?.name || catObj?.name?.toUpperCase() || 'GENERAL'
-    const categoryArabic = catObj?.translations?.ar?.name || CATEGORY_ARABIC_MAP[categoryName.toUpperCase()] || ''
-    const price = parseFloat(String(item.variants?.[0]?.prices?.[0]?.price ? item.variants[0].prices[0].price / 100 : (item.variants?.[0]?.price ? (item.variants[0].price > 1000 ? item.variants[0].price / 100 : item.variants[0].price) : (spec.price || 0)))) || 0
+export function ensureUuid(id: string): string {
+  if (!id) return '00000000-0000-4000-8000-000000000001'
+  if (/^[0-9a-fA-F-]{36}$/.test(id)) return id
+  const clean = id.replace(/[^0-9a-fA-F]/g, '')
+  return `00000000-0000-4000-8000-${clean.padStart(12, '0').slice(-12)}`
+}
 
-    const arTitle = item.translations?.ar?.name || spec.arabicName || ''
-    const arDesc = item.translations?.ar?.description || spec.arabicDescription || spec.descAr || ''
-    const enTitle = item.translations?.en?.name || item.title || ''
-    const enDesc = item.translations?.en?.description || item.description || ''
+export function parseStorefrontProducts(items: any[]): StorefrontProduct[] {
+  return items.map((item) => {
+    const categoryName = item.categoryName || item.categories?.[0]?.name || 'GENERAL'
+    const categoryArabic = item.categoryArabic || CATEGORY_ARABIC_MAP[categoryName.toUpperCase()] || categoryName
+
+    const price = typeof item.price === 'number' ? item.price : 0
+    const compareAtPrice = typeof item.compareAtPrice === 'number' ? item.compareAtPrice : null
+
+    const imagesArray = Array.isArray(item.images)
+      ? item.images
+          .map((img: any) => (typeof img === 'string' ? img : (img?.url || img?.src || '')))
+          .filter((url: string) => Boolean(url && url.trim() !== ''))
+      : []
+
+    const primaryImg = imagesArray[0] || item.img || 'https://placehold.co/300x300?text=No+Image'
+    if (imagesArray.length === 0 && primaryImg && !primaryImg.includes('placehold.co')) {
+      imagesArray.push(primaryImg)
+    }
 
     return {
       id: item.id,
-      slug: item.slug,
-      title: enTitle,
-      arabic: arTitle,
-      category: categoryName,
+      variantId: ensureUuid(item.id),
+      slug: item.slug || item.id,
+      title: item.title || item.sku || 'Untitled Product',
+      arabic: item.arabicTitle || '',
+      category: categoryName.toUpperCase(),
       categoryArabic,
-      categorySlug: catObj?.slug || '',
-      size: item.shortDescription || spec.packSize || '',
+      categorySlug: item.categorySlug || item.slug || '',
+      size: item.shortDescription || item.size || '',
       price,
-      inStock: true,
-      onSale: !!firstVariant?.compareAtPrice,
-      img: item.images?.[0]?.url || spec.img || '',
-      description: enDesc || arDesc,
-      descriptionEn: enDesc,
-      descriptionAr: arDesc,
-      specifications: spec,
+      compareAtPrice,
+      moq: item.moq || 1,
+      moqStep: item.moqStep || 1,
+      inStock: item.stockQuantity !== undefined ? item.stockQuantity > 0 : true,
+      onSale: compareAtPrice !== null && compareAtPrice > price,
+      img: primaryImg,
+      images: imagesArray,
+      description: item.description || '',
+      descriptionEn: item.description || '',
+      descriptionAr: item.descriptionAr || item.description || '',
+      specifications: item.specifications || {},
     }
   })
 }
 
-export function getFallbackProducts(): StorefrontProduct[] {
-  if (typeof window !== 'undefined') {
-    try {
-      const cached = localStorage.getItem('fallback_products_json')
-      if (cached) {
-        const parsed = JSON.parse(cached)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed
-        }
-      }
-    } catch (e) {
-      // Ignore storage error
-    }
-  }
-
-  if (Array.isArray(RAW_BACKEND_PRODUCTS) && RAW_BACKEND_PRODUCTS.length > 0) {
-    return parseBackendItemsToStorefront(RAW_BACKEND_PRODUCTS as unknown as BackendProductItem[])
-  }
-
-  return ALL_PRODUCTS.map((p) => {
-    const slug = p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || p.id
-    const categoryUpper = p.category.toUpperCase()
-    return {
-      id: p.id,
-      slug: slug,
-      title: p.title,
-      arabic: p.arabic,
-      category: categoryUpper,
-      categoryArabic: CATEGORY_ARABIC_MAP[categoryUpper] || p.category,
-      categorySlug: categoryUpper.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      size: p.size,
-      price: p.price,
-      inStock: p.inStock ?? true,
-      onSale: p.onSale ?? false,
-      img: p.img || '/api/placeholder/160/160',
-      description: `High quality ${p.title} for commercial and food service supply across Saudi Arabia.`,
-      descriptionEn: `High quality ${p.title.toLowerCase()} for commercial and food service supply across Saudi Arabia.`,
-      descriptionAr: `منتج عالي الجودة (${p.arabic}) مخصص للمطاعم والفنادق وقطاع التموين في المملكة.`,
-      specifications: {
-        brand: 'Abdullah Bakheet Trading',
-        brandAr: 'شركة عبد الله بخيت للتجارة',
-        netWeight: p.size,
-        netWeightAr: p.size,
-        origin: 'Saudi Arabia',
-        originAr: 'المملكة العربية السعودية',
-        shelfLife: '12 Months',
-        shelfLifeAr: '12 شهراً',
-        storage: 'Store in a cool dry place',
-        storageAr: 'يحفظ في مكان بارد وجاف'
-      }
-    }
-  })
-}
-
-export function getFallbackProductBySlug(slugOrId: string): StorefrontProduct | null {
-  const products = getFallbackProducts()
-  return products.find(p => p.id === slugOrId || p.slug === slugOrId) || null
-}
-
-export function getFallbackCategories(): StorefrontCategory[] {
-  const products = getFallbackProducts()
-  const categoryMap = new Map<string, StorefrontCategory>()
-
-  products.forEach((p) => {
-    if (!categoryMap.has(p.category)) {
-      categoryMap.set(p.category, {
-        id: p.categorySlug || p.category.toLowerCase(),
-        name: p.category,
-        arabicName: p.categoryArabic || p.category,
-        slug: p.category,
-      })
-    }
-  })
-
-  return Array.from(categoryMap.values())
-}
-
-export async function fetchProducts(revalidateSeconds = 60): Promise<StorefrontProduct[]> {
+export async function fetchProductsApi(options?: FetchProductsOptions | number): Promise<{
+  items: StorefrontProduct[]
+  page: number
+  limit: number
+  hasMore: boolean
+}> {
   try {
-    const res = await fetch(`${API_BASE}/products`, {
-      headers: TENANT_HEADER,
-      next: { revalidate: revalidateSeconds },
-    })
-    if (!res.ok) {
-      console.warn('Backend API returned non-200 response, using JSON fallback store.')
-      return getFallbackProducts()
+    const opts: FetchProductsOptions = typeof options === 'number' ? { limit: options } : (options || {})
+    const page = opts.page || 1
+    const limit = opts.limit || 16
+    const currency = opts.currency || 'AED'
+    const lang = opts.lang || 'en'
+
+    let url = `${API_BASE}/storefront/products?page=${page}&limit=${limit}&currency=${currency}&lang=${lang}`
+    if (opts.categorySlug && opts.categorySlug !== 'ALL') {
+      url += `&categorySlug=${encodeURIComponent(opts.categorySlug.toLowerCase())}`
     }
+    if (opts.q && opts.q.trim()) {
+      url += `&q=${encodeURIComponent(opts.q.trim())}`
+    }
+
+    const res = await fetch(url, {
+      headers: buildHeaders(),
+      cache: 'no-store',
+    })
+
+    if (!res.ok) {
+      console.error('Backend /storefront/products request failed:', res.status)
+      return { items: [], page, limit, hasMore: false }
+    }
+
     const json = await res.json()
-    const rawItems: BackendProductItem[] = json.data?.items || json.data || []
-    if (!rawItems || rawItems.length === 0) {
-      return getFallbackProducts()
-    }
+    const rawItems = json.data?.items || (Array.isArray(json.data) ? json.data : [])
+    const items = parseStorefrontProducts(rawItems)
+    const hasMore = rawItems.length >= limit
 
-    const fetchedProducts = parseBackendItemsToStorefront(rawItems)
-
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('fallback_products_json', JSON.stringify(fetchedProducts))
-      } catch (e) {
-        // Storage quota exceeded or disabled
-      }
-    }
-
-    return fetchedProducts
+    return { items, page, limit, hasMore }
   } catch (err) {
-    console.error('Failed to fetch products from backend, using JSON fallback:', err)
-    return getFallbackProducts()
+    console.error('Fetch products API error:', err)
+    return { items: [], page: 1, limit: 16, hasMore: false }
   }
 }
 
-export async function fetchProductBySlug(slug: string, revalidateSeconds = 60): Promise<StorefrontProduct | null> {
+export async function fetchProductBySlugApi(slugOrId: string, currency: string = 'AED', lang: string = 'en'): Promise<StorefrontProduct | null> {
   try {
-    const res = await fetch(`${API_BASE}/products/${slug}`, {
-      headers: TENANT_HEADER,
-      next: { revalidate: revalidateSeconds },
+    const res = await fetch(`${API_BASE}/storefront/products/${slugOrId}?currency=${currency}&lang=${lang}`, {
+      headers: buildHeaders(),
+      cache: 'no-store',
     })
     if (!res.ok) {
-      return getFallbackProductBySlug(slug)
+      console.error('Backend /storefront/products/:slug request failed:', res.status)
+      return null
     }
     const json = await res.json()
     const item = json.data
-    if (!item) return getFallbackProductBySlug(slug)
-    const singleArr = parseBackendItemsToStorefront([item])
-    return singleArr[0] || getFallbackProductBySlug(slug)
+    if (!item) return null
+    const [parsed] = parseStorefrontProducts([item])
+    return parsed || null
   } catch (err) {
-    console.error(`Failed to fetch product ${slug}:`, err)
-    return getFallbackProductBySlug(slug)
+    console.error('Fetch single product API error:', err)
+    return null
   }
 }
 
-export async function fetchCategories(revalidateSeconds = 60): Promise<StorefrontCategory[]> {
+export async function fetchCategoriesApi(langOrLimit?: string | number): Promise<StorefrontCategory[]> {
+  const lang = typeof langOrLimit === 'string' ? langOrLimit : 'en'
   try {
-    const res = await fetch(`${API_BASE}/categories`, {
-      headers: TENANT_HEADER,
-      next: { revalidate: revalidateSeconds },
+    const res = await fetch(`${API_BASE}/storefront/categories?tree=true&lang=${lang}`, {
+      headers: buildHeaders(),
+      cache: 'no-store',
     })
-    if (!res.ok) return getFallbackCategories()
+    if (!res.ok) {
+      console.error('Backend /storefront/categories request failed:', res.status)
+      return []
+    }
     const json = await res.json()
-    const rawItems: any[] = json.data?.items || json.data || []
-    if (!rawItems || rawItems.length === 0) return getFallbackCategories()
-    return rawItems.map((c) => ({
-      id: c.id,
-      name: c.translations?.en?.name || c.name || '',
-      arabicName: c.translations?.ar?.name || '',
-      slug: c.slug || '',
-    }))
+    const rawItems = json.data || []
+
+    const flatten = (nodes: any[]): StorefrontCategory[] => {
+      let acc: StorefrontCategory[] = []
+      nodes.forEach((c) => {
+        acc.push({
+          id: c.id,
+          name: c.name,
+          arabicName: c.arabicName || c.name,
+          slug: c.slug || c.id,
+        })
+        if (c.children && Array.isArray(c.children)) {
+          acc = acc.concat(flatten(c.children))
+        }
+      })
+      return acc
+    }
+
+    return flatten(rawItems)
   } catch (err) {
-    console.error('Failed to fetch categories:', err)
-    return getFallbackCategories()
+    console.error('Fetch categories API error:', err)
+    return []
   }
 }
 
+// -------------------------------------------------------------
+// Backend Integration Helpers (Cart, Auth, Profile, Orders)
+// -------------------------------------------------------------
 
+function buildHeaders(guestSessionId?: string, accessToken?: string) {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...TENANT_HEADER,
+  }
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`
+  }
+  if (guestSessionId) {
+    headers['X-Guest-Session-Id'] = guestSessionId
+  }
+  return headers
+}
+
+export async function fetchCartApi(guestSessionId?: string, accessToken?: string) {
+  try {
+    const res = await fetch(`${API_BASE}/cart`, {
+      headers: buildHeaders(guestSessionId, accessToken),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    return json.data
+  } catch (e) {
+    console.error('fetchCartApi error:', e)
+    return null
+  }
+}
+
+export async function addToCartApi(variantId: string, quantity: number = 1, guestSessionId?: string, accessToken?: string) {
+  const targetVariant = ensureUuid(variantId)
+  const res = await fetch(`${API_BASE}/cart/items`, {
+    method: 'POST',
+    headers: buildHeaders(guestSessionId, accessToken),
+    body: JSON.stringify({ variantId: targetVariant, quantity }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const details = err.details ? err.details.map((d: any) => `${d.path?.join('.')}: ${d.message}`).join('; ') : ''
+    const msg = details ? `${err.error || 'Failed to add item'}: ${details}` : (err.error || err.message || 'Failed to add item to cart')
+    throw new Error(msg)
+  }
+  const json = await res.json()
+  return json.data
+}
+
+export async function updateCartItemApi(itemId: string, quantity: number, guestSessionId?: string, accessToken?: string) {
+  const res = await fetch(`${API_BASE}/cart/items/${itemId}`, {
+    method: 'PATCH',
+    headers: buildHeaders(guestSessionId, accessToken),
+    body: JSON.stringify({ quantity }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || err.message || 'Failed to update item quantity')
+  }
+  const json = await res.json()
+  return json.data
+}
+
+export async function removeCartItemApi(itemId: string, guestSessionId?: string, accessToken?: string) {
+  const res = await fetch(`${API_BASE}/cart/items/${itemId}`, {
+    method: 'DELETE',
+    headers: buildHeaders(guestSessionId, accessToken),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || err.message || 'Failed to remove item from cart')
+  }
+  const json = await res.json()
+  return json.data
+}
+
+export async function loginApi(payload: { email: string; password?: string; phone?: string; guestSessionId?: string }) {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: buildHeaders(payload.guestSessionId),
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const details = err.details ? err.details.map((d: any) => `${d.path?.join('.')}: ${d.message}`).join('; ') : ''
+    throw new Error(details ? `${err.error}: ${details}` : (err.error || err.message || 'Login failed'))
+  }
+  const json = await res.json()
+  return json.data
+}
+
+export async function registerApi(payload: { email: string; password?: string; firstName?: string; lastName?: string; phone?: string }) {
+  const res = await fetch(`${API_BASE}/auth/register`, {
+    method: 'POST',
+    headers: buildHeaders(),
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const details = err.details ? err.details.map((d: any) => `${d.path?.join('.')}: ${d.message}`).join('; ') : ''
+    throw new Error(details ? `${err.error}: ${details}` : (err.error || err.message || 'Registration failed'))
+  }
+  const json = await res.json()
+  return json.data
+}
+
+export async function fetchMeApi(accessToken: string) {
+  try {
+    const res = await fetch(`${API_BASE}/me`, {
+      headers: buildHeaders(undefined, accessToken),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    return json.data
+  } catch (e) {
+    console.error('fetchMeApi error:', e)
+    return null
+  }
+}
+
+export async function placeOrderApi(orderPayload: any, guestSessionId?: string, accessToken?: string) {
+  const res = await fetch(`${API_BASE}/orders`, {
+    method: 'POST',
+    headers: buildHeaders(guestSessionId, accessToken),
+    body: JSON.stringify(orderPayload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const details = err.details ? err.details.map((d: any) => `${d.path?.join('.')}: ${d.message}`).join('; ') : ''
+    throw new Error(details ? `${err.error || 'Failed to place order'}: ${details}` : (err.error || err.message || 'Failed to place order'))
+  }
+  const json = await res.json()
+  return json.data
+}
+
+// Storefront Helper Wrappers
+export async function fetchProducts(options?: FetchProductsOptions | number): Promise<StorefrontProduct[]> {
+  const res = await fetchProductsApi(options)
+  return res.items
+}
+
+export const fetchProductBySlug = fetchProductBySlugApi;
+export const fetchCategories = fetchCategoriesApi;

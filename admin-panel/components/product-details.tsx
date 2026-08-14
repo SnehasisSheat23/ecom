@@ -10,12 +10,11 @@ import { apiRequest } from "@/lib/api-client"
 import { formatPrice } from "@/lib/currency"
 import { toast } from "sonner"
 
-import { Product, ProductImage, Variant, APIVariant, APICollection, APISalesChannel, APIProductImage, APICategory } from "./product-details/types"
+import { Product, ProductImage, Variant, VariantPrice, APIVariant, APICollection, APISalesChannel, APIProductImage, APICategory } from "./product-details/types"
 
 import { GeneralInfoCard } from "./product-details/general-info-card"
 import { SpecificationsCard } from "./product-details/specifications-card"
 import { PricingCard } from "./product-details/pricing-card"
-import { InventoryCard } from "./product-details/inventory-card"
 import { ShippingCard } from "./product-details/shipping-card"
 import { VariantsCard } from "./product-details/variants-card"
 import { SEOCard } from "./product-details/seo-card"
@@ -105,23 +104,23 @@ export function ProductDetails({ id }: { id: string }) {
         return
       }
 
-      // Step 2: Link the media asset to this product
       const nextPosition = product?.images?.length || 0
       const linkRes = await apiRequest(`/admin/products/${id}/images`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mediaId: mediaAsset.id, position: nextPosition }),
+        body: JSON.stringify({ mediaId: mediaAsset.id, url: mediaAsset.url, position: nextPosition }),
       })
       
       if (linkRes.ok) {
         const body = await linkRes.json()
-        if (body.data) {
+        const imageUrl = body.data?.url || mediaAsset.url
+        if (imageUrl) {
           const newImg: ProductImage = {
-            id: body.data.id,
-            url: body.data.url,
-            variantId: body.data.variantId || null,
-            position: body.data.position || 0,
-            altText: body.data.altText || null,
+            id: body.data?.id || mediaAsset.id || `img-${Date.now()}`,
+            url: imageUrl,
+            variantId: null,
+            position: nextPosition,
+            altText: product?.title || null,
           }
           setProduct(prev => {
             if (!prev) return null
@@ -291,83 +290,103 @@ export function ProductDetails({ id }: { id: string }) {
           const body = await res.json()
           if (active && body.data) {
             const p = body.data
-            const defaultVariant = p.variants?.find((v: APIVariant) => v.isDefault) || p.variants?.[0]
-            const priceFormatted = defaultVariant 
-              ? formatPrice(defaultVariant.price, { currency: p.currency || "USD", isMinorUnit: true }) 
-              : "-"
-            
             const rawStatus = p.status || "draft"
             const capitalizedStatus = (rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1)) as "Active" | "Draft" | "Archived"
             
             const rawType = p.productType || "physical"
             const capitalizedType = rawType.charAt(0).toUpperCase() + rawType.slice(1)
 
+            const rawPricing = p.rawPricing || p.pricing || {}
+            const activeCurr = p.currency || "SAR"
+            const knownCurrencies = ["SAR", "USD", "AED", "EUR", "GBP", "INR"]
+            const allCurrencies = Array.from(new Set([...knownCurrencies, ...Object.keys(rawPricing)]))
+
+            const variantPrices: VariantPrice[] = allCurrencies.map((cCode) => {
+              const pData = rawPricing[cCode]
+              const rawP = pData?.price
+              const pVal = rawP !== undefined && rawP !== null ? (rawP > 1000 ? rawP / 1000 : rawP) : (cCode === activeCurr ? (p.price ?? "") : "")
+              const rawC = pData?.compare_at || pData?.compareAtPrice
+              const cVal = rawC !== undefined && rawC !== null ? (rawC > 1000 ? rawC / 1000 : rawC) : undefined
+              const rawCost = pData?.cost_per_item || pData?.costPerItem
+              const costVal = rawCost !== undefined && rawCost !== null ? (rawCost > 1000 ? rawCost / 1000 : rawCost) : undefined
+              return {
+                currencyCode: cCode,
+                price: pVal,
+                compareAtPrice: cVal,
+                costPerItem: costVal,
+              }
+            })
+
+            const initialCurrencyEntry = variantPrices.find(vp => vp.currencyCode.toUpperCase() === activeCurr.toUpperCase())
+            const initialActivePrice = initialCurrencyEntry?.price !== undefined && initialCurrencyEntry?.price !== "" 
+              ? initialCurrencyEntry.price 
+              : (p.price ?? "")
+            const initialActiveCompare = initialCurrencyEntry?.compareAtPrice !== undefined 
+              ? initialCurrencyEntry.compareAtPrice 
+              : p.compareAtPrice
+
             const mapped: Product = {
               id: p.id,
-              image: p.images?.[0]?.url || "https://placehold.co/300x300?text=No+Image",
-              images: p.images?.map((img: APIProductImage) => ({
-                id: img.id,
-                url: img.url,
-                variantId: img.variantId || null,
-                position: img.position || 0,
-                altText: img.altText || null,
-              })).sort((a: ProductImage, b: ProductImage) => a.position - b.position) || [],
+              image: (p.images && p.images.length > 0) ? (typeof p.images[0] === 'string' ? p.images[0] : (p.images[0].url || p.images[0].src)) : "https://placehold.co/300x300?text=No+Image",
+              images: (p.images || []).map((img: any, idx: number) => ({
+                id: typeof img === 'object' && img.id ? img.id : `img-${idx}`,
+                url: typeof img === 'string' ? img : (img.url || img.src || ''),
+                position: typeof img === 'object' && img.position !== undefined ? img.position : idx,
+                altText: p.title,
+              })),
               title: p.title,
               description: p.description || "",
               status: capitalizedStatus,
-              inventory: defaultVariant?.sku ? `${defaultVariant.sku} (${priceFormatted})` : "No SKU",
-              salesChannels: p.salesChannels?.length || 1,
+              inventory: p.sku ? `${p.sku} (${formatPrice(Number(initialActivePrice) || 0, { currency: activeCurr })})` : "No SKU",
+              salesChannels: 1,
               markets: 1,
-              category: p.categories?.[0]?.name || "-",
-              categoryIds: p.categories?.map((cat: APICategory) => cat.id) || [],
+              category: p.categoryName || "-",
+              categoryArabic: p.categoryArabic || p.categories?.[0]?.arabicName || "",
+              categoryEnglish: p.categoryEnglish || p.categoryName || "-",
+              categoryIds: p.categoryIds || (p.categoryId ? [p.categoryId] : []),
               type: capitalizedType,
-              vendor: p.vendorName || "-",
-              price: defaultVariant ? (defaultVariant.price !== undefined ? defaultVariant.price / 100 : "") : "",
-              compareAtPrice: defaultVariant && defaultVariant.compareAtPrice ? defaultVariant.compareAtPrice / 100 : undefined,
-              costPerItem: defaultVariant && defaultVariant.costPerItem !== undefined && defaultVariant.costPerItem !== null ? defaultVariant.costPerItem / 100 : undefined,
-              sku: defaultVariant?.sku || undefined,
-              barcode: defaultVariant?.barcode || undefined,
-              trackQuantity: defaultVariant?.trackInventory,
-              continueSellingWhenOutOfStock: defaultVariant?.allowBackorder || false,
-              quantity: defaultVariant?.availableQuantity !== undefined ? defaultVariant.availableQuantity : undefined,
-              weight: defaultVariant?.weightGrams ? defaultVariant.weightGrams / 1000 : undefined,
+              vendor: "-",
+              price: initialActivePrice,
+              compareAtPrice: initialActiveCompare,
+              costPerItem: initialCurrencyEntry?.costPerItem,
+              sku: p.sku || undefined,
+              barcode: undefined,
+              trackQuantity: true,
+              continueSellingWhenOutOfStock: false,
+              quantity: p.stockQuantity ?? 100,
+              moq: p.moq ?? 1,
+              moqStep: p.moqStep ?? 1,
+              weight: undefined,
               weightUnit: "kg",
-              countryOfOrigin: defaultVariant?.countryOfOrigin || undefined,
-              hsCode: defaultVariant?.hsCode || undefined,
+              countryOfOrigin: undefined,
+              hsCode: undefined,
               collections: p.collections?.map((c: APICollection) => c.name) || [],
               publishingDetails: p.salesChannels?.map((sc: APISalesChannel) => ({
                 channel: sc.name,
                 published: sc.status === "active",
                 date: sc.createdAt,
               })) || [],
-              variants: p.variants?.map((v: APIVariant) => ({
-                id: v.id,
-                name: v.title || "Default",
-                sku: v.sku || "",
-                price: v.price / 100,
-                compareAtPrice: v.compareAtPrice ? v.compareAtPrice / 100 : undefined,
-                costPerItem: v.costPerItem !== undefined && v.costPerItem !== null ? v.costPerItem / 100 : undefined,
-                prices: v.prices?.map((pr) => ({
-                  currencyCode: pr.currencyCode,
-                  price: pr.price / 100,
-                  compareAtPrice: pr.compareAtPrice ? pr.compareAtPrice / 100 : undefined,
-                  costPerItem: pr.costPerItem !== undefined && pr.costPerItem !== null ? pr.costPerItem / 100 : undefined,
-                })) || [],
-                barcode: v.barcode || undefined,
-                trackInventory: v.trackInventory ?? true,
-                inventory: v.availableQuantity ?? 0,
-                allowBackorder: v.allowBackorder ?? false,
-                weightGrams: v.weightGrams ?? undefined,
-                countryOfOrigin: v.countryOfOrigin || undefined,
-                hsCode: v.hsCode || undefined,
-                attributes: v.attributes || {},
-                isDefault: v.isDefault ?? false,
-              })) || [],
+              variants: [
+                {
+                  id: p.variants?.[0]?.id || `var-${p.id}`,
+                  name: p.variants?.[0]?.title || "Default",
+                  sku: p.sku || "",
+                  price: initialActivePrice,
+                  compareAtPrice: initialActiveCompare,
+                  costPerItem: initialCurrencyEntry?.costPerItem,
+                  prices: variantPrices,
+                  barcode: p.barcode || undefined,
+                  trackInventory: false,
+                  inventory: p.stockQuantity ?? 100,
+                  allowBackorder: false,
+                  isDefault: true,
+                }
+              ],
               seo: p.metaTitle || p.metaDescription ? {
                 title: p.metaTitle || p.title,
                 description: p.metaDescription || "",
               } : undefined,
-              currency: p.currency || "USD",
+              currency: activeCurr,
               translations: p.translations || {},
               specifications: p.specifications || {},
               arabicTitle: p.translations?.ar?.name || p.specifications?.arabicName || "",
@@ -397,8 +416,7 @@ export function ProductDetails({ id }: { id: string }) {
 
   const hasChanges = React.useMemo(() => {
     if (!product || !initialProduct) return false
-    const normProduct = { ...product, currency: initialProduct.currency }
-    return JSON.stringify(normProduct) !== JSON.stringify(initialProduct)
+    return JSON.stringify(product) !== JSON.stringify(initialProduct)
   }, [product, initialProduct])
 
   const handleSave = async () => {
@@ -435,14 +453,56 @@ export function ProductDetails({ id }: { id: string }) {
 
     setIsSaving(true)
     try {
+      const currentCurr = (product.currency || 'SAR').toUpperCase()
+      const activePrice = product.price !== "" && product.price !== undefined && product.price !== null ? Number(product.price) : 0
+      const activeCompare = product.compareAtPrice !== undefined && product.compareAtPrice !== null && product.compareAtPrice !== "" ? Number(product.compareAtPrice) : undefined
+      const activeCost = product.costPerItem !== undefined && product.costPerItem !== null && product.costPerItem !== "" ? Number(product.costPerItem) : undefined
+
+      // Build complete pricing map for all currencies
+      const pricingMap: Record<string, { price: number; compare_at?: number; cost_per_item?: number }> = {}
+      
+      // First populate from variant.prices
+      if (product.variants?.[0]?.prices && product.variants[0].prices.length > 0) {
+        for (const pr of product.variants[0].prices) {
+          if (!pr.currencyCode) continue
+          const code = pr.currencyCode.toUpperCase()
+          const pNum = pr.price !== "" && pr.price !== undefined && pr.price !== null ? Number(pr.price) : undefined
+          if (pNum !== undefined && !isNaN(pNum)) {
+            const cNum = pr.compareAtPrice !== undefined && pr.compareAtPrice !== null && pr.compareAtPrice !== "" && !isNaN(Number(pr.compareAtPrice)) ? Number(pr.compareAtPrice) : undefined
+            const costNum = pr.costPerItem !== undefined && pr.costPerItem !== null && pr.costPerItem !== "" && !isNaN(Number(pr.costPerItem)) ? Number(pr.costPerItem) : undefined
+            pricingMap[code] = {
+              price: pNum > 0 && pNum < 1000 ? Math.round(pNum * 1000) : pNum,
+              ...(cNum !== undefined ? { compare_at: cNum > 0 && cNum < 1000 ? Math.round(cNum * 1000) : cNum } : {}),
+              ...(costNum !== undefined ? { cost_per_item: costNum > 0 && costNum < 1000 ? Math.round(costNum * 1000) : costNum } : {}),
+            }
+          }
+        }
+      }
+
+      // Always ensure current active currency is up to date in pricingMap
+      pricingMap[currentCurr] = {
+        price: activePrice > 0 && activePrice < 1000 ? Math.round(activePrice * 1000) : activePrice,
+        ...(activeCompare !== undefined ? { compare_at: activeCompare > 0 && activeCompare < 1000 ? Math.round(activeCompare * 1000) : activeCompare } : {}),
+        ...(activeCost !== undefined ? { cost_per_item: activeCost > 0 && activeCost < 1000 ? Math.round(activeCost * 1000) : activeCost } : {}),
+      }
+
       const patchData = {
         title: product.title,
         description: product.description || null,
         status: (product.status.toLowerCase()) as 'draft' | 'active' | 'archived',
-        productType: (product.type.toLowerCase()) as 'physical' | 'digital',
         tags: product.tags || [],
+        price: activePrice,
+        compareAtPrice: activeCompare,
+        currency: currentCurr,
+        pricing: pricingMap,
+        moq: (product.moq !== undefined && product.moq !== "") 
+          ? Math.max(1, Number(product.moq) || 1) 
+          : ((product.specifications?.moq !== undefined && product.specifications?.moq !== "") 
+              ? Math.max(1, Number(product.specifications.moq) || 1) 
+              : 1),
+        moqStep: (product.moqStep !== undefined && product.moqStep !== "") ? Math.max(1, Number(product.moqStep) || 1) : 1,
+        images: (product.images || []).map((img) => typeof img === 'string' ? img : img.url).filter(Boolean),
         categoryIds: (product.categoryIds || []).filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)),
-        vendorId: (product.vendorId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(product.vendorId)) ? product.vendorId : null,
         metaTitle: product.seo?.title || null,
         metaDescription: product.seo?.description || null,
         translations: {
@@ -459,34 +519,30 @@ export function ProductDetails({ id }: { id: string }) {
           delete specs.descriptionArabic
           return specs
         })(),
-        variants: product.variants?.map((v, idx) => {
-          const currencyPrices = (v.prices && v.prices.length > 0)
-            ? v.prices.map((p) => ({
-                currencyCode: p.currencyCode,
-                price: Math.round(Number(p.price || 0) * 100),
-                compareAtPrice: p.compareAtPrice !== undefined && p.compareAtPrice !== null && p.compareAtPrice !== "" ? Math.round(Number(p.compareAtPrice) * 100) : null,
-                costPerItem: p.costPerItem !== undefined && p.costPerItem !== null && p.costPerItem !== "" ? Math.round(Number(p.costPerItem) * 100) : null,
-              }))
-            : undefined
-
-          return {
-            id: v.id || undefined,
-            sku: v.sku || "AUTO",
-            title: v.name,
-            price: Math.round(Number(v.price || 0) * 100),
-            compareAtPrice: v.compareAtPrice !== undefined && v.compareAtPrice !== null && v.compareAtPrice !== "" ? Math.round(Number(v.compareAtPrice) * 100) : null,
-            costPerItem: v.costPerItem !== undefined && v.costPerItem !== null && v.costPerItem !== "" ? Math.round(Number(v.costPerItem) * 100) : null,
-            prices: currencyPrices,
-            barcode: v.barcode || null,
+        variants: [
+          {
+            id: product.variants?.[0]?.id,
+            sku: product.sku || "AUTO",
+            title: "Default",
+            price: activePrice,
+            compareAtPrice: activeCompare,
+            costPerItem: activeCost,
+            prices: Object.entries(pricingMap).map(([cCode, pData]) => ({
+              currencyCode: cCode,
+              price: pData.price > 1000 ? pData.price / 1000 : pData.price,
+              compareAtPrice: pData.compare_at ? (pData.compare_at > 1000 ? pData.compare_at / 1000 : pData.compare_at) : undefined,
+              costPerItem: pData.cost_per_item ? (pData.cost_per_item > 1000 ? pData.cost_per_item / 1000 : pData.cost_per_item) : undefined,
+            })),
+            barcode: product.variants?.[0]?.barcode || null,
             trackInventory: false,
             availableQuantity: 999999,
-            allowBackorder: v.allowBackorder ?? false,
-            countryOfOrigin: v.countryOfOrigin || null,
-            hsCode: v.hsCode || null,
-            weightGrams: v.weightGrams !== undefined && v.weightGrams !== null && v.weightGrams !== "" ? Math.round(Number(v.weightGrams)) : null,
-            isDefault: idx === 0,
+            allowBackorder: false,
+            countryOfOrigin: product.variants?.[0]?.countryOfOrigin || null,
+            hsCode: product.variants?.[0]?.hsCode || null,
+            weightGrams: product.variants?.[0]?.weightGrams !== undefined && product.variants?.[0]?.weightGrams !== null && product.variants?.[0]?.weightGrams !== "" ? Math.round(Number(product.variants[0].weightGrams)) : null,
+            isDefault: true,
           }
-        }) || []
+        ]
       }
       
       const res = await apiRequest(`/admin/products/${id}`, {
@@ -498,85 +554,102 @@ export function ProductDetails({ id }: { id: string }) {
         const body = await res.json()
         if (body.data) {
           const p = body.data
-          const defaultVariant = p.variants?.find((v: APIVariant) => v.isDefault) || p.variants?.[0]
-          const priceFormatted = defaultVariant 
-            ? formatPrice(defaultVariant.price, { currency: p.currency || "USD", isMinorUnit: true }) 
-            : "-"
-          
           const rawStatus = p.status || "draft"
           const capitalizedStatus = (rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1)) as "Active" | "Draft" | "Archived"
           
           const rawType = p.productType || "physical"
           const capitalizedType = rawType.charAt(0).toUpperCase() + rawType.slice(1)
 
+          const savedPricing = p.rawPricing || p.pricing || pricingMap
+          const activeSavedCurr = product.currency || p.currency || "SAR"
+          const knownCurrencies = ["SAR", "USD", "AED", "EUR", "GBP", "INR"]
+          const allCurrencies = Array.from(new Set([...knownCurrencies, ...Object.keys(savedPricing)]))
+
+          const savedVariantPrices: VariantPrice[] = allCurrencies.map((cCode) => {
+            const pData = savedPricing[cCode]
+            const rawP = pData?.price
+            const pVal = rawP !== undefined && rawP !== null ? (rawP > 1000 ? rawP / 1000 : rawP) : ""
+            const rawC = pData?.compare_at || pData?.compareAtPrice
+            const cVal = rawC !== undefined && rawC !== null ? (rawC > 1000 ? rawC / 1000 : rawC) : undefined
+            const rawCost = pData?.cost_per_item || pData?.costPerItem
+            const costVal = rawCost !== undefined && rawCost !== null ? (rawCost > 1000 ? rawCost / 1000 : rawCost) : undefined
+            return {
+              currencyCode: cCode,
+              price: pVal,
+              compareAtPrice: cVal,
+              costPerItem: costVal,
+            }
+          })
+
+          const activeSavedPriceEntry = savedVariantPrices.find(vp => vp.currencyCode.toUpperCase() === activeSavedCurr.toUpperCase())
+          const savedActivePrice = activeSavedPriceEntry?.price !== undefined && activeSavedPriceEntry?.price !== ""
+            ? activeSavedPriceEntry.price
+            : (p.price ?? "")
+          const savedActiveCompare = activeSavedPriceEntry?.compareAtPrice !== undefined
+            ? activeSavedPriceEntry.compareAtPrice
+            : p.compareAtPrice
+
           const mapped: Product = {
             id: p.id,
-            image: p.images?.[0]?.url || product.image || "https://placehold.co/300x300?text=No+Image",
-            images: p.images?.map((img: APIProductImage) => ({
-              id: img.id,
-              url: img.url,
-              variantId: img.variantId || null,
-              position: img.position || 0,
-              altText: img.altText || null,
-            })) || product.images || [],
+            image: (p.images && p.images.length > 0) ? (typeof p.images[0] === 'string' ? p.images[0] : (p.images[0].url || p.images[0].src)) : "https://placehold.co/300x300?text=No+Image",
+            images: (p.images || []).map((img: any, idx: number) => ({
+              id: typeof img === 'object' && img.id ? img.id : `img-${idx}`,
+              url: typeof img === 'string' ? img : (img.url || img.src || ''),
+              position: typeof img === 'object' && img.position !== undefined ? img.position : idx,
+              altText: p.title,
+            })),
             title: p.title,
             description: p.description || "",
             status: capitalizedStatus,
-            inventory: defaultVariant?.sku ? `${defaultVariant.sku} (${priceFormatted})` : "No SKU",
-            salesChannels: p.salesChannels?.length || 1,
+            inventory: p.sku ? `${p.sku} (${formatPrice(Number(savedActivePrice) || 0, { currency: activeSavedCurr })})` : "No SKU",
+            salesChannels: 1,
             markets: 1,
-            category: p.categories?.[0]?.name || "-",
-            categoryIds: p.categories?.map((cat: APICategory) => cat.id) || [],
+            category: p.categoryName || "-",
+            categoryIds: p.categoryIds || (p.categoryId ? [p.categoryId] : []),
             type: capitalizedType,
-            vendor: p.vendorName || "-",
-            vendorId: p.vendorId || null,
-            price: defaultVariant ? defaultVariant.price / 100 : 0,
-            compareAtPrice: defaultVariant && defaultVariant.compareAtPrice ? defaultVariant.compareAtPrice / 100 : undefined,
-            costPerItem: defaultVariant && defaultVariant.costPerItem !== undefined && defaultVariant.costPerItem !== null ? defaultVariant.costPerItem / 100 : undefined,
-            sku: defaultVariant?.sku || undefined,
-            barcode: defaultVariant?.barcode || undefined,
-            trackQuantity: defaultVariant?.trackInventory,
-            continueSellingWhenOutOfStock: defaultVariant?.allowBackorder || false,
-            quantity: defaultVariant?.availableQuantity !== undefined ? defaultVariant.availableQuantity : undefined,
-            weight: defaultVariant?.weightGrams ? defaultVariant.weightGrams / 1000 : undefined,
+            vendor: "-",
+            vendorId: null,
+            price: savedActivePrice,
+            compareAtPrice: savedActiveCompare,
+            costPerItem: activeSavedPriceEntry?.costPerItem,
+            sku: p.sku || undefined,
+            barcode: undefined,
+            trackQuantity: true,
+            continueSellingWhenOutOfStock: false,
+            quantity: p.stockQuantity ?? 100,
+            moq: p.moq ?? 1,
+            moqStep: p.moqStep ?? 1,
+            weight: undefined,
             weightUnit: "kg",
-            countryOfOrigin: defaultVariant?.countryOfOrigin || undefined,
-            hsCode: defaultVariant?.hsCode || undefined,
+            countryOfOrigin: undefined,
+            hsCode: undefined,
             collections: p.collections?.map((c: APICollection) => c.name) || [],
             publishingDetails: p.salesChannels?.map((sc: APISalesChannel) => ({
               channel: sc.name,
               published: sc.status === "active",
               date: sc.createdAt,
             })) || [],
-            variants: p.variants?.map((v: APIVariant) => ({
-              id: v.id,
-              name: v.title || "Default",
-              sku: v.sku || "",
-              price: v.price / 100,
-              compareAtPrice: v.compareAtPrice ? v.compareAtPrice / 100 : undefined,
-              costPerItem: v.costPerItem !== undefined && v.costPerItem !== null ? v.costPerItem / 100 : undefined,
-              prices: v.prices?.map((pr) => ({
-                currencyCode: pr.currencyCode,
-                price: pr.price / 100,
-                compareAtPrice: pr.compareAtPrice ? pr.compareAtPrice / 100 : undefined,
-                costPerItem: pr.costPerItem !== undefined && pr.costPerItem !== null ? pr.costPerItem / 100 : undefined,
-              })) || [],
-              barcode: v.barcode || undefined,
-              trackInventory: v.trackInventory ?? true,
-              inventory: v.availableQuantity ?? 0,
-              allowBackorder: v.allowBackorder ?? false,
-              weightGrams: v.weightGrams ?? undefined,
-              countryOfOrigin: v.countryOfOrigin || undefined,
-              hsCode: v.hsCode || undefined,
-              attributes: v.attributes || {},
-              isDefault: v.isDefault ?? false,
-            })) || [],
+            variants: [
+              {
+                id: p.variants?.[0]?.id || `var-${p.id}`,
+                name: p.variants?.[0]?.title || "Default",
+                sku: p.sku || "",
+                price: savedActivePrice,
+                compareAtPrice: savedActiveCompare,
+                costPerItem: activeSavedPriceEntry?.costPerItem,
+                prices: savedVariantPrices,
+                barcode: p.barcode || undefined,
+                trackInventory: false,
+                inventory: p.stockQuantity ?? 100,
+                allowBackorder: false,
+                isDefault: true,
+              }
+            ],
             seo: p.metaTitle || p.metaDescription ? {
               title: p.metaTitle || p.title,
               description: p.metaDescription || "",
             } : undefined,
-            tags: p.tags || [],
-            currency: p.currency || "USD",
+            currency: activeSavedCurr,
             translations: p.translations || {},
             specifications: p.specifications || {},
             arabicTitle: p.translations?.ar?.name || p.specifications?.arabicName || "",
@@ -757,7 +830,7 @@ export function ProductDetails({ id }: { id: string }) {
   const hasInventoryDetails = isSingleVariant && (product.sku || product.barcode || product.trackQuantity !== undefined || product.quantity !== undefined)
   const hasShipping = isSingleVariant && (product.weight !== undefined || product.countryOfOrigin || product.hsCode)
   const hasPricing = isSingleVariant && product.price !== undefined
-  const hasOrganization = product.vendor || product.category || product.type || (product.tags && product.tags.length > 0) || (product.collections && product.collections.length > 0)
+  const hasOrganization = product.tags && product.tags.length > 0
   const hasPublishing = product.publishingDetails && product.publishingDetails.length > 0
 
   const numericPrice = Number(product.price || 0)
@@ -827,19 +900,12 @@ export function ProductDetails({ id }: { id: string }) {
             />
           )}
 
-          {/* Variants Card */}
-          <VariantsCard
+
+          {/* Product Specifications & MOUQ File Card */}
+          <SpecificationsCard
             product={product}
             setProduct={setProduct}
-            isSingleVariant={isSingleVariant}
-            hasCompareAtPrice={hasCompareAtPrice}
-            currencySymbol={currencySymbol}
-            handleAddVariant={handleAddVariant}
-            toggleExpandVariant={toggleExpandVariant}
-            expandedVariantIdxs={expandedVariantIdxs}
-            setVariantImageSelectorIdx={setVariantImageSelectorIdx}
-            setVariantToDeleteIdx={setVariantToDeleteIdx}
-            setIsDeleteVariantModalOpen={setIsDeleteVariantModalOpen}
+            activeTab={activeTab}
           />
 
           {/* Search engine listing */}
