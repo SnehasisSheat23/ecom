@@ -44,12 +44,8 @@ export class ProductsService {
         let p = typeof data === 'object' ? data.price : (data as any)
         let c = typeof data === 'object' ? data.compare_at : undefined
 
-        if (typeof p === 'number' && !isNaN(p) && p > 0) {
-          p = Math.round(p * 100)
-        }
-        if (typeof c === 'number' && !isNaN(c) && c > 0) {
-          c = Math.round(c * 100)
-        }
+        p = typeof p === 'number' && !isNaN(p) ? p : Number(p || 0)
+        c = (c !== undefined && c !== null && !isNaN(Number(c))) ? Number(c) : undefined
 
         result[code] = {
           price: p || 0,
@@ -57,8 +53,8 @@ export class ProductsService {
         }
       }
     } else if (defaultPrice !== undefined) {
-      let p = defaultPrice > 0 ? Math.round(defaultPrice * 100) : defaultPrice
-      let c = defaultCompareAt && defaultCompareAt > 0 ? Math.round(defaultCompareAt * 100) : defaultCompareAt
+      let p = typeof defaultPrice === 'number' ? defaultPrice : Number(defaultPrice || 0)
+      let c = (defaultCompareAt !== undefined && defaultCompareAt !== null && !isNaN(Number(defaultCompareAt))) ? Number(defaultCompareAt) : undefined
 
       result[defaultCurrency] = {
         price: p || 0,
@@ -67,7 +63,7 @@ export class ProductsService {
     }
 
     if (!result['AED']) {
-      result['AED'] = { price: 6500, compare_at: 7500 }
+      result['AED'] = { price: 65, compare_at: 75 }
     }
 
     return result
@@ -211,8 +207,6 @@ export class ProductsService {
         const code = pr.currencyCode.toUpperCase()
         let p = Number(pr.price) || 0
         let c = pr.compareAtPrice !== undefined && pr.compareAtPrice !== null && pr.compareAtPrice !== "" ? Number(pr.compareAtPrice) : undefined
-        if (p > 0) p = Math.round(p * 100)
-        if (c !== undefined && c > 0) c = Math.round(c * 100)
         updatedPricing[code] = {
           price: p,
           ...(c !== undefined ? { compare_at: c } : {}),
@@ -222,8 +216,8 @@ export class ProductsService {
 
     if (input.price !== undefined) {
       const activeCurrency = (input.currency || 'SAR').toUpperCase()
-      let p = input.price > 0 ? Math.round(input.price * 100) : input.price
-      let c = input.compareAtPrice && input.compareAtPrice > 0 ? Math.round(input.compareAtPrice * 100) : input.compareAtPrice
+      let p = typeof input.price === 'number' ? input.price : Number(input.price || 0)
+      let c = (input.compareAtPrice !== undefined && input.compareAtPrice !== null && !isNaN(Number(input.compareAtPrice))) ? Number(input.compareAtPrice) : undefined
       updatedPricing[activeCurrency] = {
         price: p,
         ...(c !== undefined ? { compare_at: c } : {}),
@@ -235,35 +229,25 @@ export class ProductsService {
       updatedImages = input.images.map((img: any) => typeof img === 'string' ? img : (img.url || img.src || ''))
     }
 
-    let targetCategoryId = existing.categoryId
-    if (input.categoryId !== undefined) {
-      targetCategoryId = input.categoryId
-    } else if (input.categoryIds !== undefined) {
-      targetCategoryId = input.categoryIds[0] || null
-    }
-
     const [updated] = await this.db
       .update(products)
       .set({
-        ...(input.sku && { sku: input.sku }),
-        categoryId: targetCategoryId,
+        categoryId: input.categoryId !== undefined ? input.categoryId : existing.categoryId,
         translations: updatedTranslations,
         pricing: updatedPricing,
-        ...(input.moq !== undefined && { moq: input.moq }),
-        ...(input.moqStep !== undefined && { moqStep: input.moqStep }),
-        ...(input.seo && { seo: input.seo }),
-        ...(input.attributes && { attributes: input.attributes }),
-        ...(input.specifications && { specifications: input.specifications }),
-        ...(input.stockQuantity !== undefined && { stockQuantity: input.stockQuantity }),
-        ...(input.status && { status: input.status.toLowerCase() }),
+        moq: input.moq !== undefined ? input.moq : existing.moq,
+        moqStep: input.moqStep !== undefined ? input.moqStep : existing.moqStep,
+        stockQuantity: input.stockQuantity !== undefined ? input.stockQuantity : existing.stockQuantity,
+        status: input.status !== undefined ? input.status : existing.status,
         images: updatedImages,
+        specifications: input.specifications !== undefined ? input.specifications : existing.specifications,
+        attributes: input.attributes !== undefined ? input.attributes : existing.attributes,
         updatedAt: new Date(),
       })
       .where(eq(products.id, id))
       .returning()
 
-    const returnCurrency = input.currency || (Object.keys(updatedPricing)[0] || 'SAR')
-    return this.formatProduct(updated, 'en', returnCurrency)
+    return this.formatProduct(updated, 'en', 'SAR')
   }
 
   async deleteProduct(id: string) {
@@ -271,12 +255,17 @@ export class ProductsService {
     return deleted
   }
 
-  validateMoq(moq: number, moqStep: number, quantity: number): { valid: boolean; reason?: string } {
-    if (quantity < moq) {
-      return { valid: false, reason: `Quantity must be at least minimum order quantity of ${moq}.` }
+  async validateMoq(productId: string, quantity: number): Promise<{ valid: boolean; reason?: string }> {
+    const [prod] = await this.db.select().from(products).where(eq(products.id, productId)).limit(1)
+    if (!prod) {
+      return { valid: false, reason: 'Product not found' }
     }
-    const delta = quantity - moq
-    if (delta % moqStep !== 0) {
+    const moq = prod.moq || 1
+    const moqStep = prod.moqStep || 1
+    if (quantity < moq) {
+      return { valid: false, reason: `Minimum order quantity is ${moq}.` }
+    }
+    if ((quantity - moq) % moqStep !== 0) {
       return { valid: false, reason: `Quantity must be ordered in increments of ${moqStep} above minimum quantity of ${moq}.` }
     }
     return { valid: true }
@@ -286,11 +275,11 @@ export class ProductsService {
     const langData = (product.translations?.[lang] || product.translations?.['en'] || product.translations?.['ar'] || {}) as any
     const priceData = product.pricing[currency] || product.pricing['SAR'] || product.pricing['AED'] || { price: 0 }
 
-    // Stored as integer cents/fils (x100). Convert to standard decimal units (val / 100) for API response
-    const rawPrice = priceData.price || 0
-    const price = rawPrice > 0 ? rawPrice / 100 : 0
+    // Stored directly as standard decimal units
+    const rawPrice = priceData.price ?? 0
+    const price = Number(rawPrice) || 0
     const rawCompare = priceData.compare_at
-    const compareAtPrice = (rawCompare && rawCompare > 0) ? rawCompare / 100 : rawCompare
+    const compareAtPrice = (rawCompare !== undefined && rawCompare !== null) ? Number(rawCompare) : undefined
 
     let categoryName = '-'
     let categoryArabic = ''
@@ -305,16 +294,24 @@ export class ProductsService {
     }
 
     const variantPrices = Object.entries(product.pricing || {}).map(([cCode, pData]: [string, any]) => {
-      const rawP = pData?.price || 0
-      const pVal = rawP > 0 ? rawP / 100 : 0
+      const rawP = pData?.price ?? 0
+      const pVal = Number(rawP) || 0
       const rawC = pData?.compare_at
-      const cVal = (rawC && rawC > 0) ? rawC / 100 : rawC
+      const cVal = (rawC !== undefined && rawC !== null) ? Number(rawC) : undefined
       return {
         currencyCode: cCode,
         price: pVal,
         compareAtPrice: cVal !== undefined ? cVal : undefined,
       }
     })
+
+    const decimalPricing: Record<string, { price: number; compare_at?: number }> = {}
+    for (const vp of variantPrices) {
+      decimalPricing[vp.currencyCode] = {
+        price: vp.price,
+        ...(vp.compareAtPrice !== undefined ? { compare_at: vp.compareAtPrice } : {}),
+      }
+    }
 
     const variants = [
       {
@@ -362,10 +359,10 @@ export class ProductsService {
       status: product.status,
       images: product.images || [],
       variants,
-      pricing: product.pricing,
+      pricing: decimalPricing,
       translations: rawTranslations,
       rawTranslations,
-      rawPricing: product.pricing,
+      rawPricing: decimalPricing,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
     }

@@ -86,7 +86,8 @@ export class StorefrontService {
    */
   async getProducts(options: StorefrontProductsOptions) {
     const lang = options.lang || 'en'
-    const currency = options.currency || 'AED'
+    const rawCurr = (options.currency || 'AED').toUpperCase()
+    const currency = rawCurr === 'ر.س' ? 'SAR' : (rawCurr === 'د.إ' ? 'AED' : rawCurr)
     const limit = Math.min(100, Math.max(1, options.limit || 20))
     const page = Math.max(1, options.page || 1)
     const offset = (page - 1) * limit
@@ -171,6 +172,8 @@ export class StorefrontService {
    * Get single active product detail by ID or Slug
    */
   async getProductBySlugOrId(idOrSlug: string, lang: 'en' | 'ar' = 'en', currency: string = 'AED') {
+    const rawCurr = (currency || 'AED').toUpperCase()
+    const normalizedCurr = rawCurr === 'ر.س' ? 'SAR' : (rawCurr === 'د.إ' ? 'AED' : rawCurr)
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug)
 
     let product
@@ -234,7 +237,9 @@ export class StorefrontService {
     const langData = translations[lang] || translations['en'] || translations['ar'] || {}
 
     const pricing = (product.pricing || {}) as Record<string, { price: number; compare_at?: number }>
-    const priceData = pricing[currency] || pricing['AED'] || pricing['SAR'] || { price: 0 }
+    const rawCurr = (currency || 'AED').toUpperCase()
+    const normalizedCurr = rawCurr === 'ر.س' ? 'SAR' : (rawCurr === 'د.إ' ? 'AED' : rawCurr)
+    const priceData = pricing[normalizedCurr] || pricing[currency] || pricing['SAR'] || pricing['AED'] || { price: 0 }
 
     let categoryName = '-'
     let categorySlug = ''
@@ -250,10 +255,10 @@ export class StorefrontService {
     const specs = (product.specifications || {}) as Record<string, any>
     const shortDesc = (lang === 'ar' ? (specs.netWeightAr || specs.netWeight) : specs.netWeight) || specs.packSize || specs.size || ''
 
-    const rawPrice = priceData.price || 0
-    const price = rawPrice > 0 ? rawPrice / 100 : 0
+    const rawPrice = priceData.price ?? 0
+    const price = Number(rawPrice) || 0
     const rawCompare = priceData.compare_at
-    const compareAtPrice = (rawCompare && rawCompare > 0) ? rawCompare / 100 : rawCompare
+    const compareAtPrice = (rawCompare !== undefined && rawCompare !== null) ? Number(rawCompare) : undefined
 
     const arabicTitle = translations.ar?.title || translations.ar?.name || (product.specifications as any)?.arabicName || null
     const englishTitle = translations.en?.title || translations.en?.name || product.sku

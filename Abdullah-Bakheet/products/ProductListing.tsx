@@ -38,7 +38,7 @@ export default function ProductListing() {
         async function loadBackendData() {
             try {
                 const [backendProds, backendCats] = await Promise.all([
-                    fetchProducts(60),
+                    fetchProducts({ limit: 60, currency, lang: isArabic ? 'ar' : 'en' }),
                     fetchCategories(60),
                 ]);
                 if (isMounted) {
@@ -62,7 +62,7 @@ export default function ProductListing() {
         }
         loadBackendData();
         return () => { isMounted = false; };
-    }, []);
+    }, [currency, isArabic]);
 
     const filteredProducts = useMemo(() => {
         return products.filter((product) => {

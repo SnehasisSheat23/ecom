@@ -67,10 +67,11 @@ interface UserProfile {
 
 export const CURRENCY_RATES: Record<string, { rate: number; symbol: string; code: string }> = {
     'AED': { rate: 1.0, symbol: 'AED', code: 'AED' },
-    'SAR': { rate: 1.02, symbol: 'ر.س', code: 'SAR' },
+    'SAR': { rate: 1.02, symbol: 'SAR', code: 'SAR' },
     'USD': { rate: 0.272, symbol: '$', code: 'USD' },
     'EUR': { rate: 0.25, symbol: '€', code: 'EUR' },
     'INR': { rate: 22.7, symbol: '₹', code: 'INR' },
+    'GBP': { rate: 0.21, symbol: '£', code: 'GBP' },
     'ر.س': { rate: 1.02, symbol: 'ر.س', code: 'SAR' },
     'د.إ': { rate: 1.0, symbol: 'AED', code: 'AED' },
 };
@@ -299,15 +300,29 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }, [wishlist, isMounted]);
 
     // Currency helper functions
-    const getConvertedPrice = (basePriceAED: number): number => {
-        const rateInfo = CURRENCY_RATES[currency] || CURRENCY_RATES['AED'];
-        return basePriceAED * rateInfo.rate;
+    const getConvertedPrice = (price: number): number => {
+        const normCurrency = (currency || 'AED').toUpperCase();
+        const rateInfo = CURRENCY_RATES[normCurrency] || CURRENCY_RATES['AED'];
+        const rate = rateInfo ? rateInfo.rate : 1.0;
+        return Number(price || 0) * rate;
     };
 
-    const formatPrice = (basePriceAED: number): string => {
-        const rateInfo = CURRENCY_RATES[currency] || CURRENCY_RATES['AED'];
-        const val = basePriceAED * rateInfo.rate;
-        return `${rateInfo.symbol} ${val.toFixed(2)}`;
+    const formatPrice = (price: number): string => {
+        const isArabic = language.startsWith('Arabic') || language === 'ar' || language === 'العربية';
+        const normCurrency = (currency || 'AED').toUpperCase();
+        const rateInfo = CURRENCY_RATES[normCurrency] || CURRENCY_RATES['AED'];
+        const rate = rateInfo ? rateInfo.rate : 1.0;
+        const converted = Number(price || 0) * rate;
+
+        let symbol = currency;
+        if (currency === 'SAR' || currency === 'ر.س') symbol = isArabic ? 'ر.س' : 'SAR';
+        else if (currency === 'AED' || currency === 'د.إ') symbol = isArabic ? 'د.إ' : 'AED';
+        else if (currency === 'USD') symbol = '$';
+        else if (currency === 'EUR') symbol = '€';
+        else if (currency === 'INR') symbol = '₹';
+        else if (currency === 'GBP') symbol = '£';
+
+        return `${symbol} ${converted.toFixed(2)}`;
     };
 
     const addToCart = (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {

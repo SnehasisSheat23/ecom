@@ -56,11 +56,11 @@ export default function CartPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
-                                        {cart.map((item) => {
+                                        {cart.map((item, index) => {
                                             const minMoq = Math.max(1, item.moq || 1);
                                             const isAtMoq = item.quantity <= minMoq;
                                             return (
-                                                <tr key={item.id} className="hover:bg-gray-50/30 transition-colors">
+                                                <tr key={item.itemId || `${item.id}-${item.variantId || ''}-${index}`} className="hover:bg-gray-50/30 transition-colors">
                                                     <td className="py-6 px-6">
                                                         <div className={`flex items-center gap-4 ${isArabic ? 'flex-row-reverse text-right' : ''}`}>
                                                             <div className="flex items-center gap-3 shrink-0">

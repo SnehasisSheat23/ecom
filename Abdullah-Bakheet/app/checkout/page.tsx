@@ -91,7 +91,7 @@ export default function CheckoutPage() {
             setPaymentStepText('Authorizing payment & creating order in backend-v2...');
 
             // Resolve fresh live DB product IDs and include item details so unitPrice and image are never lost
-            const freshProducts = await fetchProducts().catch(() => []);
+            const freshProducts = await fetchProducts({ limit: 100, currency }).catch(() => []);
             const validItems = cart.map(i => {
                 const matchedProduct = freshProducts.find(p =>
                     p.variantId === i.variantId ||
@@ -99,12 +99,12 @@ export default function CheckoutPage() {
                     p.title.toLowerCase().trim() === i.name.toLowerCase().trim()
                 );
                 const resolvedVariantId = matchedProduct?.id || matchedProduct?.variantId || i.variantId || i.id;
-                const convertedItemPrice = getConvertedPrice(i.price);
+                const itemPrice = Number(i.price || 0);
                 return {
                     productId: resolvedVariantId,
                     quantity: i.quantity,
-                    unitPrice: Number(convertedItemPrice.toFixed(2)),
-                    price: Number(convertedItemPrice.toFixed(2)),
+                    unitPrice: Number(itemPrice.toFixed(2)),
+                    price: Number(itemPrice.toFixed(2)),
                     name: i.name,
                     image: i.image,
                 };
@@ -403,8 +403,8 @@ export default function CheckoutPage() {
                             </div>
 
                             <div className="space-y-6 mb-8 max-h-60 overflow-y-auto pr-1">
-                                {cart.map((item) => (
-                                    <div key={item.id} className="flex gap-4 border-b border-gray-50 pb-6 last:border-0 last:pb-0">
+                                {cart.map((item, index) => (
+                                    <div key={item.itemId || `${item.id}-${item.variantId || ''}-${index}`} className="flex gap-4 border-b border-gray-50 pb-6 last:border-0 last:pb-0">
                                         <div className="w-16 h-16 bg-white border border-gray-200 rounded-sm p-1 shrink-0">
                                             <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
                                         </div>

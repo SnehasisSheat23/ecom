@@ -344,7 +344,7 @@ export function ProductsView() {
             {
               sku: "AUTO",
               title: "Default",
-              price: 1000 // Default to $10.00
+              price: 10 // Default to $10.00
             }
           ]
         })

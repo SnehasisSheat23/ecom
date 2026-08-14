@@ -70,7 +70,7 @@ export class OrdersService {
         const priceObj = rawPricing[currency]
         const raw = typeof priceObj === 'object' && priceObj !== null ? (priceObj.price ?? 0) : Number(priceObj)
         if (typeof raw === 'number' && !isNaN(raw) && raw > 0) {
-          unitPrice = raw / 100
+          unitPrice = Number(raw)
         }
       }
 
@@ -78,15 +78,15 @@ export class OrdersService {
       if (unitPrice === null || isNaN(unitPrice) || unitPrice <= 0) {
         const passedPrice = item.unitPrice !== undefined ? item.unitPrice : item.price
         if (typeof passedPrice === 'number' && !isNaN(passedPrice) && passedPrice > 0) {
-          unitPrice = passedPrice
+          unitPrice = Number(passedPrice)
         }
       }
 
       // 3. Fallback to AED price
       if (unitPrice === null || isNaN(unitPrice) || unitPrice <= 0) {
-        const aedObj = rawPricing?.['AED'] || rawPricing?.['SAR'] || 1500
+        const aedObj = rawPricing?.['AED'] || rawPricing?.['SAR'] || 15
         const aedRaw = typeof aedObj === 'object' && aedObj !== null ? (aedObj.price ?? 0) : Number(aedObj)
-        unitPrice = aedRaw > 0 ? aedRaw / 100 : Number(aedRaw)
+        unitPrice = Number(aedRaw || 0)
       }
 
       const itemTotal = unitPrice * item.quantity

@@ -81,7 +81,7 @@ export class CartService {
     const formattedItems = rawItems.map((item) => {
       const prod = productMap.get(item.productId)
       const rawLivePrice = prod?.pricing?.AED?.price ?? (item.unitPrice ? parseFloat(item.unitPrice.toString()) : 0)
-      const livePrice = typeof rawLivePrice === 'number' && rawLivePrice > 0 ? rawLivePrice / 100 : Number(rawLivePrice || 0)
+      const livePrice = Number(rawLivePrice || 0)
       const title = prod?.translations?.en?.title || (item.itemMetadata as any)?.name || 'Product'
       const image = (prod?.images && prod.images.length > 0) ? prod.images[0] : ((item.itemMetadata as any)?.image || '')
       const moq = prod?.moq || (item.itemMetadata as any)?.moq || 1
@@ -150,7 +150,7 @@ export class CartService {
       const initialAddQty = Math.max(minMoq, gItem.quantity || minMoq)
 
       const rawLivePrice = prod.pricing?.AED?.price ?? gItem.price ?? 0
-      const livePrice = typeof rawLivePrice === 'number' && rawLivePrice > 0 ? rawLivePrice / 100 : Number(rawLivePrice || 0)
+      const livePrice = Number(rawLivePrice || 0)
       const existingMatch = existingItems.find(
         (e) => e.productId === targetProductId || (e.itemMetadata as any)?.variantId === gItem.variantId
       )
@@ -215,7 +215,7 @@ export class CartService {
     const step = Math.max(1, prod?.moqStep || itemPayload.moqStep || 1)
     const addQty = Math.max(minMoq, itemPayload.quantity || minMoq)
     const rawLivePrice = prod?.pricing?.AED?.price ?? itemPayload.price ?? 0
-    const livePrice = typeof rawLivePrice === 'number' && rawLivePrice > 0 ? rawLivePrice / 100 : Number(rawLivePrice || 0)
+    const livePrice = Number(rawLivePrice || 0)
 
     const existing = await db
       .select()

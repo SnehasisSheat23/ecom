@@ -184,7 +184,7 @@ const mapBackendOrderToFrontend = (item: BackendOrder): Order => {
     fulfillmentStatus,
     subtotal: subtotalVal,
     shippingAmount: shippingVal,
-    discountAmount: (item.discountAmount || 0) / 100,
+    discountAmount: Number(item.discountAmount || 0),
     total: totalVal,
     notes: item.notes || null,
     currency: item.currency || "AED",

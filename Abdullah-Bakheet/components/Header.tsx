@@ -57,7 +57,13 @@ export default function Header() {
     ];
 
     const languages = ['English', 'Arabic (العربية)'];
-    const currencies = ['ر.س', 'USD', 'EUR', 'AED'];
+    const currencies = ['SAR', 'AED', 'USD', 'EUR', 'INR'];
+
+    const getCurrencyLabel = (c: string) => {
+        if (c === 'SAR') return isArabic ? 'ر.س (SAR)' : 'SAR';
+        if (c === 'AED') return isArabic ? 'د.إ (AED)' : 'AED';
+        return c;
+    };
 
     const isActive = (href: string) => {
         if (href === '/') {
@@ -123,12 +129,12 @@ export default function Header() {
                                 <div className="bg-[#85b821] text-white rounded-full w-4 h-4 flex items-center justify-center">
                                     <DollarSignIcon size={12} />
                                 </div>
-                                <span className="font-medium">{currency}</span>
+                                <span className="font-medium">{getCurrencyLabel(currency)}</span>
                                 <ChevronDownIcon size={14} className={cn("text-gray-400 transition-transform", currDropdownOpen && "rotate-180")} />
                             </button>
 
                             {currDropdownOpen && (
-                                <div className="absolute top-full left-16 mt-1 w-24 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50">
+                                <div className="absolute top-full left-16 mt-1 w-28 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50">
                                     {currencies.map((curr) => (
                                         <button
                                             key={curr}
@@ -141,7 +147,7 @@ export default function Header() {
                                                 currency === curr ? "text-brand-dark font-bold bg-gray-50" : "text-gray-700"
                                             )}
                                         >
-                                            {curr}
+                                            {getCurrencyLabel(curr)}
                                         </button>
                                     ))}
                                 </div>
