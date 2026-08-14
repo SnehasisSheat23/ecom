@@ -156,7 +156,7 @@ export default function ProductDescriptionPage() {
                     return (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
                             {/* Main Image View */}
-                            <div className="bg-[#eaf3f8] rounded-xl overflow-hidden aspect-[4/3] relative flex items-center justify-center p-8 border border-gray-100 shadow-xs">
+                            <div className="bg-[#eaf3f8] rounded-xl overflow-hidden aspect-[4/3] relative flex items-center justify-center p-8">
                                 <div className="absolute inset-0 bg-gradient-to-b from-blue-300/30 to-transparent pointer-events-none"></div>
                                 <img 
                                     src={mainDisplayImg} 
@@ -170,7 +170,7 @@ export default function ProductDescriptionPage() {
                                 {/* Sub Image 1 (Top Wide) */}
                                 <div 
                                     onClick={() => setSelectedImage(slot1Img)}
-                                    className={`col-span-2 bg-[#f4ece3] rounded-xl overflow-hidden h-[240px] relative flex items-center justify-center p-4 cursor-pointer border transition-all duration-200 hover:shadow-md ${mainDisplayImg === slot1Img ? 'ring-2 ring-black/40 border-black/30' : 'border-transparent hover:border-gray-300'}`}
+                                    className="col-span-2 bg-[#f4ece3] rounded-xl overflow-hidden h-[240px] relative flex items-center justify-center p-4 cursor-pointer"
                                 >
                                     <img src={slot1Img} alt={`${product.title} view 2`} className="w-full h-full object-contain hover:scale-105 transition-transform duration-300" />
                                 </div>
@@ -178,7 +178,7 @@ export default function ProductDescriptionPage() {
                                 {/* Sub Image 2 (Bottom Left) */}
                                 <div 
                                     onClick={() => setSelectedImage(slot2Img)}
-                                    className={`bg-[#eaf3f8] rounded-xl overflow-hidden h-[180px] flex items-center justify-center p-2 cursor-pointer border transition-all duration-200 hover:shadow-md ${mainDisplayImg === slot2Img ? 'ring-2 ring-black/40 border-black/30' : 'border-transparent hover:border-gray-300'}`}
+                                    className="bg-[#eaf3f8] rounded-xl overflow-hidden h-[180px] flex items-center justify-center p-2 cursor-pointer"
                                 >
                                     <img src={slot2Img} alt={`${product.title} view 3`} className="w-full h-full object-contain hover:scale-105 transition-transform duration-300" />
                                 </div>
@@ -186,7 +186,7 @@ export default function ProductDescriptionPage() {
                                 {/* Sub Image 3 (Bottom Right) */}
                                 <div 
                                     onClick={() => setSelectedImage(slot3Img)}
-                                    className={`bg-[#eaf3f8] rounded-xl overflow-hidden h-[180px] flex items-center justify-center p-2 cursor-pointer border transition-all duration-200 hover:shadow-md ${mainDisplayImg === slot3Img ? 'ring-2 ring-black/40 border-black/30' : 'border-transparent hover:border-gray-300'}`}
+                                    className="bg-[#eaf3f8] rounded-xl overflow-hidden h-[180px] flex items-center justify-center p-2 cursor-pointer"
                                 >
                                     <img src={slot3Img} alt={`${product.title} view 4`} className="w-full h-full object-contain hover:scale-105 transition-transform duration-300" />
                                 </div>
