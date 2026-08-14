@@ -302,7 +302,7 @@ export function BlogEditor({ id }: { id: string }) {
                   {blog.seoTitle || blog.title || "Untitled Blog Post"}
                 </span>
                 <span className="text-xs text-emerald-700 dark:text-emerald-500 break-all font-mono leading-none">
-                  https://yourstore.com/blogs/{blog.blogCategory.toLowerCase() || "news"}/{blog.handle || "untitled-post"}
+                  {(process.env.NEXT_PUBLIC_STORE_URL || "https://abdullahbakheettksa.com").replace(/\/$/, "")}/blogs/{blog.blogCategory.toLowerCase() || "news"}/{blog.handle || "untitled-post"}
                 </span>
                 <span className="text-xs text-muted-foreground leading-normal mt-0.5 max-w-xl break-words">
                   {blog.seoDescription || blog.excerpt || "No SEO description set yet. Search engines will pull from your article body if left blank."}

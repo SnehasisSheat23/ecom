@@ -25,8 +25,11 @@ export function SEOCard({
 }: SEOCardProps) {
   const hasSEOData = !!(product.seo?.title?.trim() || product.seo?.description?.trim())
 
+  const storeUrl = process.env.NEXT_PUBLIC_STORE_URL || "https://abdullahbakheettksa.com"
+  const cleanStoreUrl = storeUrl.replace(/\/$/, "")
+
   return (
-    <Card>
+    <Card className="shadow-xs border-border/60">
       <CardHeader className="pb-3 border-b border-border/60 flex flex-row items-center justify-between">
         <CardTitle className="text-base font-semibold font-heading text-foreground">Search engine listing</CardTitle>
         <Button variant="ghost" size="sm" className="h-8 text-xs text-primary hover:text-primary" onClick={() => setIsEditingSEO(!isEditingSEO)}>
@@ -40,7 +43,7 @@ export function SEOCard({
               {product.seo?.title || product.title}
             </span>
             <span className="text-xs text-emerald-700 dark:text-emerald-400">
-              https://acme.store/products/{(product.seo?.title || product.title).toLowerCase().replace(/[^a-z0-9]+/g, '-')}
+              {cleanStoreUrl}/products/{(product.seo?.title || product.title).toLowerCase().replace(/[^a-z0-9]+/g, '-')}
             </span>
             <span className="text-sm text-muted-foreground mt-1">
               {stripHtml(product.seo?.description || product.description) || "Add a description to see how this product might appear in a search engine listing."}
@@ -83,7 +86,7 @@ export function SEOCard({
               <label className="text-[13px] font-medium text-foreground">URL handle</label>
               <div className="flex items-center rounded-md border border-border/60 bg-muted/5 w-full h-9">
                 <span className="pl-3 text-muted-foreground text-sm select-none shrink-0">
-                  https://acme.store/products/
+                  {cleanStoreUrl}/products/
                 </span>
                 <input
                   type="text"
