@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, Eye, EyeOff, ArrowUpRight } from 'lucide-react';
 import { useShop } from '@/context/ShopContext';
 
-export default function LoginPage() {
+function LoginForm() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -14,6 +14,11 @@ export default function LoginPage() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectUrl = searchParams.get('redirect');
+    const action = searchParams.get('action');
+    const itemId = searchParams.get('item');
+
     const { login, language } = useShop();
     const isArabic = language.startsWith('Arabic');
 
@@ -23,7 +28,12 @@ export default function LoginPage() {
         setErrorMessage(null);
         try {
             await login(email, password);
-            router.push('/');
+            if (redirectUrl) {
+                const target = action ? `${redirectUrl}${redirectUrl.includes('?') ? '&' : '?'}action=${action}${itemId ? `&item=${itemId}` : ''}` : redirectUrl;
+                router.push(target);
+            } else {
+                router.push('/');
+            }
         } catch (err: any) {
             setErrorMessage(err.message || 'Login failed. Please check your credentials.');
         } finally {
@@ -54,7 +64,10 @@ export default function LoginPage() {
                     
                     <p className={`text-gray-500 mb-6 text-[15px] ${isArabic ? 'text-right' : 'text-left'}`}>
                         {isArabic ? 'ليس لديك حساب بعد؟ ' : "Don't have an account yet? "}
-                        <Link href="/register" className="text-black font-bold hover:underline">
+                        <Link 
+                            href={`/register${redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}${action ? `&action=${action}` : ''}${itemId ? `&item=${itemId}` : ''}` : ''}`} 
+                            className="text-black font-bold hover:underline"
+                        >
                             {isArabic ? 'سجل هنا' : 'Register here'}
                         </Link>
                     </p>
@@ -151,20 +164,6 @@ export default function LoginPage() {
                                 <h4 className="text-white font-bold text-lg">{isArabic ? 'ريتويكا سينغوبتا' : 'Ritwika Sengupta'}</h4>
                                 <p className="text-gray-300 text-sm">{isArabic ? 'الرئيس التنفيذي والمؤسس' : 'CEO & Founder, ABC Company'}</p>
                             </div>
-                            <div className="flex gap-3">
-                                <button className="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center text-white hover:bg-white/10 transition-colors">
-                                    <ChevronLeft size={16} />
-                                </button>
-                                <button className="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center text-white hover:bg-white/10 transition-colors">
-                                    <ChevronLeft size={16} className="rotate-180" />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                            <div className="w-2 h-2 rounded-full bg-white"></div>
-                            <div className="w-2 h-2 rounded-full bg-white/30"></div>
-                            <div className="w-2 h-2 rounded-full bg-white/30"></div>
                         </div>
                     </div>
                 </div>
@@ -173,3 +172,10 @@ export default function LoginPage() {
     );
 }
 
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>}>
+            <LoginForm />
+        </Suspense>
+    );
+}

@@ -228,10 +228,14 @@ function buildHeaders(guestSessionId?: string, accessToken?: string) {
   return headers
 }
 
-export async function fetchCartApi(guestSessionId?: string, accessToken?: string) {
+// ==========================================
+// CART API INTEGRATIONS
+// ==========================================
+export async function fetchCartApi(accessToken?: string) {
+  if (!accessToken) return null
   try {
     const res = await fetch(`${API_BASE}/cart`, {
-      headers: buildHeaders(guestSessionId, accessToken),
+      headers: buildHeaders(undefined, accessToken),
     })
     if (!res.ok) return null
     const json = await res.json()
@@ -242,27 +246,41 @@ export async function fetchCartApi(guestSessionId?: string, accessToken?: string
   }
 }
 
-export async function addToCartApi(variantId: string, quantity: number = 1, guestSessionId?: string, accessToken?: string) {
-  const targetVariant = ensureUuid(variantId)
-  const res = await fetch(`${API_BASE}/cart/items`, {
+export async function mergeCartApi(items: any[], accessToken: string) {
+  if (!accessToken) return null
+  const res = await fetch(`${API_BASE}/cart/merge`, {
     method: 'POST',
-    headers: buildHeaders(guestSessionId, accessToken),
-    body: JSON.stringify({ variantId: targetVariant, quantity }),
+    headers: buildHeaders(undefined, accessToken),
+    body: JSON.stringify({ items }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    const details = err.details ? err.details.map((d: any) => `${d.path?.join('.')}: ${d.message}`).join('; ') : ''
-    const msg = details ? `${err.error || 'Failed to add item'}: ${details}` : (err.error || err.message || 'Failed to add item to cart')
-    throw new Error(msg)
+    throw new Error(err.error || err.message || 'Failed to merge cart')
   }
   const json = await res.json()
   return json.data
 }
 
-export async function updateCartItemApi(itemId: string, quantity: number, guestSessionId?: string, accessToken?: string) {
+export async function addToCartApi(itemPayload: any, accessToken?: string) {
+  if (!accessToken) return null
+  const res = await fetch(`${API_BASE}/cart/items`, {
+    method: 'POST',
+    headers: buildHeaders(undefined, accessToken),
+    body: JSON.stringify(itemPayload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || err.message || 'Failed to add item to cart')
+  }
+  const json = await res.json()
+  return json.data
+}
+
+export async function updateCartItemApi(itemId: string, quantity: number, accessToken?: string) {
+  if (!accessToken) return null
   const res = await fetch(`${API_BASE}/cart/items/${itemId}`, {
-    method: 'PATCH',
-    headers: buildHeaders(guestSessionId, accessToken),
+    method: 'PUT',
+    headers: buildHeaders(undefined, accessToken),
     body: JSON.stringify({ quantity }),
   })
   if (!res.ok) {
@@ -273,14 +291,89 @@ export async function updateCartItemApi(itemId: string, quantity: number, guestS
   return json.data
 }
 
-export async function removeCartItemApi(itemId: string, guestSessionId?: string, accessToken?: string) {
+export async function removeCartItemApi(itemId: string, accessToken?: string) {
+  if (!accessToken) return null
   const res = await fetch(`${API_BASE}/cart/items/${itemId}`, {
     method: 'DELETE',
-    headers: buildHeaders(guestSessionId, accessToken),
+    headers: buildHeaders(undefined, accessToken),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error || err.message || 'Failed to remove item from cart')
+  }
+  const json = await res.json()
+  return json.data
+}
+
+export async function clearCartApi(accessToken?: string) {
+  if (!accessToken) return null
+  const res = await fetch(`${API_BASE}/cart`, {
+    method: 'DELETE',
+    headers: buildHeaders(undefined, accessToken),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || err.message || 'Failed to clear cart')
+  }
+  const json = await res.json()
+  return json.data
+}
+
+// ==========================================
+// WISHLIST API INTEGRATIONS
+// ==========================================
+export async function fetchWishlistApi(accessToken?: string) {
+  if (!accessToken) return null
+  try {
+    const res = await fetch(`${API_BASE}/wishlist`, {
+      headers: buildHeaders(undefined, accessToken),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    return json.data
+  } catch (e) {
+    console.error('fetchWishlistApi error:', e)
+    return null
+  }
+}
+
+export async function toggleWishlistApi(productId: string, accessToken: string) {
+  const res = await fetch(`${API_BASE}/wishlist/toggle`, {
+    method: 'POST',
+    headers: buildHeaders(undefined, accessToken),
+    body: JSON.stringify({ productId }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || err.message || 'Failed to toggle wishlist')
+  }
+  const json = await res.json()
+  return json.data
+}
+
+export async function mergeWishlistApi(productIds: string[], accessToken: string) {
+  if (!accessToken) return null
+  const res = await fetch(`${API_BASE}/wishlist/merge`, {
+    method: 'POST',
+    headers: buildHeaders(undefined, accessToken),
+    body: JSON.stringify({ productIds }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || err.message || 'Failed to merge wishlist')
+  }
+  const json = await res.json()
+  return json.data
+}
+
+export async function removeWishlistItemApi(productId: string, accessToken: string) {
+  const res = await fetch(`${API_BASE}/wishlist/${productId}`, {
+    method: 'DELETE',
+    headers: buildHeaders(undefined, accessToken),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || err.message || 'Failed to remove from wishlist')
   }
   const json = await res.json()
   return json.data

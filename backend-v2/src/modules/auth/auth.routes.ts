@@ -163,19 +163,21 @@ authRoutes.post('/login', async (c) => {
               },
             },
           })
+        } else {
+          return c.json({ success: false, error: 'Incorrect password. Please try again.' }, 401)
         }
       }
-      return c.json({ success: false, error: 'Invalid email or password' }, 401)
+      return c.json({ success: false, error: 'No account found with this email. Please register to create your account.' }, 404)
     }
 
     const customer = customerList[0]
     if (!customer.passwordHash) {
-      return c.json({ success: false, error: 'No password set for this account. Please register or reset password.' }, 400)
+      return c.json({ success: false, error: 'No password set for this account. Please register to set up your password.' }, 400)
     }
 
     const isValid = await verifyPassword(parsed.password, customer.passwordHash)
     if (!isValid) {
-      return c.json({ success: false, error: 'Invalid email or password' }, 401)
+      return c.json({ success: false, error: 'Incorrect password. Please try again.' }, 401)
     }
 
     const displayName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || customer.email.split('@')[0]

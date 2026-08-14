@@ -84,7 +84,30 @@ export class CustomersService {
     if (!customer) return null
 
     const addresses = await this.db.select().from(customerAddresses).where(eq(customerAddresses.customerId, id))
-    return { ...customer, addresses }
+
+    // 1. Fetch Customer Cart Items from Database
+    const { CartService } = await import('../cart/cart.service.js')
+    const cartService = new CartService()
+    const cart = await cartService.getCart(id).catch(() => ({ items: [], totalItems: 0, subtotal: 0 }))
+
+    // 2. Fetch Customer Wishlist Items from Database
+    const { WishlistService } = await import('../wishlist/wishlist.service.js')
+    const wishlistService = new WishlistService()
+    const wishlist = await wishlistService.getWishlist(id).catch(() => ({ items: [], total: 0 }))
+
+    return { 
+      ...customer, 
+      addresses,
+      cart: cart.items || [],
+      cartSummary: {
+        totalItems: cart.totalItems || 0,
+        subtotal: cart.subtotal || 0,
+      },
+      wishlist: wishlist.items || [],
+      wishlistSummary: {
+        totalItems: wishlist.total || (wishlist.items || []).length,
+      }
+    }
   }
 
   async updateCustomer(id: string, input: Partial<CreateCustomerInput>) {

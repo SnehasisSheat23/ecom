@@ -104,6 +104,7 @@ export default function CheckoutPage() {
                     phone: phone || null,
                 },
                 guestEmail: email || user?.email || undefined,
+                customerId: user?.id || undefined,
                 paymentMethod: paymentMethod,
                 notes: `Fake Payment Provider Demo Gateway - Method: ${paymentMethod.toUpperCase()} (Txn Ref: TXN_DEMO_${Date.now().toString().slice(-6)})`,
                 items: validItems,
@@ -125,6 +126,49 @@ export default function CheckoutPage() {
             setIsSubmitting(false);
         }
     };
+
+    React.useEffect(() => {
+        if (user) {
+            if (user.firstName) setFirstName(user.firstName);
+            if (user.lastName) setLastName(user.lastName);
+            if (user.email) setEmail(user.email);
+            if (user.phone) setPhone(user.phone);
+        }
+    }, [user]);
+
+    if (!accessToken && !isOrderComplete) {
+        return (
+            <div className="w-full bg-brand-gray min-h-screen font-sans py-20 flex flex-col items-center justify-center px-4">
+                <div className="bg-white rounded-2xl p-8 md:p-12 max-w-lg w-full text-center shadow-lg border border-gray-100">
+                    <div className="w-16 h-16 bg-[#fbdc3c]/20 text-[#1a2b25] rounded-full flex items-center justify-center mx-auto mb-6">
+                        <ShieldCheck size={32} />
+                    </div>
+                    <div className="bg-[#fbdc3c] py-2 px-4 mb-4 inline-block">
+                        <h2 className="font-heading text-2xl md:text-3xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none pt-1">
+                            ACCOUNT REQUIRED
+                        </h2>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-8 leading-relaxed">
+                        Please sign in or create an account to proceed to checkout. Your {cart.length} item{cart.length > 1 ? 's' : ''} in cart will be safely synced to your account.
+                    </p>
+                    <div className="space-y-3">
+                        <Link
+                            href="/login?redirect=/checkout"
+                            className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-sm uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-black transition-colors"
+                        >
+                            Sign In to Checkout <ArrowUpRightIcon size={16} />
+                        </Link>
+                        <Link
+                            href="/register?redirect=/checkout"
+                            className="w-full bg-white text-gray-800 border border-gray-200 py-3.5 rounded-md font-bold text-sm uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-gray-50 transition-colors"
+                        >
+                            Create New Account
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (cart.length === 0 && !isOrderComplete) {
         return (

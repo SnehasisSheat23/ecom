@@ -1,15 +1,16 @@
 "use client";
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useShop } from '@/context/ShopContext';
-import { ChevronLeft, Star, Plus, Minus, Share, Heart, ArrowUpRight, ChevronDown, FileText, Download } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ChevronLeft, Star, Plus, Minus, Share, Heart, ArrowUpRight, ChevronDown, FileText, Download, Check } from 'lucide-react';
+import { useState, useEffect, Suspense } from 'react';
 import { fetchProductBySlug, StorefrontProduct } from '@/lib/api';
 
-export default function ProductDescriptionPage() {
+function ProductDescriptionContent() {
     const params = useParams();
     const router = useRouter();
-    const { addToCart, currency, formatPrice, toggleWishlist, isInWishlist, setIsWishlistOpen, language } = useShop();
+    const searchParams = useSearchParams();
+    const { addToCart, currency, formatPrice, toggleWishlist, isInWishlist, setIsWishlistOpen, language, accessToken } = useShop();
     const productId = params.id as string;
 
     const isArabic = language.startsWith('Arabic') || language === 'ar' || language === 'العربية';
@@ -18,6 +19,7 @@ export default function ProductDescriptionPage() {
     const [product, setProduct] = useState<StorefrontProduct | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [quantity, setQuantity] = useState(1);
+    const [wishlistNotification, setWishlistNotification] = useState<string | null>(null);
     const [openAccordions, setOpenAccordions] = useState<string[]>([
         isArabic ? 'تفاصيل المنتج' : 'Product details'
     ]);
@@ -40,6 +42,54 @@ export default function ProductDescriptionPage() {
         loadProduct();
         return () => { isMounted = false; };
     }, [productId, currency, isArabic]);
+
+    // Handle post-login return action for wishlist
+    useEffect(() => {
+        if (!product) return;
+        const action = searchParams.get('action');
+        if (action === 'wishlist' && accessToken) {
+            if (!isInWishlist(product.id)) {
+                toggleWishlist({
+                    id: product.id,
+                    name: isArabic ? (product.arabic || product.title) : product.title,
+                    category: product.category,
+                    price: product.price,
+                    image: product.img || '',
+                });
+                setWishlistNotification(isArabic ? 'تمت إضافة المنتج إلى قائمة رغباتك بنجاح!' : 'Added to your wishlist!');
+                setTimeout(() => setWishlistNotification(null), 4000);
+            }
+            // Replace url to remove query parameters cleanly
+            if (typeof window !== 'undefined') {
+                router.replace(window.location.pathname);
+            }
+        }
+    }, [product, accessToken, searchParams]);
+
+    const handleWishlistAction = async () => {
+        if (!product) return;
+        if (!accessToken) {
+            // Unauthenticated -> redirect to login with return destination
+            const currentPath = typeof window !== 'undefined' ? window.location.pathname : `/products/${productId}`;
+            router.push(`/login?redirect=${encodeURIComponent(currentPath)}&action=wishlist&item=${encodeURIComponent(product.id)}`);
+            return;
+        }
+
+        const isAdded = await toggleWishlist({
+            id: product.id,
+            name: isArabic ? (product.arabic || product.title) : product.title,
+            category: product.category,
+            price: product.price,
+            image: product.img || '',
+        });
+
+        if (isAdded) {
+            setWishlistNotification(isArabic ? 'تمت إضافة المنتج إلى قائمة رغباتك!' : 'Added to your wishlist!');
+        } else {
+            setWishlistNotification(isArabic ? 'تمت إزالة المنتج من قائمة رغباتك.' : 'Removed from your wishlist.');
+        }
+        setTimeout(() => setWishlistNotification(null), 3000);
+    };
 
     if (isLoading && !product) {
         return (
@@ -403,16 +453,7 @@ export default function ProductDescriptionPage() {
                                     <ArrowUpRight size={16} className={`text-gray-400 group-hover:text-white transition-colors ${isArabic ? 'rotate-180' : ''}`} />
                                 </button>
                                 <button 
-                                    onClick={() => {
-                                        toggleWishlist({
-                                            id: product.id,
-                                            name: isArabic ? (product.arabic || product.title) : product.title,
-                                            category: product.category,
-                                            price: product.price,
-                                            image: product.img || ''
-                                        });
-                                        setIsWishlistOpen(true);
-                                    }}
+                                    onClick={handleWishlistAction}
                                     className="w-full bg-white text-black border border-gray-200 py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:border-[#1a2b25] transition-colors group"
                                 >
                                     {isInWishlist(product.id) 
@@ -421,21 +462,22 @@ export default function ProductDescriptionPage() {
                                     <ArrowUpRight size={16} className={`text-gray-400 group-hover:text-black transition-colors ${isArabic ? 'rotate-180' : ''}`} />
                                 </button>
                             </div>
+
+                            {wishlistNotification && (
+                                <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold rounded-lg flex items-center justify-between animate-fadeIn">
+                                    <div className="flex items-center gap-2">
+                                        <Check size={16} className="text-emerald-600" />
+                                        <span>{wishlistNotification}</span>
+                                    </div>
+                                </div>
+                            )}
                             
                             <div className="flex justify-center items-center gap-4">
                                 <button className="w-12 h-12 flex items-center justify-center border border-gray-200 rounded-lg hover:border-gray-400 transition-colors text-gray-500 hover:text-black">
                                     <Share size={18} />
                                 </button>
                                 <button 
-                                    onClick={() => {
-                                        toggleWishlist({
-                                            id: product.id,
-                                            name: product.title,
-                                            category: product.category,
-                                            price: product.price,
-                                            image: product.img || ''
-                                        });
-                                    }}
+                                    onClick={handleWishlistAction}
                                     className={`w-12 h-12 flex items-center justify-center border rounded-lg transition-colors ${isInWishlist(product.id) ? 'border-red-200 text-red-500 bg-red-50' : 'border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-500 hover:bg-red-50'}`}
                                 >
                                     <Heart size={18} fill={isInWishlist(product.id) ? 'currentColor' : 'none'} />
@@ -448,5 +490,13 @@ export default function ProductDescriptionPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ProductDescriptionPage() {
+    return (
+        <Suspense fallback={<div className="w-full min-h-screen bg-brand-gray flex items-center justify-center">Loading...</div>}>
+            <ProductDescriptionContent />
+        </Suspense>
     );
 }

@@ -7,6 +7,8 @@ import { customersRoutes } from './modules/customers/customers.routes.js'
 import { ordersRoutes } from './modules/orders/orders.routes.js'
 import { storefrontRoutes } from './modules/storefront/storefront.routes.js'
 import { authRoutes } from './modules/auth/auth.routes.js'
+import { cartRoutes } from './modules/cart/cart.routes.js'
+import { wishlistRoutes } from './modules/wishlist/wishlist.routes.js'
 import { requireAdminAuth } from './middleware/auth.middleware.js'
 import { ProductsService } from './modules/products/products.service.js'
 import { storageService } from './lib/storage.js'
@@ -35,6 +37,8 @@ app.route('/api/v1/categories', categoriesRoutes)
 app.route('/api/v1/customers', customersRoutes)
 app.route('/api/v1/orders', ordersRoutes)
 app.route('/api/v1/storefront', storefrontRoutes)
+app.route('/api/v1/cart', cartRoutes)
+app.route('/api/v1/wishlist', wishlistRoutes)
 
 // Real Cloudflare R2 Media Upload Route (Admin Protected)
 app.post('/api/v1/media', requireAdminAuth, async (c) => {

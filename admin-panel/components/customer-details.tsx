@@ -91,7 +91,7 @@ const mapBackendOrderToFrontend = (item: BackendOrderSummary, defaultCurrency: s
     },
     paymentStatus,
     fulfillmentStatus,
-    total: (item.total || 0) / 100,
+    total: typeof item.total === 'number' ? item.total : parseFloat(String(item.total || '0')),
     currency: item.currency || defaultCurrency,
   }
 }
@@ -101,6 +101,8 @@ export function CustomerDetails({ id }: { id: string }) {
   const [customer, setCustomer] = React.useState<Customer | null>(null)
   const [initialCustomer, setInitialCustomer] = React.useState<Customer | null>(null)
   const [orders, setOrders] = React.useState<Order[]>([])
+  const [cartItems, setCartItems] = React.useState<any[]>([])
+  const [wishlistItems, setWishlistItems] = React.useState<any[]>([])
   const [tenantCurrency, setTenantCurrency] = React.useState<string>("INR")
   const [isLoading, setIsLoading] = React.useState(true)
   const [showToast, setShowToast] = React.useState(false)
@@ -135,6 +137,8 @@ export function CustomerDetails({ id }: { id: string }) {
 
             setCustomer(formatted)
             setInitialCustomer(formatted)
+            setCartItems(c.cart || [])
+            setWishlistItems(c.wishlist || [])
 
             try {
               const emailParam = c.email ? `&customerEmail=${encodeURIComponent(c.email)}` : ""
@@ -420,6 +424,92 @@ export function CustomerDetails({ id }: { id: string }) {
                     ))}
                   </tbody>
                 </table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Active Cart Items Card */}
+          <Card>
+            <CardHeader className="pb-3 border-b border-border/60 flex flex-row items-center justify-between">
+              <CardTitle className="text-base font-semibold font-heading text-foreground">Current Cart Items</CardTitle>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'}
+              </span>
+            </CardHeader>
+            <CardContent className="p-0">
+              {cartItems.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Customer's cart is currently empty.
+                </div>
+              ) : (
+                <div className="divide-y divide-border/60">
+                  {cartItems.map((item, idx) => (
+                    <div key={idx} className="p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="size-10 rounded-md object-cover border border-border/60" />
+                        ) : (
+                          <div className="size-10 rounded-md bg-muted/40 flex items-center justify-center">
+                            <Icon name="inventory_2" className="size-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-semibold text-foreground line-clamp-1">{item.name || 'Product'}</p>
+                          <p className="text-xs text-muted-foreground">SKU: <span className="font-mono">{item.sku || '-'}</span></p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/60 text-foreground text-xs font-medium font-mono">
+                          Qty: {item.quantity}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Saved Wishlist Items Card */}
+          <Card>
+            <CardHeader className="pb-3 border-b border-border/60 flex flex-row items-center justify-between">
+              <CardTitle className="text-base font-semibold font-heading text-foreground">Saved Wishlist</CardTitle>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400">
+                {wishlistItems.length} {wishlistItems.length === 1 ? 'item' : 'items'}
+              </span>
+            </CardHeader>
+            <CardContent className="p-0">
+              {wishlistItems.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  No items in wishlist.
+                </div>
+              ) : (
+                <div className="divide-y divide-border/60">
+                  {wishlistItems.map((item, idx) => (
+                    <div key={idx} className="p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        {item.image ? (
+                          <img src={item.image} alt={item.title || item.name} className="size-10 rounded-md object-cover border border-border/60" />
+                        ) : (
+                          <div className="size-10 rounded-md bg-muted/40 flex items-center justify-center">
+                            <Icon name="inventory_2" className="size-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-semibold text-foreground line-clamp-1">{item.title || item.name || 'Product'}</p>
+                          <p className="text-xs text-muted-foreground">SKU: <span className="font-mono">{item.sku || '-'}</span></p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium ${
+                          (item.stockQuantity ?? 1) > 0 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400'
+                        }`}>
+                          {(item.stockQuantity ?? 1) > 0 ? 'In Stock' : 'Out of Stock'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>

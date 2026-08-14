@@ -321,7 +321,6 @@ export function CustomersView() {
                 <DropdownMenuRadioGroup value={sortField} onValueChange={(val) => setSortField(val as keyof Customer)}>
                     <DropdownMenuRadioItem value="name" className="text-xs">Name</DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="email" className="text-xs">Email</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="ordersCount" className="text-xs">Orders Count</DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="city" className="text-xs">City</DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
                   <DropdownMenuSeparator />
@@ -381,11 +380,6 @@ export function CustomersView() {
                       Phone {renderSortIcon("phone")}
                     </div>
                   </th>
-                  <th className="p-3 cursor-pointer select-none hover:text-foreground text-right" onClick={() => toggleSort("ordersCount")}>
-                    <div className="flex items-center justify-end">
-                      Orders {renderSortIcon("ordersCount")}
-                    </div>
-                  </th>
                   <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("city")}>
                     <div className="flex items-center">
                       Location {renderSortIcon("city")}
@@ -409,9 +403,6 @@ export function CustomersView() {
                       <td className="p-3">
                         <div className="h-2.5 w-28 bg-muted/60 rounded-full" />
                       </td>
-                      <td className="p-3 text-right">
-                        <div className="h-2.5 w-8 bg-muted/60 rounded-full ml-auto" />
-                      </td>
                       <td className="p-3">
                         <div className="h-2.5 w-24 bg-muted/60 rounded-full" />
                       </td>
@@ -419,7 +410,7 @@ export function CustomersView() {
                   ))
                 ) : filteredCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={5} className="p-8 text-center text-muted-foreground">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Icon name="group" size={24} className="size-8 text-muted-foreground/60" />
                       <span className="text-sm font-medium">No customers found</span>
@@ -451,9 +442,6 @@ export function CustomersView() {
                       </td>
                       <td className="p-3 text-muted-foreground whitespace-nowrap">
                         {customer.phone}
-                      </td>
-                      <td className="p-3 text-right font-medium tabular-nums">
-                        {customer.ordersCount}
                       </td>
                       <td className="p-3 text-muted-foreground whitespace-nowrap">
                         {customer.city !== "-" && customer.country !== "-" ? `${customer.city}, ${customer.country}` : (customer.city !== "-" ? customer.city : "-")}

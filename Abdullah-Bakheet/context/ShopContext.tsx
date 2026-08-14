@@ -1,16 +1,28 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
     loginApi,
     registerApi,
     fetchMeApi,
+    fetchCartApi,
+    mergeCartApi,
+    addToCartApi,
+    updateCartItemApi,
+    removeCartItemApi,
+    clearCartApi,
+    fetchWishlistApi,
+    toggleWishlistApi,
+    mergeWishlistApi,
+    removeWishlistItemApi,
 } from '@/lib/api';
 
 export interface CartItem {
     id: string; // Product/Variant ID
     itemId?: string;
     variantId?: string;
+    productId?: string;
+    sku?: string;
     name: string;
     category: string;
     price: number; // Base price in AED
@@ -24,7 +36,7 @@ export interface CartItem {
 export interface WishlistItem {
     id: string;
     name: string;
-    category: string;
+    category?: string;
     price: number;
     image: string;
 }
@@ -63,7 +75,7 @@ interface ShopContextType {
     wishlist: WishlistItem[];
     isWishlistOpen: boolean;
     setIsWishlistOpen: (open: boolean) => void;
-    toggleWishlist: (item: WishlistItem) => void;
+    toggleWishlist: (item: WishlistItem) => Promise<boolean>;
     isInWishlist: (id: string) => boolean;
     wishlistCount: number;
 
@@ -125,23 +137,70 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const [language, setLanguage] = useState('English');
     const [currency, setCurrency] = useState('AED');
 
+    // Synchronize & Merge Cart + Wishlist upon login or restore
+    const syncWithBackendOnAuth = useCallback(async (token: string, localCartSnapshot: CartItem[], localWishlistSnapshot: WishlistItem[]) => {
+        try {
+            // 1. Merge cart with backend DB
+            if (localCartSnapshot.length > 0) {
+                const mergedCart = await mergeCartApi(localCartSnapshot, token);
+                if (mergedCart?.items) {
+                    setCart(mergedCart.items);
+                    localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(mergedCart.items));
+                }
+            } else {
+                const remoteCart = await fetchCartApi(token);
+                if (remoteCart?.items) {
+                    setCart(remoteCart.items);
+                    localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(remoteCart.items));
+                }
+            }
+
+            // 2. Merge wishlist with backend DB
+            if (localWishlistSnapshot.length > 0) {
+                const productIds = localWishlistSnapshot.map(i => i.id);
+                const mergedWishlist = await mergeWishlistApi(productIds, token);
+                if (mergedWishlist?.items) {
+                    setWishlist(mergedWishlist.items);
+                    localStorage.setItem(LOCAL_STORAGE_WISHLIST_KEY, JSON.stringify(mergedWishlist.items));
+                }
+            } else {
+                const remoteWishlist = await fetchWishlistApi(token);
+                if (remoteWishlist?.items) {
+                    setWishlist(remoteWishlist.items);
+                    localStorage.setItem(LOCAL_STORAGE_WISHLIST_KEY, JSON.stringify(remoteWishlist.items));
+                }
+            }
+        } catch (err) {
+            console.error('Failed to sync state with backend:', err);
+        }
+    }, []);
+
     // 1. Restore local cart, wishlist, and token on mount
     useEffect(() => {
         setIsMounted(true);
         const sid = getOrCreateGuestSessionId();
         setGuestSessionId(sid);
 
+        let initialCart: CartItem[] = [];
+        let initialWishlist: WishlistItem[] = [];
+
         try {
             const savedCart = localStorage.getItem(LOCAL_STORAGE_CART_KEY);
             if (savedCart) {
                 const parsed = JSON.parse(savedCart);
-                if (Array.isArray(parsed)) setCart(parsed);
+                if (Array.isArray(parsed)) {
+                    initialCart = parsed;
+                    setCart(parsed);
+                }
             }
 
             const savedWishlist = localStorage.getItem(LOCAL_STORAGE_WISHLIST_KEY);
             if (savedWishlist) {
                 const parsed = JSON.parse(savedWishlist);
-                if (Array.isArray(parsed)) setWishlist(parsed);
+                if (Array.isArray(parsed)) {
+                    initialWishlist = parsed;
+                    setWishlist(parsed);
+                }
             }
         } catch (e) {
             console.error('Failed to load local storage state:', e);
@@ -161,6 +220,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                         lastName: profile.lastName,
                         phone: profile.phone,
                     });
+                    // Trigger DB sync for authenticated user
+                    syncWithBackendOnAuth(savedToken, initialCart, initialWishlist);
                 } else {
                     localStorage.removeItem('auth_access_token');
                     setAccessToken(null);
@@ -170,7 +231,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 setAccessToken(null);
             });
         }
-    }, []);
+    }, [syncWithBackendOnAuth]);
 
     // 2. Persist cart to localStorage whenever it changes
     useEffect(() => {
@@ -228,13 +289,34 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
             }];
         });
         setIsCartOpen(true);
+
+        // Async sync with DB if authenticated
+        if (accessToken) {
+            addToCartApi({
+                productId: item.id,
+                variantId: item.variantId,
+                quantity: addQty,
+                name: item.name,
+                image: item.image,
+                price: item.price,
+                moq: item.moq,
+                moqStep: item.moqStep,
+                category: item.category,
+                specifications: item.specifications,
+            }, accessToken).catch(err => console.error('Background addToCartApi failed:', err));
+        }
     };
 
     const removeFromCart = (id: string) => {
         setCart(prev => prev.filter(i => i.id !== id && i.itemId !== id));
+
+        if (accessToken) {
+            removeCartItemApi(id, accessToken).catch(err => console.error('Background removeCartItemApi failed:', err));
+        }
     };
 
     const updateQuantity = (id: string, delta: number) => {
+        let finalQty = 0;
         setCart(prev =>
             prev.map(item => {
                 if (item.id === id || item.itemId === id) {
@@ -242,11 +324,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                     const step = Math.max(1, item.moqStep || 1);
                     const proposedQty = item.quantity + (delta * step);
                     if (proposedQty < minMoq) return item; // Cannot drop below MOQ
+                    finalQty = proposedQty;
                     return { ...item, quantity: proposedQty };
                 }
                 return item;
             })
         );
+
+        if (accessToken && finalQty > 0) {
+            updateCartItemApi(id, finalQty, accessToken).catch(err => console.error('Background updateCartItemApi failed:', err));
+        }
     };
 
     const clearCart = () => {
@@ -256,16 +343,35 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {
             console.error('Failed to clear cart storage:', e);
         }
+
+        if (accessToken) {
+            clearCartApi(accessToken).catch(err => console.error('Background clearCartApi failed:', err));
+        }
     };
 
-    const toggleWishlist = (item: WishlistItem) => {
-        setWishlist(prev => {
-            const exists = prev.some(i => i.id === item.id);
-            if (exists) {
-                return prev.filter(i => i.id !== item.id);
+    const toggleWishlist = async (item: WishlistItem): Promise<boolean> => {
+        const exists = wishlist.some(i => i.id === item.id);
+        if (exists) {
+            setWishlist(prev => prev.filter(i => i.id !== item.id));
+            if (accessToken) {
+                try {
+                    await removeWishlistItemApi(item.id, accessToken);
+                } catch (e) {
+                    console.error('Failed to remove from backend wishlist:', e);
+                }
             }
-            return [...prev, item];
-        });
+            return false;
+        } else {
+            setWishlist(prev => [...prev, item]);
+            if (accessToken) {
+                try {
+                    await toggleWishlistApi(item.id, accessToken);
+                } catch (e) {
+                    console.error('Failed to add to backend wishlist:', e);
+                }
+            }
+            return true;
+        }
     };
 
     const isInWishlist = (id: string) => wishlist.some(i => i.id === id);
@@ -287,6 +393,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 lastName: c.lastName,
                 phone: c.phone,
             });
+
+            // Perform automatic Cart & Wishlist merge with backend upon login
+            if (data.accessToken) {
+                await syncWithBackendOnAuth(data.accessToken, cart, wishlist);
+            }
         }
         return data;
     };
@@ -308,6 +419,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 lastName: c.lastName,
                 phone: c.phone,
             });
+
+            if (data.accessToken) {
+                await syncWithBackendOnAuth(data.accessToken, cart, wishlist);
+            }
         }
         return data;
     };
@@ -320,8 +435,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Calculate cart totals (Base AED)
-    const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const cartTotal = cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
+    const cartCount = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
     const wishlistCount = wishlist.length;
 
     return (
@@ -373,5 +488,3 @@ export function useShop() {
     }
     return context;
 }
-
-

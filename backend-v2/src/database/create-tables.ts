@@ -165,6 +165,36 @@ async function createTables() {
       quantity INT NOT NULL,
       total_price NUMERIC(12, 2) NOT NULL
     );
+
+    -- 6. CARTS & CART ITEMS TABLES
+    CREATE TABLE IF NOT EXISTS v2_carts (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      customer_id UUID NOT NULL REFERENCES v2_customers(id) ON DELETE CASCADE UNIQUE,
+      status VARCHAR(20) NOT NULL DEFAULT 'active',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS v2_cart_items (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      cart_id UUID NOT NULL REFERENCES v2_carts(id) ON DELETE CASCADE,
+      product_id UUID NOT NULL REFERENCES v2_products(id) ON DELETE CASCADE,
+      sku VARCHAR(100),
+      quantity INT NOT NULL DEFAULT 1,
+      unit_price NUMERIC(12, 2),
+      item_metadata JSONB DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- 7. WISHLIST ITEMS TABLE
+    CREATE TABLE IF NOT EXISTS v2_wishlist_items (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      customer_id UUID NOT NULL REFERENCES v2_customers(id) ON DELETE CASCADE,
+      product_id UUID NOT NULL REFERENCES v2_products(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(customer_id, product_id)
+    );
   `)
 
   // Safely seed default admin user if not exists (Zero impact on existing product/category data)

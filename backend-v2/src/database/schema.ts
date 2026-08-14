@@ -138,3 +138,45 @@ export const orderItems = pgTable('v2_order_items', {
   totalPrice: numeric('total_price', { precision: 12, scale: 2 }).notNull(),
 })
 
+// ==========================================
+// 6. CARTS & CART ITEMS SCHEMA
+// ==========================================
+export const carts = pgTable('v2_carts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  customerId: uuid('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }).unique(),
+  status: varchar('status', { length: 20 }).notNull().default('active'), // 'active' | 'converted' | 'abandoned'
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const cartItems = pgTable('v2_cart_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  cartId: uuid('cart_id').notNull().references(() => carts.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  sku: varchar('sku', { length: 100 }),
+  quantity: integer('quantity').notNull().default(1),
+  unitPrice: numeric('unit_price', { precision: 12, scale: 2 }),
+  itemMetadata: jsonb('item_metadata').$type<{
+    name?: string
+    image?: string
+    category?: string
+    moq?: number
+    moqStep?: number
+    variantId?: string
+    specifications?: Record<string, any>
+  }>().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// ==========================================
+// 7. WISHLIST ITEMS SCHEMA
+// ==========================================
+export const wishlistItems = pgTable('v2_wishlist_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  customerId: uuid('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+

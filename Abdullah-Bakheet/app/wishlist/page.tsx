@@ -62,8 +62,8 @@ export default function WishlistPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {wishlist.map((item, index) => {
-                                        const isOutOfStock = index === 2;
+                                    {wishlist.map((item) => {
+                                        const isOutOfStock = (item as any).status === 'inactive';
                                         
                                         return (
                                             <tr key={item.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
@@ -98,7 +98,10 @@ export default function WishlistPage() {
                                                         <button 
                                                             onClick={() => {
                                                                 if (!isOutOfStock) {
-                                                                    addToCart({...item});
+                                                                    addToCart({
+                                                                        ...item,
+                                                                        category: item.category || '',
+                                                                    });
                                                                     router.push('/cart');
                                                                 }
                                                             }}

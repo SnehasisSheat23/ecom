@@ -24,7 +24,36 @@ ordersRoutes.get('/summary', handleGetOrders)
 ordersRoutes.post('/', async (c) => {
   try {
     const body = await c.req.json()
-    const order = await ordersService.createOrder(body)
+
+    // 1. Check if customer is authenticated via Bearer token
+    let customerId = body.customerId
+    const authHeader = c.req.header('Authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7).trim()
+      const { verifyJwt } = await import('../../lib/auth-crypto.js')
+      const JWT_SECRET = process.env.APP_SECRET || process.env.JWT_SECRET || 'dubai-ecom-secure-jwt-secret-key-2026'
+      const payload = verifyJwt<any>(token, JWT_SECRET)
+      if (payload && payload.type === 'customer' && payload.sub) {
+        customerId = payload.sub
+      }
+    }
+
+    // 2. If not in token, look up customer by email in database
+    if (!customerId && (body.guestEmail || body.shippingAddressSnapshot?.email || body.email)) {
+      const email = (body.guestEmail || body.shippingAddressSnapshot?.email || body.email).trim().toLowerCase()
+      const db = (await import('../../lib/db.js')).getDatabase()
+      const { customers } = await import('../../database/schema.js')
+      const { eq } = await import('drizzle-orm')
+      const [matchedCustomer] = await db.select().from(customers).where(eq(customers.email, email)).limit(1)
+      if (matchedCustomer) {
+        customerId = matchedCustomer.id
+      }
+    }
+
+    const order = await ordersService.createOrder({
+      ...body,
+      customerId,
+    })
     return c.json({ success: true, data: order }, 201)
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Failed to place order' }, 400)

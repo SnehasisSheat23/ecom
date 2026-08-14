@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, Eye, EyeOff, ArrowUpRight } from 'lucide-react';
 import { useShop } from '@/context/ShopContext';
 
-export default function RegisterPage() {
+function RegisterForm() {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -18,6 +19,11 @@ export default function RegisterPage() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectUrl = searchParams.get('redirect');
+    const action = searchParams.get('action');
+    const itemId = searchParams.get('item');
+
     const { register } = useShop();
 
     const handleRegister = async (e: React.FormEvent) => {
@@ -29,8 +35,13 @@ export default function RegisterPage() {
         setIsLoading(true);
         setErrorMessage(null);
         try {
-            await register({ firstName, lastName, email, password });
-            router.push('/');
+            await register({ firstName, lastName, email, phone, password });
+            if (redirectUrl) {
+                const target = action ? `${redirectUrl}${redirectUrl.includes('?') ? '&' : '?'}action=${action}${itemId ? `&item=${itemId}` : ''}` : redirectUrl;
+                router.push(target);
+            } else {
+                router.push('/');
+            }
         } catch (err: any) {
             setErrorMessage(err.message || 'Registration failed. Please try again.');
         } finally {
@@ -60,7 +71,7 @@ export default function RegisterPage() {
                     </div>
                     
                     <p className="text-gray-500 mb-6 text-[15px]">
-                        Already have an account? <Link href="/login" className="text-black font-bold hover:underline">Sign in</Link>
+                        Already have an account? <Link href={`/login${redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}${action ? `&action=${action}` : ''}${itemId ? `&item=${itemId}` : ''}` : ''}`} className="text-black font-bold hover:underline">Sign in</Link>
                     </p>
 
                     {errorMessage && (
@@ -101,7 +112,7 @@ export default function RegisterPage() {
 
                         <div className="space-y-2">
                             <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">
-                                EMAIL
+                                EMAIL <span className="text-green-500">*</span>
                             </label>
                             <input 
                                 type="email" 
@@ -109,13 +120,26 @@ export default function RegisterPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full bg-white border border-gray-200 rounded p-3.5 text-[15px] focus:outline-none focus:border-gray-400 transition-colors"
-                                placeholder="Email" 
+                                placeholder="abc@gmail.com" 
                             />
                         </div>
 
                         <div className="space-y-2">
                             <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">
-                                PASSWORD
+                                PHONE NUMBER
+                            </label>
+                            <input 
+                                type="tel" 
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                className="w-full bg-white border border-gray-200 rounded p-3.5 text-[15px] focus:outline-none focus:border-gray-400 transition-colors"
+                                placeholder="+971 50 123 4567" 
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">
+                                PASSWORD <span className="text-green-500">*</span>
                             </label>
                             <div className="relative">
                                 <input 
@@ -124,7 +148,7 @@ export default function RegisterPage() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="w-full bg-white border border-gray-200 rounded p-3.5 text-[15px] focus:outline-none focus:border-gray-400 transition-colors pr-10"
-                                    placeholder="Password" 
+                                    placeholder="••••••••" 
                                 />
                                 <button 
                                     type="button"
@@ -138,7 +162,7 @@ export default function RegisterPage() {
 
                         <div className="space-y-2">
                             <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">
-                                CONFIRM PASSWORD
+                                CONFIRM PASSWORD <span className="text-green-500">*</span>
                             </label>
                             <div className="relative">
                                 <input 
@@ -147,7 +171,7 @@ export default function RegisterPage() {
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     className="w-full bg-white border border-gray-200 rounded p-3.5 text-[15px] focus:outline-none focus:border-gray-400 transition-colors pr-10"
-                                    placeholder="Password" 
+                                    placeholder="••••••••" 
                                 />
                                 <button 
                                     type="button"
@@ -159,16 +183,14 @@ export default function RegisterPage() {
                             </div>
                         </div>
 
-                        <div className="pt-6">
-                            <button 
-                                type="submit"
-                                disabled={isLoading}
-                                className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-black transition-colors group disabled:opacity-50"
-                            >
-                                {isLoading ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}
-                                <ArrowUpRight size={16} className="text-gray-400 group-hover:text-white transition-colors" />
-                            </button>
-                        </div>
+                        <button 
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-black transition-colors group disabled:opacity-50"
+                        >
+                            {isLoading ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}
+                            <ArrowUpRight size={16} className="text-gray-400 group-hover:text-white transition-colors" />
+                        </button>
                     </form>
                 </div>
             </div>
@@ -204,24 +226,18 @@ export default function RegisterPage() {
                                 <h4 className="text-white font-bold text-lg">Ritwika Sengupta</h4>
                                 <p className="text-gray-300 text-sm">CEO & Founder, ABC Company</p>
                             </div>
-                            <div className="flex gap-3">
-                                <button className="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center text-white hover:bg-white/10 transition-colors">
-                                    <ChevronLeft size={16} />
-                                </button>
-                                <button className="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center text-white hover:bg-white/10 transition-colors">
-                                    <ChevronLeft size={16} className="rotate-180" />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                            <div className="w-2 h-2 rounded-full bg-white/30"></div>
-                            <div className="w-2 h-2 rounded-full bg-white"></div>
-                            <div className="w-2 h-2 rounded-full bg-white/30"></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function RegisterPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>}>
+            <RegisterForm />
+        </Suspense>
     );
 }
