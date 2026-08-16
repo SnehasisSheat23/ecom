@@ -10,6 +10,7 @@ import { authRoutes } from './modules/auth/auth.routes.js'
 import { cartRoutes } from './modules/cart/cart.routes.js'
 import { wishlistRoutes } from './modules/wishlist/wishlist.routes.js'
 import { shippingRoutes } from './modules/shipping/shipping.routes.js'
+import { quotationsRoutes } from './modules/quotations/quotations.routes.js'
 import { requireAdminAuth } from './middleware/auth.middleware.js'
 import { ProductsService } from './modules/products/products.service.js'
 import { storageService } from './lib/storage.js'
@@ -37,6 +38,7 @@ app.route('/api/v1/products', productsRoutes)
 app.route('/api/v1/categories', categoriesRoutes)
 app.route('/api/v1/customers', customersRoutes)
 app.route('/api/v1/orders', ordersRoutes)
+app.route('/api/v1/quotations', quotationsRoutes)
 app.route('/api/v1/storefront', storefrontRoutes)
 app.route('/api/v1/cart', cartRoutes)
 app.route('/api/v1/wishlist', wishlistRoutes)

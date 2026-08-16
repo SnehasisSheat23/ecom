@@ -22,10 +22,17 @@ interface Customer {
   name: string
   email: string
   phone: string
+  companyName?: string
+  companyTaxId?: string
+  crNumber?: string
+  customerGroup?: "retail" | "wholesale" | "corporate_vip"
+  creditLimit?: number
+  availableCredit?: number
+  paymentTerms?: string
   ordersCount: number
   totalSpent: number
-  lastOrderDate: string
-  lastOrderId: string
+  lastOrderDate?: string
+  lastOrderId?: string
   city: string
   province: string
   country: string
@@ -39,6 +46,13 @@ interface APICustomer {
   lastName?: string
   email: string
   phone?: string
+  companyName?: string
+  companyTaxId?: string
+  crNumber?: string
+  customerGroup?: "retail" | "wholesale" | "corporate_vip"
+  creditLimit?: number
+  availableCredit?: number
+  paymentTerms?: string
   isAdmin?: boolean
   ordersCount?: number
   totalSpent?: number
@@ -47,11 +61,13 @@ interface APICustomer {
 }
 
 const TABS = ["All", "Email subscribers", "Returning"]
+const CORPORATE_TABS = ["All Corporate", "Corporate VIP", "Wholesale", "Active Credit Lines"]
 
-export function CustomersView() {
+export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporate" | "retail" }) {
+  const isCorporateView = filterGroup === "corporate"
   const [customers, setCustomers] = React.useState<Customer[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
-  const [activeTab, setActiveTab] = React.useState("All")
+  const [activeTab, setActiveTab] = React.useState(isCorporateView ? "All Corporate" : "All")
   const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set())
   const router = useRouter()
 
@@ -93,17 +109,24 @@ export function CustomersView() {
           const body = await res.json()
           if (active && body.data) {
             const items = body.data.items || body.data || []
-            const mapped = items.map((c: APICustomer) => ({
+            const mapped = items.map((c: any) => ({
               id: c.id,
-              name: `${c.firstName || ""} ${c.lastName || ""}`.trim() || c.email.split("@")[0],
+              name: `${c.firstName || ""} ${c.lastName || ""}`.trim() || c.companyName || c.email.split("@")[0],
               email: c.email,
               phone: c.phone || "-",
+              companyName: c.companyName || "",
+              companyTaxId: c.companyTaxId || "",
+              crNumber: c.crNumber || "",
+              customerGroup: c.customerGroup || "retail",
+              creditLimit: Number(c.creditLimit || 0),
+              availableCredit: Number(c.availableCredit || 0),
+              paymentTerms: c.paymentTerms || "prepaid",
               ordersCount: c.ordersCount || 0,
               totalSpent: c.totalSpent || 0,
-              city: (c as any).city || "-",
-              province: (c as any).province || (c as any).city || "-",
-              country: (c as any).country || "-",
-              tags: (c as any).tags || [],
+              city: c.city || "-",
+              province: c.province || c.city || "-",
+              country: c.country || "-",
+              tags: c.tags || [],
               marketingConsent: false,
             }))
             setCustomers(mapped)
@@ -128,8 +151,21 @@ export function CustomersView() {
   const filteredCustomers = React.useMemo(() => {
     let result = [...customers]
 
+    // 0. Base Group Filtering - Strictly separated (no combined data)
+    if (isCorporateView) {
+      result = result.filter(c => c.customerGroup === "corporate_vip" || c.customerGroup === "wholesale" || (c.companyName && c.companyName.trim().length > 0))
+    } else {
+      result = result.filter(c => (c.customerGroup === "retail" || !c.customerGroup) && (!c.companyName || c.companyName.trim().length === 0))
+    }
+
     // 1. Tab Segment Filtering
-    if (activeTab === "Email subscribers") {
+    if (activeTab === "Corporate VIP") {
+      result = result.filter(c => c.customerGroup === "corporate_vip")
+    } else if (activeTab === "Wholesale") {
+      result = result.filter(c => c.customerGroup === "wholesale")
+    } else if (activeTab === "Active Credit Lines") {
+      result = result.filter(c => (c.creditLimit || 0) > 0)
+    } else if (activeTab === "Email subscribers") {
       result = result.filter(c => c.marketingConsent)
     } else if (activeTab === "Returning") {
       result = result.filter(c => c.ordersCount > 1)
@@ -140,6 +176,7 @@ export function CustomersView() {
       const query = searchQuery.toLowerCase().trim()
       result = result.filter(c => {
         return c.name.toLowerCase().includes(query) || 
+               (c.companyName && c.companyName.toLowerCase().includes(query)) ||
                c.email.toLowerCase().includes(query) ||
                c.city.toLowerCase().includes(query) ||
                c.country.toLowerCase().includes(query)
@@ -169,7 +206,7 @@ export function CustomersView() {
     })
 
     return result
-  }, [customers, activeTab, searchQuery, sortField, sortOrder])
+  }, [customers, activeTab, isCorporateView, searchQuery, sortField, sortOrder])
 
   // Row Selection Handlers
   const handleSelectAll = (checked: boolean) => {
@@ -241,7 +278,14 @@ export function CustomersView() {
       
       {/* Header section with title and actions */}
       <div className="flex items-center justify-between pb-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground select-none">Customers</h1>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground select-none">
+            {isCorporateView ? "Corporate / B2B Accounts" : "Customers"}
+          </h1>
+          {isCorporateView && (
+            <p className="text-xs text-muted-foreground mt-0.5">Manage contracted corporate clients, credit terms & VAT tax IDs.</p>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" className="h-8 shadow-xs text-xs px-3 cursor-pointer">Export</Button>
           <Button variant="outline" className="h-8 shadow-xs text-xs px-3 cursor-pointer">Import</Button>
@@ -249,7 +293,7 @@ export function CustomersView() {
             className="h-8 shadow-xs text-xs px-4 bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer"
             onClick={handleAddCustomer}
           >
-            Add customer
+            {isCorporateView ? "Add Corporate Account" : "Add customer"}
           </Button>
         </div>
       </div>
@@ -260,7 +304,7 @@ export function CustomersView() {
         {/* Toolbar & Filters */}
         <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-2 h-12 shrink-0">
           <div className="flex items-center gap-1 overflow-x-auto no-scrollbar mask-fade-right pr-4 flex-1 min-w-0">
-            {TABS.map(tab => (
+            {(isCorporateView ? CORPORATE_TABS : TABS).map(tab => (
               <Button
                 key={tab}
                 variant={activeTab === tab ? "secondary" : "ghost"}
@@ -280,7 +324,7 @@ export function CustomersView() {
                 <Icon name="search" size={14} className="size-3.5 text-muted-foreground shrink-0" />
                 <input
                   type="text"
-                  placeholder="Search customers..."
+                  placeholder={isCorporateView ? "Search company, tax ID..." : "Search customers..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="bg-transparent border-none outline-none focus:outline-none text-xs text-foreground placeholder:text-muted-foreground w-full h-full pl-1 ml-0.5 shrink min-w-0"
@@ -367,24 +411,34 @@ export function CustomersView() {
                   </th>
                   <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("name")}>
                     <div className="flex items-center">
-                      Customer {renderSortIcon("name")}
+                      {isCorporateView ? "Company / Client" : "Customer"} {renderSortIcon("name")}
                     </div>
                   </th>
                   <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("email")}>
                     <div className="flex items-center">
-                      Email {renderSortIcon("email")}
+                      Contact Email {renderSortIcon("email")}
                     </div>
                   </th>
-                  <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("phone")}>
-                    <div className="flex items-center">
-                      Phone {renderSortIcon("phone")}
-                    </div>
-                  </th>
-                  <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("city")}>
-                    <div className="flex items-center">
-                      Location {renderSortIcon("city")}
-                    </div>
-                  </th>
+                  {isCorporateView ? (
+                    <>
+                      <th className="p-3">Tier Group</th>
+                      <th className="p-3">Credit Limit</th>
+                      <th className="p-3">Payment Terms</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("phone")}>
+                        <div className="flex items-center">
+                          Phone {renderSortIcon("phone")}
+                        </div>
+                      </th>
+                      <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("city")}>
+                        <div className="flex items-center">
+                          Location {renderSortIcon("city")}
+                        </div>
+                      </th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -410,10 +464,10 @@ export function CustomersView() {
                   ))
                 ) : filteredCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <Icon name="group" size={24} className="size-8 text-muted-foreground/60" />
-                      <span className="text-sm font-medium">No customers found</span>
+                      <Icon name="business" size={24} className="size-8 text-muted-foreground/60" />
+                      <span className="text-sm font-medium">No accounts found</span>
                     </div>
                   </td>
                 </tr>
@@ -435,17 +489,44 @@ export function CustomersView() {
                         />
                       </td>
                       <td className="p-3 font-semibold text-foreground whitespace-nowrap">
-                        {customer.name}
+                        <div>
+                          <span>{customer.companyName || customer.name}</span>
+                          {customer.companyName && (
+                            <p className="text-[11px] font-normal text-muted-foreground">{customer.name}</p>
+                          )}
+                        </div>
                       </td>
                       <td className="p-3 text-muted-foreground whitespace-nowrap">
                         {customer.email}
                       </td>
-                      <td className="p-3 text-muted-foreground whitespace-nowrap">
-                        {customer.phone}
-                      </td>
-                      <td className="p-3 text-muted-foreground whitespace-nowrap">
-                        {customer.city !== "-" && customer.country !== "-" ? `${customer.city}, ${customer.country}` : (customer.city !== "-" ? customer.city : "-")}
-                      </td>
+                      {isCorporateView ? (
+                        <>
+                          <td className="p-3 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold uppercase ${
+                              customer.customerGroup === "corporate_vip"
+                                ? "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
+                                : (customer.customerGroup === "wholesale" ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300" : "bg-muted text-muted-foreground")
+                            }`}>
+                              {customer.customerGroup || "retail"}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono font-medium whitespace-nowrap">
+                            {customer.creditLimit ? formatPrice(customer.creditLimit, { currency: "SAR" }) : "—"}
+                          </td>
+                          <td className="p-3 uppercase text-xs font-medium text-muted-foreground whitespace-nowrap">
+                            {customer.paymentTerms?.replace("_", " ") || "Prepaid"}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="p-3 text-muted-foreground whitespace-nowrap">
+                            {customer.phone}
+                          </td>
+                          <td className="p-3 text-muted-foreground whitespace-nowrap">
+                            {customer.city !== "-" && customer.country !== "-" ? `${customer.city}, ${customer.country}` : (customer.city !== "-" ? customer.city : "-")}
+                          </td>
+                        </>
+                      )}
                     </tr>
                   )
                 })

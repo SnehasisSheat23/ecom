@@ -211,6 +211,93 @@ async function createTables() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    -- 9. B2B QUOTATIONS & QUOTATION ITEMS TABLES
+    CREATE TABLE IF NOT EXISTS v2_quotations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      quote_number VARCHAR(100) NOT NULL UNIQUE,
+      customer_id UUID REFERENCES v2_customers(id) ON DELETE SET NULL,
+      customer_name VARCHAR(150) NOT NULL,
+      customer_email VARCHAR(255) NOT NULL,
+      customer_phone VARCHAR(50),
+      company_name VARCHAR(150),
+      tax_number VARCHAR(100),
+      status VARCHAR(50) NOT NULL DEFAULT 'pending_review',
+      currency VARCHAR(10) NOT NULL DEFAULT 'SAR',
+      subtotal NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+      discount_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+      shipping_cost NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+      tax_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+      total_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+      admin_notes TEXT,
+      customer_notes TEXT,
+      valid_until TIMESTAMPTZ,
+      payment_link VARCHAR(500),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS v2_quotation_items (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      quotation_id UUID NOT NULL REFERENCES v2_quotations(id) ON DELETE CASCADE,
+      product_id UUID REFERENCES v2_products(id) ON DELETE SET NULL,
+      sku VARCHAR(100),
+      product_name_snapshot JSONB NOT NULL,
+      requested_quantity INT NOT NULL,
+      original_unit_price NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+      quoted_unit_price NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+      total_price NUMERIC(12, 2) NOT NULL DEFAULT 0.00
+    );
+
+    -- 10. B2B COLUMN MIGRATIONS (Safe IF NOT EXISTS checks)
+    DO $$ 
+    BEGIN
+      -- Customers B2B fields
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_customers' AND column_name='company_tax_id') THEN
+        ALTER TABLE v2_customers ADD COLUMN company_tax_id VARCHAR(50);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_customers' AND column_name='cr_number') THEN
+        ALTER TABLE v2_customers ADD COLUMN cr_number VARCHAR(50);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_customers' AND column_name='customer_group') THEN
+        ALTER TABLE v2_customers ADD COLUMN customer_group VARCHAR(50) NOT NULL DEFAULT 'retail';
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_customers' AND column_name='credit_limit') THEN
+        ALTER TABLE v2_customers ADD COLUMN credit_limit NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_customers' AND column_name='available_credit') THEN
+        ALTER TABLE v2_customers ADD COLUMN available_credit NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_customers' AND column_name='payment_terms') THEN
+        ALTER TABLE v2_customers ADD COLUMN payment_terms VARCHAR(50) NOT NULL DEFAULT 'prepaid';
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_customers' AND column_name='account_discount_percent') THEN
+        ALTER TABLE v2_customers ADD COLUMN account_discount_percent NUMERIC(5, 2) NOT NULL DEFAULT 0.00;
+      END IF;
+
+      -- Orders B2B fields
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_orders' AND column_name='payment_method_type') THEN
+        ALTER TABLE v2_orders ADD COLUMN payment_method_type VARCHAR(50) NOT NULL DEFAULT 'CARD';
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_orders' AND column_name='payment_receipt_url') THEN
+        ALTER TABLE v2_orders ADD COLUMN payment_receipt_url VARCHAR(500);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_orders' AND column_name='po_document_url') THEN
+        ALTER TABLE v2_orders ADD COLUMN po_document_url VARCHAR(500);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_orders' AND column_name='po_number') THEN
+        ALTER TABLE v2_orders ADD COLUMN po_number VARCHAR(100);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_orders' AND column_name='quotation_id') THEN
+        ALTER TABLE v2_orders ADD COLUMN quotation_id UUID REFERENCES v2_quotations(id) ON DELETE SET NULL;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_orders' AND column_name='tax_amount') THEN
+        ALTER TABLE v2_orders ADD COLUMN tax_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_orders' AND column_name='discount_amount') THEN
+        ALTER TABLE v2_orders ADD COLUMN discount_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
+      END IF;
+    END $$;
   `)
 
   // Safely seed default standard shipping method in DB if not exists

@@ -80,7 +80,21 @@ export class CartService {
 
     const formattedItems = rawItems.map((item) => {
       const prod = productMap.get(item.productId)
-      const rawLivePrice = prod?.pricing?.AED?.price ?? (item.unitPrice ? parseFloat(item.unitPrice.toString()) : 0)
+      const aedPricing = prod?.pricing?.AED as any
+      let rawLivePrice = aedPricing?.price ?? (item.unitPrice ? parseFloat(item.unitPrice.toString()) : 0)
+
+      // Check if tiered pricing applies for quantity
+      if (aedPricing && Array.isArray(aedPricing.tieredPricing) && aedPricing.tieredPricing.length > 0) {
+        const matchingTier = aedPricing.tieredPricing.find((t: any) => {
+          const min = Number(t.minQty || 1)
+          const max = t.maxQty ? Number(t.maxQty) : Infinity
+          return item.quantity >= min && item.quantity <= max
+        })
+        if (matchingTier && matchingTier.price) {
+          rawLivePrice = Number(matchingTier.price)
+        }
+      }
+
       const livePrice = Number(rawLivePrice || 0)
       const title = prod?.translations?.en?.title || (item.itemMetadata as any)?.name || 'Product'
       const image = (prod?.images && prod.images.length > 0) ? prod.images[0] : ((item.itemMetadata as any)?.image || '')

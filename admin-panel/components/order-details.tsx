@@ -56,6 +56,11 @@ interface Order {
   orderNumber?: string
   status?: OrderStatus
   shippingMethodName?: string
+  paymentMethodType?: string
+  poDocumentUrl?: string | null
+  poNumber?: string | null
+  paymentReceiptUrl?: string | null
+  quotationId?: string | null
   metadata?: {
     cakeMessage?: string | null
     deliveryDate?: string | null
@@ -191,6 +196,11 @@ const mapBackendOrderToFrontend = (item: BackendOrder): Order => {
     orderNumber: item.orderNumber || item.id,
     status: status as OrderStatus,
     shippingMethodName: item.shippingMethodSnapshot?.name || item.shippingMethodSnapshot?.label || (meta.deliveryType as string) || "Standard Delivery",
+    paymentMethodType: (item as any).paymentMethodType || "CARD",
+    poDocumentUrl: (item as any).poDocumentUrl || null,
+    poNumber: (item as any).poNumber || null,
+    paymentReceiptUrl: (item as any).paymentReceiptUrl || null,
+    quotationId: (item as any).quotationId || null,
     metadata: {
       cakeMessage: (meta.cakeMessage as string) || null,
       deliveryDate: (meta.deliveryDate as string) || null,
@@ -570,11 +580,46 @@ export function OrderDetails({ id }: { id: string }) {
                 )}
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground font-normal">Payment</span>
-                <span className="text-sm font-medium text-foreground leading-relaxed">
-                  {order.metadata?.paymentId ? `Online Payment (${order.metadata.paymentId})` : "Online Payment"}
-                </span>
-                <span className="text-xs text-muted-foreground leading-relaxed">Billing address same as shipping</span>
+                <span className="text-xs text-muted-foreground font-normal">Payment Method & Terms</span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase ${
+                    order.paymentMethodType === 'CREDIT_TERMS' 
+                      ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300'
+                      : (order.paymentMethodType === 'PURCHASE_ORDER' 
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300' 
+                        : (order.paymentMethodType === 'BANK_TRANSFER' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300' : 'bg-muted text-foreground'))
+                  }`}>
+                    {order.paymentMethodType || 'Card / Online'}
+                  </span>
+                  {order.poNumber && (
+                    <span className="text-xs font-mono font-medium text-foreground">PO: {order.poNumber}</span>
+                  )}
+                </div>
+                {order.poDocumentUrl && (
+                  <a
+                    href={order.poDocumentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1 font-medium"
+                  >
+                    <Icon name="attach_file" className="size-3.5" />
+                    View Attached PO Document
+                  </a>
+                )}
+                {order.paymentReceiptUrl && (
+                  <a
+                    href={order.paymentReceiptUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-emerald-600 hover:underline flex items-center gap-1 mt-1 font-medium"
+                  >
+                    <Icon name="receipt" className="size-3.5" />
+                    View Bank Wire Transfer Slip
+                  </a>
+                )}
+                {order.quotationId && (
+                  <span className="text-[11px] text-muted-foreground mt-0.5">Origin: RFQ Quotation</span>
+                )}
               </div>
               <div className="flex flex-col gap-1 md:col-span-2">
                 <span className="text-xs text-muted-foreground font-normal">Shipping address</span>

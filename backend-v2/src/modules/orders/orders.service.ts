@@ -20,6 +20,11 @@ export interface CreateOrderInput {
   shippingAddressSnapshot?: Record<string, any>
   billingAddressSnapshot?: Record<string, any>
   paymentMethod?: string
+  paymentMethodType?: 'CARD' | 'MADA' | 'APPLE_PAY' | 'BANK_TRANSFER' | 'PURCHASE_ORDER' | 'CREDIT_TERMS'
+  paymentReceiptUrl?: string
+  poDocumentUrl?: string
+  poNumber?: string
+  quotationId?: string
   notes?: string
   shippingCost?: number
   items: CreateOrderItemInput[]
@@ -34,6 +39,13 @@ export class OrdersService {
 
     if (!input.items || input.items.length === 0) {
       throw new Error('Order must contain at least one product item.')
+    }
+
+    // 1. Fetch Customer Profile if logged in for B2B checks & discounts
+    let customerProfile: any = null
+    if (input.customerId) {
+      const [cust] = await this.db.select().from(customers).where(eq(customers.id, input.customerId)).limit(1)
+      customerProfile = cust || null
     }
 
     let subtotal = 0
@@ -54,7 +66,6 @@ export class OrdersService {
       }
 
       if (!product[0]) {
-        // Fallback: search any product
         const fallbackProds = await this.db.select().from(products).limit(1)
         if (fallbackProds[0]) {
           product = fallbackProds
@@ -64,17 +75,41 @@ export class OrdersService {
       const p = product[0]
       const rawPricing = (p?.pricing || {}) as any
       let unitPrice: number | null = null
+      const currPricing = rawPricing && rawPricing[currency] ? rawPricing[currency] : null
 
-      // 1. If explicit pricing exists in DB for this exact currency (e.g. SAR, USD)
-      if (rawPricing && rawPricing[currency]) {
-        const priceObj = rawPricing[currency]
-        const raw = typeof priceObj === 'object' && priceObj !== null ? (priceObj.price ?? 0) : Number(priceObj)
-        if (typeof raw === 'number' && !isNaN(raw) && raw > 0) {
-          unitPrice = Number(raw)
+      // Check Corporate Pricing or Tiered Bulk Pricing
+      if (currPricing && typeof currPricing === 'object') {
+        const qty = item.quantity || 1
+
+        // A. If Corporate VIP customer and product has explicit corporatePrice
+        if (customerProfile && (customerProfile.customerGroup === 'corporate_vip' || customerProfile.customerGroup === 'wholesale') && currPricing.corporatePrice) {
+          unitPrice = Number(currPricing.corporatePrice)
+        }
+        // B. Check Tiered Bulk Pricing breaks
+        else if (Array.isArray(currPricing.tieredPricing) && currPricing.tieredPricing.length > 0) {
+          const matchingTier = currPricing.tieredPricing.find((t: any) => {
+            const min = Number(t.minQty || 1)
+            const max = t.maxQty ? Number(t.maxQty) : Infinity
+            return qty >= min && qty <= max
+          })
+          if (matchingTier && matchingTier.price) {
+            unitPrice = Number(matchingTier.price)
+          }
+        }
+
+        // C. Standard catalog price
+        if (unitPrice === null && currPricing.price !== undefined && currPricing.price !== null) {
+          unitPrice = Number(currPricing.price)
         }
       }
 
-      // 2. If no explicit currency object in DB, use the price sent by storefront
+      // If customer has account-wide discount percent (e.g. 15%) and no special unitPrice was chosen
+      if (unitPrice !== null && customerProfile && Number(customerProfile.accountDiscountPercent) > 0) {
+        const discountFrac = Number(customerProfile.accountDiscountPercent) / 100
+        unitPrice = Number((unitPrice * (1 - discountFrac)).toFixed(2))
+      }
+
+      // If still no unitPrice resolved, check item-provided price or fallback
       if (unitPrice === null || isNaN(unitPrice) || unitPrice <= 0) {
         const passedPrice = item.unitPrice !== undefined ? item.unitPrice : item.price
         if (typeof passedPrice === 'number' && !isNaN(passedPrice) && passedPrice > 0) {
@@ -82,7 +117,7 @@ export class OrdersService {
         }
       }
 
-      // 3. Fallback to AED price
+      // Fallback to AED/SAR catalog price
       if (unitPrice === null || isNaN(unitPrice) || unitPrice <= 0) {
         const aedObj = rawPricing?.['AED'] || rawPricing?.['SAR'] || 15
         const aedRaw = typeof aedObj === 'object' && aedObj !== null ? (aedObj.price ?? 0) : Number(aedObj)
@@ -119,8 +154,33 @@ export class OrdersService {
     })
 
     const finalShippingCost = input.shippingCost !== undefined ? input.shippingCost : shippingCalculation.cost
-    const totalAmount = subtotal + finalShippingCost
+    const vatRate = currency === 'SAR' ? 0.15 : (currency === 'AED' ? 0.05 : 0)
+    const taxAmount = Number((subtotal * vatRate).toFixed(2))
+    const totalAmount = subtotal + finalShippingCost + taxAmount
+
+    // B2B Corporate Credit Check
+    const paymentMethodType = input.paymentMethodType || (input.paymentMethod ? input.paymentMethod.toUpperCase() : 'CARD')
+    if (paymentMethodType === 'CREDIT_TERMS') {
+      if (!customerProfile) {
+        throw new Error('A registered corporate account is required to place orders on credit terms.')
+      }
+      const availCredit = Number(customerProfile.availableCredit || 0)
+      if (availCredit < totalAmount) {
+        throw new Error(`Insufficient corporate credit limit. Available: ${availCredit.toFixed(2)} ${currency}, Total: ${totalAmount.toFixed(2)} ${currency}`)
+      }
+
+      // Deduct credit
+      const newAvail = Math.max(0, availCredit - totalAmount)
+      await this.db
+        .update(customers)
+        .set({ availableCredit: newAvail.toFixed(2) })
+        .where(eq(customers.id, customerProfile.id))
+    }
+
     const orderNumber = `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`
+    const initialStatus = paymentMethodType === 'CREDIT_TERMS' || paymentMethodType === 'PURCHASE_ORDER'
+      ? 'processing'
+      : (paymentMethodType === 'BANK_TRANSFER' ? 'pending_payment' : 'pending')
 
     const shippingSnapshot = {
       ...(input.shippingAddressSnapshot || {}),
@@ -139,11 +199,17 @@ export class OrdersService {
       .values({
         orderNumber,
         customerId: input.customerId,
-        status: 'pending',
+        status: initialStatus,
         currency,
         subtotal: subtotal.toFixed(2),
         shippingCost: finalShippingCost.toFixed(2),
+        taxAmount: taxAmount.toFixed(2),
         totalAmount: totalAmount.toFixed(2),
+        paymentMethodType,
+        paymentReceiptUrl: input.paymentReceiptUrl || null,
+        poDocumentUrl: input.poDocumentUrl || null,
+        poNumber: input.poNumber || null,
+        quotationId: input.quotationId ? (input.quotationId as any) : null,
         shippingAddressSnapshot: shippingSnapshot,
         billingAddressSnapshot: input.billingAddressSnapshot || {},
       })

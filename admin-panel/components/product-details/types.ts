@@ -1,8 +1,16 @@
+export interface PriceTier {
+  minQty: number
+  maxQty?: number
+  price: number
+}
+
 export interface VariantPrice {
   currencyCode: string
   price: number | ""
   compareAtPrice?: number | ""
   costPerItem?: number | ""
+  corporatePrice?: number | ""
+  tieredPricing?: PriceTier[]
 }
 
 export interface APIVariantPrice {
@@ -11,6 +19,8 @@ export interface APIVariantPrice {
   price: number
   compareAtPrice?: number | null
   costPerItem?: number | null
+  corporatePrice?: number | null
+  tieredPricing?: PriceTier[]
 }
 
 export interface Variant {

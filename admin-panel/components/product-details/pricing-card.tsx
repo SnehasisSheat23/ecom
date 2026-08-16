@@ -317,31 +317,223 @@ export function PricingCard({
 
         {/* MOQ (Minimum Order Quantity) Input */}
         <div className="flex flex-col gap-2 md:col-span-2 pt-3 border-t border-border/60">
-          <label className="text-[13px] font-medium text-foreground">MOQ (Minimum Order Quantity)</label>
-          <input
-            type="number"
-            step="1"
-            min="1"
-            placeholder="e.g. 1"
-            className="w-full md:w-1/2 h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono"
-            value={product.moq === "" ? "" : (product.moq ?? product.specifications?.moq ?? 1)}
-            onChange={(e) => {
-              const raw = e.target.value
-              const val = raw === "" ? "" : Math.max(1, parseInt(raw, 10) || 1)
-              setProduct(prev => {
-                if (!prev) return null
-                const updatedSpecs = { ...(prev.specifications || {}) }
-                if (raw === "") {
-                  delete updatedSpecs.moq
-                  delete updatedSpecs.minOrderQuantity
-                } else {
-                  updatedSpecs.moq = raw
-                  updatedSpecs.minOrderQuantity = raw
-                }
-                return { ...prev, moq: val, specifications: updatedSpecs }
-              })
-            }}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[13px] font-medium text-foreground">MOQ (Minimum Order Quantity)</label>
+              <input
+                type="number"
+                step="1"
+                min="1"
+                placeholder="e.g. 1"
+                className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono"
+                value={product.moq === "" ? "" : (product.moq ?? product.specifications?.moq ?? 1)}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  const val = raw === "" ? "" : Math.max(1, parseInt(raw, 10) || 1)
+                  setProduct(prev => {
+                    if (!prev) return null
+                    const updatedSpecs = { ...(prev.specifications || {}) }
+                    if (raw === "") {
+                      delete updatedSpecs.moq
+                      delete updatedSpecs.minOrderQuantity
+                    } else {
+                      updatedSpecs.moq = raw
+                      updatedSpecs.minOrderQuantity = raw
+                    }
+                    return { ...prev, moq: val, specifications: updatedSpecs }
+                  })
+                }}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[13px] font-medium text-foreground">Corporate Price</label>
+                <span className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold">B2B </span>
+              </div>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-muted-foreground select-none font-medium">{currencySymbol}</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Special contracted rate"
+                  style={{ paddingLeft: `${Math.max(2, (currencySymbol?.length || 1) * 0.65 + 0.8)}rem` }}
+                  className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono font-semibold"
+                  value={(currentPriceEntry as any)?.corporatePrice ?? ""}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    const val = raw === "" ? undefined : (parseFloat(raw) || 0)
+                    setProduct(prev => {
+                      if (!prev) return null
+                      const variants = [...(prev.variants || [])]
+                      if (variants[0]) {
+                        const targetVar = { ...variants[0] }
+                        const prices = [...(targetVar.prices || [])]
+                        const idx = prices.findIndex(p => p.currencyCode.toUpperCase() === currentCurrency.toUpperCase())
+                        if (idx >= 0) {
+                          prices[idx] = { ...prices[idx], corporatePrice: val } as any
+                        } else {
+                          prices.push({ currencyCode: currentCurrency, price: 0, corporatePrice: val } as any)
+                        }
+                        targetVar.prices = prices
+                        variants[0] = targetVar
+                      }
+                      return { ...prev, variants }
+                    })
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bulk Wholesale Quantity Breaks (Tiered Pricing) */}
+        <div className="md:col-span-2 pt-4 border-t border-border/60 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-semibold text-foreground">Wholesale Bulk Pricing Tiers ({currentCurrency})</h4>
+              <p className="text-xs text-muted-foreground">Define automated quantity discount breaks (e.g. 10–49 pcs, 50+ pcs).</p>
+            </div>
+            <button
+              type="button"
+              className="px-2.5 py-1 text-xs font-semibold rounded-md bg-muted hover:bg-muted/80 text-foreground cursor-pointer transition-colors"
+              onClick={() => {
+                setProduct(prev => {
+                  if (!prev) return null
+                  const variants = [...(prev.variants || [])]
+                  if (variants[0]) {
+                    const targetVar = { ...variants[0] }
+                    const prices = [...(targetVar.prices || [])]
+                    const idx = prices.findIndex(p => p.currencyCode.toUpperCase() === currentCurrency.toUpperCase())
+                    const currTiers = idx >= 0 && (prices[idx] as any).tieredPricing ? [...(prices[idx] as any).tieredPricing] : []
+                    currTiers.push({ minQty: (currTiers.length + 1) * 10, maxQty: (currTiers.length + 1) * 10 + 39, price: Number(activePrice || 0) * 0.9 })
+                    
+                    if (idx >= 0) {
+                      prices[idx] = { ...prices[idx], tieredPricing: currTiers } as any
+                    } else {
+                      prices.push({ currencyCode: currentCurrency, price: Number(activePrice || 0), tieredPricing: currTiers } as any)
+                    }
+                    targetVar.prices = prices
+                    variants[0] = targetVar
+                  }
+                  return { ...prev, variants }
+                })
+              }}
+            >
+              + Add Quantity Tier
+            </button>
+          </div>
+
+          {Array.isArray((currentPriceEntry as any)?.tieredPricing) && (currentPriceEntry as any).tieredPricing.length > 0 ? (
+            <div className="border border-border/60 rounded-lg overflow-hidden">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-muted/50 border-b border-border/60 font-semibold text-muted-foreground">
+                  <tr>
+                    <th className="py-2 px-3">Min Qty</th>
+                    <th className="py-2 px-3">Max Qty (Optional)</th>
+                    <th className="py-2 px-3">Tier Unit Price ({currencySymbol})</th>
+                    <th className="py-2 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {((currentPriceEntry as any).tieredPricing as any[]).map((tier, tIdx) => (
+                    <tr key={tIdx}>
+                      <td className="py-2 px-3">
+                        <input
+                          type="number"
+                          min="1"
+                          value={tier.minQty}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10) || 1
+                            setProduct(prev => {
+                              if (!prev) return null
+                              const variants = [...(prev.variants || [])]
+                              const prices = [...(variants[0].prices || [])]
+                              const pIdx = prices.findIndex(p => p.currencyCode.toUpperCase() === currentCurrency.toUpperCase())
+                              const tiers = [...((prices[pIdx] as any).tieredPricing || [])]
+                              tiers[tIdx] = { ...tiers[tIdx], minQty: val }
+                              prices[pIdx] = { ...prices[pIdx], tieredPricing: tiers } as any
+                              variants[0].prices = prices
+                              return { ...prev, variants }
+                            })
+                          }}
+                          className="w-20 h-7 px-2 bg-background border border-border rounded font-mono"
+                        />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input
+                          type="number"
+                          placeholder="∞ (Any)"
+                          value={tier.maxQty || ""}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? undefined : (parseInt(e.target.value, 10) || undefined)
+                            setProduct(prev => {
+                              if (!prev) return null
+                              const variants = [...(prev.variants || [])]
+                              const prices = [...(variants[0].prices || [])]
+                              const pIdx = prices.findIndex(p => p.currencyCode.toUpperCase() === currentCurrency.toUpperCase())
+                              const tiers = [...((prices[pIdx] as any).tieredPricing || [])]
+                              tiers[tIdx] = { ...tiers[tIdx], maxQty: val }
+                              prices[pIdx] = { ...prices[pIdx], tieredPricing: tiers } as any
+                              variants[0].prices = prices
+                              return { ...prev, variants }
+                            })
+                          }}
+                          className="w-20 h-7 px-2 bg-background border border-border rounded font-mono"
+                        />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={tier.price}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0
+                            setProduct(prev => {
+                              if (!prev) return null
+                              const variants = [...(prev.variants || [])]
+                              const prices = [...(variants[0].prices || [])]
+                              const pIdx = prices.findIndex(p => p.currencyCode.toUpperCase() === currentCurrency.toUpperCase())
+                              const tiers = [...((prices[pIdx] as any).tieredPricing || [])]
+                              tiers[tIdx] = { ...tiers[tIdx], price: val }
+                              prices[pIdx] = { ...prices[pIdx], tieredPricing: tiers } as any
+                              variants[0].prices = prices
+                              return { ...prev, variants }
+                            })
+                          }}
+                          className="w-24 h-7 px-2 bg-background border border-border rounded font-mono font-bold"
+                        />
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        <button
+                          type="button"
+                          className="text-xs text-rose-600 hover:text-rose-700 cursor-pointer"
+                          onClick={() => {
+                            setProduct(prev => {
+                              if (!prev) return null
+                              const variants = [...(prev.variants || [])]
+                              const prices = [...(variants[0].prices || [])]
+                              const pIdx = prices.findIndex(p => p.currencyCode.toUpperCase() === currentCurrency.toUpperCase())
+                              const tiers = ((prices[pIdx] as any).tieredPricing || []).filter((_: any, idx: number) => idx !== tIdx)
+                              prices[pIdx] = { ...prices[pIdx], tieredPricing: tiers } as any
+                              variants[0].prices = prices
+                              return { ...prev, variants }
+                            })
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="py-3 px-4 rounded-md bg-muted/30 border border-dashed border-border/80 text-center text-xs text-muted-foreground">
+              No bulk tiers configured for {currentCurrency}. Standard price applies for all order quantities.
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

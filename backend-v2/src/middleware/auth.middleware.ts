@@ -55,3 +55,5 @@ export async function optionalAuth(c: Context, next: Next) {
   }
   await next()
 }
+
+export const optionalCustomerAuth = optionalAuth

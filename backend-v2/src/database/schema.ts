@@ -20,6 +20,12 @@ export const categories = pgTable('v2_categories', {
 // ==========================================
 // 2. PRODUCTS SCHEMA
 // ==========================================
+export interface PriceTier {
+  minQty: number
+  maxQty?: number
+  price: number
+}
+
 export const products = pgTable('v2_products', {
   id: uuid('id').primaryKey().defaultRandom(),
   sku: varchar('sku', { length: 100 }).notNull().unique(),
@@ -29,13 +35,13 @@ export const products = pgTable('v2_products', {
     ar?: { title: string; description: string; slug: string }
   }>(),
   pricing: jsonb('pricing').notNull().$type<{
-    AED?: { price: number; compare_at?: number }
-    SAR?: { price: number; compare_at?: number }
-    INR?: { price: number; compare_at?: number }
-    GBP?: { price: number; compare_at?: number }
-    USD?: { price: number; compare_at?: number }
-    EUR?: { price: number; compare_at?: number }
-    [currency: string]: { price: number; compare_at?: number } | undefined
+    AED?: { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }
+    SAR?: { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }
+    INR?: { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }
+    GBP?: { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }
+    USD?: { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }
+    EUR?: { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }
+    [currency: string]: { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: PriceTier[] } | undefined
   }>(),
   moq: integer('moq').notNull().default(1),
   moqStep: integer('moq_step').notNull().default(1),
@@ -65,6 +71,13 @@ export const customers = pgTable('v2_customers', {
   lastName: varchar('last_name', { length: 100 }),
   phone: varchar('phone', { length: 50 }),
   companyName: varchar('company_name', { length: 150 }),
+  companyTaxId: varchar('company_tax_id', { length: 50 }),
+  crNumber: varchar('cr_number', { length: 50 }),
+  customerGroup: varchar('customer_group', { length: 50 }).notNull().default('retail'), // 'retail' | 'wholesale' | 'corporate_vip'
+  creditLimit: numeric('credit_limit', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  availableCredit: numeric('available_credit', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  paymentTerms: varchar('payment_terms', { length: 50 }).notNull().default('prepaid'), // 'prepaid' | 'net_15' | 'net_30' | 'net_60'
+  accountDiscountPercent: numeric('account_discount_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
   status: varchar('status', { length: 20 }).notNull().default('active'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -120,7 +133,14 @@ export const orders = pgTable('v2_orders', {
   currency: varchar('currency', { length: 10 }).notNull().default('AED'),
   subtotal: numeric('subtotal', { precision: 12, scale: 2 }).notNull(),
   shippingCost: numeric('shipping_cost', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  taxAmount: numeric('tax_amount', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  discountAmount: numeric('discount_amount', { precision: 12, scale: 2 }).notNull().default('0.00'),
   totalAmount: numeric('total_amount', { precision: 12, scale: 2 }).notNull(),
+  paymentMethodType: varchar('payment_method_type', { length: 50 }).notNull().default('CARD'), // 'CARD' | 'MADA' | 'APPLE_PAY' | 'BANK_TRANSFER' | 'PURCHASE_ORDER' | 'CREDIT_TERMS'
+  paymentReceiptUrl: varchar('payment_receipt_url', { length: 500 }),
+  poDocumentUrl: varchar('po_document_url', { length: 500 }),
+  poNumber: varchar('po_number', { length: 100 }),
+  quotationId: uuid('quotation_id'),
   shippingAddressSnapshot: jsonb('shipping_address_snapshot').$type<Record<string, any>>(),
   billingAddressSnapshot: jsonb('billing_address_snapshot').$type<Record<string, any>>(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -132,7 +152,7 @@ export const orderItems = pgTable('v2_order_items', {
   orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
   productId: uuid('product_id').references(() => products.id),
   sku: varchar('sku', { length: 100 }),
-  productNameSnapshot: jsonb('product_name_snapshot').$type<{ en?: string; ar?: string } | string>(),
+  productNameSnapshot: jsonb('product_name_snapshot').$type<{ en?: string; ar?: string; title?: string; image?: string; imageUrl?: string } | string>(),
   unitPrice: numeric('unit_price', { precision: 12, scale: 2 }).notNull(),
   quantity: integer('quantity').notNull(),
   totalPrice: numeric('total_price', { precision: 12, scale: 2 }).notNull(),
@@ -197,5 +217,41 @@ export const shippingMethods = pgTable('v2_shipping_methods', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
+// ==========================================
+// 9. B2B QUOTATIONS & QUOTATION ITEMS SCHEMA
+// ==========================================
+export const quotations = pgTable('v2_quotations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  quoteNumber: varchar('quote_number', { length: 100 }).notNull().unique(),
+  customerId: uuid('customer_id').references(() => customers.id, { onDelete: 'set null' }),
+  customerName: varchar('customer_name', { length: 150 }).notNull(),
+  customerEmail: varchar('customer_email', { length: 255 }).notNull(),
+  customerPhone: varchar('customer_phone', { length: 50 }),
+  companyName: varchar('company_name', { length: 150 }),
+  taxNumber: varchar('tax_number', { length: 100 }),
+  status: varchar('status', { length: 50 }).notNull().default('pending_review'), // 'pending_review' | 'quoted' | 'accepted' | 'rejected' | 'expired' | 'converted'
+  currency: varchar('currency', { length: 10 }).notNull().default('SAR'),
+  subtotal: numeric('subtotal', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  discountAmount: numeric('discount_amount', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  shippingCost: numeric('shipping_cost', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  taxAmount: numeric('tax_amount', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  totalAmount: numeric('total_amount', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  adminNotes: text('admin_notes'),
+  customerNotes: text('customer_notes'),
+  validUntil: timestamp('valid_until', { withTimezone: true }),
+  paymentLink: varchar('payment_link', { length: 500 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
 
-
+export const quotationItems = pgTable('v2_quotation_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  quotationId: uuid('quotation_id').notNull().references(() => quotations.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id').references(() => products.id, { onDelete: 'set null' }),
+  sku: varchar('sku', { length: 100 }),
+  productNameSnapshot: jsonb('product_name_snapshot').$type<{ en?: string; ar?: string; title?: string; image?: string; imageUrl?: string } | string>().notNull(),
+  requestedQuantity: integer('requested_quantity').notNull(),
+  originalUnitPrice: numeric('original_unit_price', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  quotedUnitPrice: numeric('quoted_unit_price', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  totalPrice: numeric('total_price', { precision: 12, scale: 2 }).notNull().default('0.00'),
+})

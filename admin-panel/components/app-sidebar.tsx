@@ -52,10 +52,24 @@ const data = {
       ),
     },
     {
+      title: "Quotations",
+      url: "/dashboard/quotations",
+      icon: (
+        <Icon name="request_quote" />
+      ),
+    },
+    {
       title: "Customers",
       url: "/dashboard/customers",
       icon: (
         <Icon name="group" />
+      ),
+    },
+    {
+      title: "Corporate Clients",
+      url: "/dashboard/customers/corporate",
+      icon: (
+        <Icon name="business" />
       ),
     },
     {

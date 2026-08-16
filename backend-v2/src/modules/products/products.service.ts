@@ -1,6 +1,6 @@
 import { eq, or, ilike, sql } from 'drizzle-orm'
 import { getDatabase } from '../../lib/db.js'
-import { products, categories } from '../../database/schema.js'
+import { products, categories, type PriceTier } from '../../database/schema.js'
 
 export interface CreateProductInput {
   sku?: string
@@ -10,7 +10,7 @@ export interface CreateProductInput {
   price?: number
   compareAtPrice?: number
   currency?: string
-  pricing?: Record<string, { price: number; compare_at?: number }>
+  pricing?: Record<string, { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }>
   moq?: number
   moqStep?: number
   seo?: Record<string, any>
@@ -30,26 +30,31 @@ export interface CreateProductInput {
 export class ProductsService {
   private db = getDatabase()
 
-  private normalizePricingToThousands(
-    pricing?: Record<string, { price: number; compare_at?: number }>,
+  private formatPricingMap(
+    pricing?: Record<string, { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }>,
     defaultPrice?: number,
     defaultCompareAt?: number,
     defaultCurrency: string = 'AED'
   ) {
-    const result: Record<string, { price: number; compare_at?: number }> = {}
+    const result: Record<string, { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }> = {}
 
     if (pricing && Object.keys(pricing).length > 0) {
       for (const [code, data] of Object.entries(pricing)) {
         if (!data) continue
         let p = typeof data === 'object' ? data.price : (data as any)
         let c = typeof data === 'object' ? data.compare_at : undefined
+        let corp = typeof data === 'object' ? data.corporatePrice : undefined
+        let tiers = typeof data === 'object' && Array.isArray(data.tieredPricing) ? data.tieredPricing : undefined
 
         p = typeof p === 'number' && !isNaN(p) ? p : Number(p || 0)
         c = (c !== undefined && c !== null && !isNaN(Number(c))) ? Number(c) : undefined
+        corp = (corp !== undefined && corp !== null && !isNaN(Number(corp))) ? Number(corp) : undefined
 
         result[code] = {
           price: p || 0,
           ...(c !== undefined ? { compare_at: c } : {}),
+          ...(corp !== undefined ? { corporatePrice: corp } : {}),
+          ...(tiers && tiers.length > 0 ? { tieredPricing: tiers } : {}),
         }
       }
     } else if (defaultPrice !== undefined) {
@@ -83,7 +88,7 @@ export class ProductsService {
       },
     }
 
-    const pricing = this.normalizePricingToThousands(
+    const pricing = this.formatPricingMap(
       input.pricing,
       input.price,
       input.compareAtPrice,
@@ -197,8 +202,8 @@ export class ProductsService {
     const updatedPricing = { ...(existing.pricing || {}) }
 
     if (input.pricing && Object.keys(input.pricing).length > 0) {
-      const normalized = this.normalizePricingToThousands(input.pricing)
-      Object.assign(updatedPricing, normalized)
+      const formatted = this.formatPricingMap(input.pricing)
+      Object.assign(updatedPricing, formatted)
     }
 
     if (input.variants && input.variants.length > 0 && input.variants[0].prices && input.variants[0].prices.length > 0) {
@@ -207,9 +212,13 @@ export class ProductsService {
         const code = pr.currencyCode.toUpperCase()
         let p = Number(pr.price) || 0
         let c = pr.compareAtPrice !== undefined && pr.compareAtPrice !== null && pr.compareAtPrice !== "" ? Number(pr.compareAtPrice) : undefined
+        let corp = pr.corporatePrice !== undefined && pr.corporatePrice !== null && pr.corporatePrice !== "" ? Number(pr.corporatePrice) : undefined
+        let tiers = Array.isArray(pr.tieredPricing) ? pr.tieredPricing : undefined
         updatedPricing[code] = {
           price: p,
           ...(c !== undefined ? { compare_at: c } : {}),
+          ...(corp !== undefined ? { corporatePrice: corp } : {}),
+          ...(tiers && tiers.length > 0 ? { tieredPricing: tiers } : {}),
         }
       }
     }
@@ -219,6 +228,7 @@ export class ProductsService {
       let p = typeof input.price === 'number' ? input.price : Number(input.price || 0)
       let c = (input.compareAtPrice !== undefined && input.compareAtPrice !== null && !isNaN(Number(input.compareAtPrice))) ? Number(input.compareAtPrice) : undefined
       updatedPricing[activeCurrency] = {
+        ...(updatedPricing[activeCurrency] || {}),
         price: p,
         ...(c !== undefined ? { compare_at: c } : {}),
       }
@@ -298,18 +308,25 @@ export class ProductsService {
       const pVal = Number(rawP) || 0
       const rawC = pData?.compare_at
       const cVal = (rawC !== undefined && rawC !== null) ? Number(rawC) : undefined
+      const rawCorp = pData?.corporatePrice
+      const corpVal = (rawCorp !== undefined && rawCorp !== null) ? Number(rawCorp) : undefined
+      const tiers = Array.isArray(pData?.tieredPricing) ? pData.tieredPricing : undefined
       return {
         currencyCode: cCode,
         price: pVal,
         compareAtPrice: cVal !== undefined ? cVal : undefined,
+        corporatePrice: corpVal !== undefined ? corpVal : undefined,
+        tieredPricing: tiers,
       }
     })
 
-    const decimalPricing: Record<string, { price: number; compare_at?: number }> = {}
+    const decimalPricing: Record<string, { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: any[] }> = {}
     for (const vp of variantPrices) {
       decimalPricing[vp.currencyCode] = {
         price: vp.price,
         ...(vp.compareAtPrice !== undefined ? { compare_at: vp.compareAtPrice } : {}),
+        ...(vp.corporatePrice !== undefined ? { corporatePrice: vp.corporatePrice } : {}),
+        ...(vp.tieredPricing ? { tieredPricing: vp.tieredPricing } : {}),
       }
     }
 

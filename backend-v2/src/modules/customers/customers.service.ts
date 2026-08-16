@@ -8,6 +8,14 @@ export interface CreateCustomerInput {
   lastName?: string
   phone?: string
   companyName?: string
+  companyTaxId?: string
+  crNumber?: string
+  customerGroup?: 'retail' | 'wholesale' | 'corporate_vip'
+  creditLimit?: number | string
+  availableCredit?: number | string
+  paymentTerms?: 'prepaid' | 'net_15' | 'net_30' | 'net_60'
+  accountDiscountPercent?: number | string
+  status?: string
 }
 
 export interface CreateAddressInput {
@@ -26,7 +34,13 @@ export class CustomersService {
   private db = getDatabase()
 
   async createCustomer(input: CreateCustomerInput) {
-    const [customer] = await this.db.insert(customers).values(input).returning()
+    const formattedInput = {
+      ...input,
+      creditLimit: input.creditLimit !== undefined ? String(input.creditLimit) : '0.00',
+      availableCredit: input.availableCredit !== undefined ? String(input.availableCredit) : (input.creditLimit !== undefined ? String(input.creditLimit) : '0.00'),
+      accountDiscountPercent: input.accountDiscountPercent !== undefined ? String(input.accountDiscountPercent) : '0.00',
+    }
+    const [customer] = await this.db.insert(customers).values(formattedInput as any).returning()
     return customer
   }
 
@@ -80,6 +94,10 @@ export class CustomersService {
   }
 
   async getCustomerById(id: string) {
+    if (!id || typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return null
+    }
+
     const [customer] = await this.db.select().from(customers).where(eq(customers.id, id)).limit(1)
     if (!customer) return null
 
@@ -111,15 +129,28 @@ export class CustomersService {
   }
 
   async updateCustomer(id: string, input: Partial<CreateCustomerInput>) {
+    if (!id || typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return null
+    }
+
+    const formattedInput: any = { ...input, updatedAt: new Date() }
+    if (input.creditLimit !== undefined) formattedInput.creditLimit = String(input.creditLimit)
+    if (input.availableCredit !== undefined) formattedInput.availableCredit = String(input.availableCredit)
+    if (input.accountDiscountPercent !== undefined) formattedInput.accountDiscountPercent = String(input.accountDiscountPercent)
+
     const [updated] = await this.db
       .update(customers)
-      .set({ ...input, updatedAt: new Date() })
+      .set(formattedInput)
       .where(eq(customers.id, id))
       .returning()
     return updated
   }
 
   async deleteCustomer(id: string) {
+    if (!id || typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return null
+    }
+
     const [deleted] = await this.db.delete(customers).where(eq(customers.id, id)).returning()
     return deleted
   }

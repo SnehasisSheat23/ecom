@@ -21,6 +21,14 @@ interface Customer {
   name: string
   email: string
   phone: string
+  companyName?: string
+  companyTaxId?: string
+  crNumber?: string
+  customerGroup: "retail" | "wholesale" | "corporate_vip"
+  creditLimit: number
+  availableCredit: number
+  paymentTerms: "prepaid" | "net_15" | "net_30" | "net_60"
+  accountDiscountPercent: number
   ordersCount: number
   totalSpent: number
   lastOrderDate: string
@@ -123,6 +131,14 @@ export function CustomerDetails({ id }: { id: string }) {
               name: `${c.firstName || ""} ${c.lastName || ""}`.trim() || c.email || "Valued Customer",
               email: c.email || "",
               phone: c.phone || "",
+              companyName: c.companyName || "",
+              companyTaxId: c.companyTaxId || "",
+              crNumber: c.crNumber || "",
+              customerGroup: c.customerGroup || "retail",
+              creditLimit: Number(c.creditLimit || 0),
+              availableCredit: Number(c.availableCredit || 0),
+              paymentTerms: c.paymentTerms || "prepaid",
+              accountDiscountPercent: Number(c.accountDiscountPercent || 0),
               ordersCount: 0,
               totalSpent: 0,
               lastOrderDate: "",
@@ -195,7 +211,7 @@ export function CustomerDetails({ id }: { id: string }) {
       const firstName = nameParts[0] || ''
       const lastName = nameParts.slice(1).join(' ') || ''
 
-      // 1. Update customer profile
+      // 1. Update customer profile with B2B fields
       await apiRequest(`/admin/customers/${id}`, {
         method: "PUT",
         body: JSON.stringify({
@@ -203,6 +219,14 @@ export function CustomerDetails({ id }: { id: string }) {
           lastName,
           email: customer.email,
           phone: customer.phone,
+          companyName: customer.companyName,
+          companyTaxId: customer.companyTaxId,
+          crNumber: customer.crNumber,
+          customerGroup: customer.customerGroup,
+          creditLimit: customer.creditLimit,
+          availableCredit: customer.availableCredit,
+          paymentTerms: customer.paymentTerms,
+          accountDiscountPercent: customer.accountDiscountPercent,
         }),
       })
 
@@ -326,8 +350,10 @@ export function CustomerDetails({ id }: { id: string }) {
           
           {/* General Information Card */}
           <Card>
-            <CardContent className="pt-6 flex flex-col gap-4">
-              <h3 className="font-semibold text-sm text-foreground select-none">General Information</h3>
+            <CardHeader className="pb-3 border-b border-border/60">
+              <CardTitle className="text-base font-semibold font-heading text-foreground">General Information</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 flex flex-col gap-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="text-[13px] font-medium text-foreground">Full Name</label>
@@ -347,7 +373,7 @@ export function CustomerDetails({ id }: { id: string }) {
                     onChange={(e) => setCustomer(prev => prev ? { ...prev, email: e.target.value } : null)}
                   />
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 md:col-span-2">
                   <label className="text-[13px] font-medium text-foreground">Phone number</label>
                   <input
                     type="tel"
@@ -360,10 +386,161 @@ export function CustomerDetails({ id }: { id: string }) {
             </CardContent>
           </Card>
 
+          {/* B2B Wholesale & Corporate Terms Card - Shown for Corporate / Wholesale clients */}
+          {(customer.customerGroup === "corporate_vip" || customer.customerGroup === "wholesale" || (customer.companyName && customer.companyName.trim().length > 0)) ? (
+            <Card>
+              <CardHeader className="pb-3 border-b border-border/60 flex flex-row items-center justify-between">
+                <CardTitle className="text-base font-semibold font-heading text-foreground">B2B Corporate Account & Credit Terms</CardTitle>
+                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider ${
+                  customer.customerGroup === "corporate_vip" 
+                    ? "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
+                    : "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                }`}>
+                  {customer.customerGroup?.replace("_", " ") || "wholesale"}
+                </span>
+              </CardHeader>
+              <CardContent className="pt-4 flex flex-col gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[13px] font-medium text-foreground">Company Name</label>
+                    <input
+                      type="text"
+                      placeholder="Company or business name"
+                      className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      value={customer.companyName || ""}
+                      onChange={(e) => setCustomer(prev => prev ? { ...prev, companyName: e.target.value } : null)}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[13px] font-medium text-foreground">Customer Tier Group</label>
+                    <select
+                      className="w-full h-9 px-3 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      value={customer.customerGroup}
+                      onChange={(e) => setCustomer(prev => prev ? { ...prev, customerGroup: e.target.value as any } : null)}
+                    >
+                      <option value="wholesale">Wholesale (Bulk Pricing)</option>
+                      <option value="corporate_vip">Corporate VIP (Negotiated)</option>
+                      <option value="retail">Downgrade to Retail</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[13px] font-medium text-foreground">CR Number</label>
+                    <input
+                      type="text"
+                      placeholder="Commercial registration number"
+                      className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md font-mono focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      value={customer.crNumber || ""}
+                      onChange={(e) => setCustomer(prev => prev ? { ...prev, crNumber: e.target.value } : null)}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[13px] font-medium text-foreground">VAT / Tax Number</label>
+                    <input
+                      type="text"
+                      placeholder="15-digit tax ID"
+                      className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md font-mono focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      value={customer.companyTaxId || ""}
+                      onChange={(e) => setCustomer(prev => prev ? { ...prev, companyTaxId: e.target.value } : null)}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[13px] font-medium text-foreground">Payment Terms</label>
+                    <select
+                      className="w-full h-9 px-3 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      value={customer.paymentTerms}
+                      onChange={(e) => setCustomer(prev => prev ? { ...prev, paymentTerms: e.target.value as any } : null)}
+                    >
+                      <option value="prepaid">Prepaid (Card / Online)</option>
+                      <option value="net_15">Net 15 Days</option>
+                      <option value="net_30">Net 30 Days</option>
+                      <option value="net_60">Net 60 Days</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[13px] font-medium text-foreground">Account Discount (%)</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        placeholder="0"
+                        className="w-full h-9 px-3 pr-8 py-2 text-sm bg-background border border-border/60 rounded-md font-mono font-bold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        value={customer.accountDiscountPercent === 0 ? "" : customer.accountDiscountPercent}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0
+                          setCustomer(prev => prev ? { ...prev, accountDiscountPercent: val } : null)
+                        }}
+                      />
+                      <span className="absolute right-3 top-2 text-sm font-semibold text-muted-foreground pointer-events-none">%</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[13px] font-medium text-foreground">Total Credit Limit ({tenantCurrency})</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      placeholder="0"
+                      className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md font-mono font-bold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      value={customer.creditLimit === 0 ? "" : customer.creditLimit}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0
+                        setCustomer(prev => prev ? { ...prev, creditLimit: val } : null)
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[13px] font-medium text-foreground">Available Credit ({tenantCurrency})</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      placeholder="0"
+                      className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md font-mono font-bold text-emerald-600 dark:text-emerald-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      value={customer.availableCredit === 0 ? "" : customer.availableCredit}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0
+                        setCustomer(prev => prev ? { ...prev, availableCredit: val } : null)
+                      }}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-dashed">
+              <CardContent className="py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Retail Customer Account</p>
+                  <p className="text-xs text-muted-foreground">Standard catalog pricing & upfront online payment.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8 cursor-pointer font-medium"
+                  onClick={() => setCustomer(prev => prev ? { ...prev, customerGroup: "wholesale" } : null)}
+                >
+                  <Icon name="business" className="size-3.5 mr-1.5" />
+                  Upgrade to Corporate Account
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Notes Card */}
           <Card>
-            <CardContent className="pt-6 flex flex-col gap-2">
-              <label className="text-[13px] font-semibold text-foreground">Notes</label>
+            <CardHeader className="pb-3 border-b border-border/60">
+              <CardTitle className="text-base font-semibold font-heading text-foreground">Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 flex flex-col gap-2">
               <textarea
                 className="min-h-24 w-full px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground/60"
                 placeholder="Add notes about this customer..."

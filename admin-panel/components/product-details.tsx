@@ -309,11 +309,16 @@ export function ProductDetails({ id }: { id: string }) {
               const cVal = rawC !== undefined && rawC !== null ? rawC : undefined
               const rawCost = pData?.cost_per_item || pData?.costPerItem
               const costVal = rawCost !== undefined && rawCost !== null ? rawCost : undefined
+              const rawCorp = pData?.corporatePrice
+              const corpVal = rawCorp !== undefined && rawCorp !== null ? rawCorp : undefined
+              const tiers = Array.isArray(pData?.tieredPricing) ? pData.tieredPricing : undefined
               return {
                 currencyCode: cCode,
                 price: pVal,
                 compareAtPrice: cVal,
                 costPerItem: costVal,
+                corporatePrice: corpVal,
+                tieredPricing: tiers,
               }
             })
 
@@ -459,7 +464,7 @@ export function ProductDetails({ id }: { id: string }) {
       const activeCost = product.costPerItem !== undefined && product.costPerItem !== null && product.costPerItem !== "" ? Number(product.costPerItem) : undefined
 
       // Build complete pricing map for all currencies
-      const pricingMap: Record<string, { price: number; compare_at?: number; cost_per_item?: number }> = {}
+      const pricingMap: Record<string, { price: number; compare_at?: number; cost_per_item?: number; corporatePrice?: number; tieredPricing?: any[] }> = {}
       
       // First populate from variant.prices
       if (product.variants?.[0]?.prices && product.variants[0].prices.length > 0) {
@@ -470,10 +475,14 @@ export function ProductDetails({ id }: { id: string }) {
           if (pNum !== undefined && !isNaN(pNum)) {
             const cNum = pr.compareAtPrice !== undefined && pr.compareAtPrice !== null && pr.compareAtPrice !== "" && !isNaN(Number(pr.compareAtPrice)) ? Number(pr.compareAtPrice) : undefined
             const costNum = pr.costPerItem !== undefined && pr.costPerItem !== null && pr.costPerItem !== "" && !isNaN(Number(pr.costPerItem)) ? Number(pr.costPerItem) : undefined
+            const corpNum = (pr as any).corporatePrice !== undefined && (pr as any).corporatePrice !== null && (pr as any).corporatePrice !== "" && !isNaN(Number((pr as any).corporatePrice)) ? Number((pr as any).corporatePrice) : undefined
+            const tiers = Array.isArray((pr as any).tieredPricing) ? (pr as any).tieredPricing : undefined
             pricingMap[code] = {
               price: pNum,
               ...(cNum !== undefined ? { compare_at: cNum } : {}),
               ...(costNum !== undefined ? { cost_per_item: costNum } : {}),
+              ...(corpNum !== undefined ? { corporatePrice: corpNum } : {}),
+              ...(tiers && tiers.length > 0 ? { tieredPricing: tiers } : {}),
             }
           }
         }
@@ -483,11 +492,16 @@ export function ProductDetails({ id }: { id: string }) {
       const numericActivePrice = typeof activePrice === 'number' ? activePrice : (Number(activePrice) || 0)
       const numericActiveCompare = typeof activeCompare === 'number' ? activeCompare : (activeCompare ? Number(activeCompare) : undefined)
       const numericActiveCost = typeof activeCost === 'number' ? activeCost : (activeCost ? Number(activeCost) : undefined)
+      const activeEntry = product.variants?.[0]?.prices?.find(p => p.currencyCode?.toUpperCase() === currentCurr)
+      const numericActiveCorp = (activeEntry as any)?.corporatePrice !== undefined && (activeEntry as any)?.corporatePrice !== null && (activeEntry as any)?.corporatePrice !== "" ? Number((activeEntry as any).corporatePrice) : undefined
+      const activeTiers = Array.isArray((activeEntry as any)?.tieredPricing) ? (activeEntry as any).tieredPricing : undefined
 
       pricingMap[currentCurr] = {
         price: numericActivePrice,
         ...(numericActiveCompare !== undefined ? { compare_at: numericActiveCompare } : {}),
         ...(numericActiveCost !== undefined ? { cost_per_item: numericActiveCost } : {}),
+        ...(numericActiveCorp !== undefined ? { corporatePrice: numericActiveCorp } : {}),
+        ...(activeTiers && activeTiers.length > 0 ? { tieredPricing: activeTiers } : {}),
       }
 
       const patchData = {
@@ -536,6 +550,8 @@ export function ProductDetails({ id }: { id: string }) {
               price: pData.price,
               compareAtPrice: pData.compare_at,
               costPerItem: pData.cost_per_item,
+              corporatePrice: pData.corporatePrice,
+              tieredPricing: pData.tieredPricing,
             })),
             barcode: product.variants?.[0]?.barcode || null,
             trackInventory: false,
@@ -577,11 +593,16 @@ export function ProductDetails({ id }: { id: string }) {
             const cVal = rawC !== undefined && rawC !== null ? rawC : undefined
             const rawCost = pData?.cost_per_item || pData?.costPerItem
             const costVal = rawCost !== undefined && rawCost !== null ? rawCost : undefined
+            const rawCorp = pData?.corporatePrice
+            const corpVal = rawCorp !== undefined && rawCorp !== null ? rawCorp : undefined
+            const tiers = Array.isArray(pData?.tieredPricing) ? pData.tieredPricing : undefined
             return {
               currencyCode: cCode,
               price: pVal,
               compareAtPrice: cVal,
               costPerItem: costVal,
+              corporatePrice: corpVal,
+              tieredPricing: tiers,
             }
           })
 
