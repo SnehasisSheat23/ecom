@@ -47,17 +47,17 @@ export interface Quotation {
 }
 
 function QuotationStatusBadge({ status }: { status: string }) {
-  let label = "Pending Review"
-  let color = "bg-muted text-foreground border-border/60"
+  let label = "Pending"
+  let color = "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
 
   if (status === "quoted") {
-    label = "Quoted / Sent"
+    label = "Quoted"
     color = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
   } else if (status === "accepted") {
     label = "Accepted"
     color = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
   } else if (status === "converted") {
-    label = "Converted to Order"
+    label = "Converted"
     color = "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
   } else if (status === "rejected") {
     label = "Rejected"

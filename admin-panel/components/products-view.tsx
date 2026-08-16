@@ -374,16 +374,12 @@ export function ProductsView() {
       
       {/* Header section with title and actions */}
       <div className="flex items-center justify-between pb-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Products</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground select-none">Products</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-9 text-sm px-3.5 font-medium shadow-xs">Export</Button>
-          <Button variant="outline" size="sm" className="h-9 text-sm px-3.5 font-medium shadow-xs">Import</Button>
-          <Button variant="outline" size="sm" className="h-9 text-sm px-3.5 font-medium shadow-xs pr-2.5 gap-1">
-            More actions <Icon name="expand_more" className="size-4!" />
-          </Button>
+          <Button variant="outline" className="h-8 shadow-xs text-xs px-3 cursor-pointer">Export</Button>
+          <Button variant="outline" className="h-8 shadow-xs text-xs px-3 cursor-pointer">Import</Button>
           <Button 
-            size="sm"
-            className="h-9 text-sm px-4 shadow-xs bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer font-medium"
+            className="h-8 shadow-xs text-xs px-4 bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer font-medium"
             onClick={handleAddProduct}
             disabled={isCreating}
           >

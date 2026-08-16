@@ -82,7 +82,7 @@ export class OrdersService {
         const qty = item.quantity || 1
 
         // A. If Corporate VIP customer and product has explicit corporatePrice
-        if (customerProfile && (customerProfile.customerGroup === 'corporate_vip' || customerProfile.customerGroup === 'wholesale') && currPricing.corporatePrice) {
+        if (customerProfile && (customerProfile.customerGroup === 'corporate' || customerProfile.customerGroup === 'wholesale') && currPricing.corporatePrice) {
           unitPrice = Number(currPricing.corporatePrice)
         }
         // B. Check Tiered Bulk Pricing breaks

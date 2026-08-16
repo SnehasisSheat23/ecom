@@ -11,6 +11,7 @@ import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -25,7 +26,7 @@ interface Customer {
   companyName?: string
   companyTaxId?: string
   crNumber?: string
-  customerGroup?: "retail" | "wholesale" | "corporate_vip"
+  customerGroup?: "retail" | "wholesale" | "corporate"
   creditLimit?: number
   availableCredit?: number
   paymentTerms?: string
@@ -49,7 +50,7 @@ interface APICustomer {
   companyName?: string
   companyTaxId?: string
   crNumber?: string
-  customerGroup?: "retail" | "wholesale" | "corporate_vip"
+  customerGroup?: "retail" | "wholesale" | "corporate"
   creditLimit?: number
   availableCredit?: number
   paymentTerms?: string
@@ -153,14 +154,14 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
 
     // 0. Base Group Filtering - Strictly separated (no combined data)
     if (isCorporateView) {
-      result = result.filter(c => c.customerGroup === "corporate_vip" || c.customerGroup === "wholesale" || (c.companyName && c.companyName.trim().length > 0))
+      result = result.filter(c => c.customerGroup === "corporate" || c.customerGroup === "wholesale" || (c.companyName && c.companyName.trim().length > 0))
     } else {
       result = result.filter(c => (c.customerGroup === "retail" || !c.customerGroup) && (!c.companyName || c.companyName.trim().length === 0))
     }
 
     // 1. Tab Segment Filtering
     if (activeTab === "Corporate VIP") {
-      result = result.filter(c => c.customerGroup === "corporate_vip")
+      result = result.filter(c => c.customerGroup === "corporate")
     } else if (activeTab === "Wholesale") {
       result = result.filter(c => c.customerGroup === "wholesale")
     } else if (activeTab === "Active Credit Lines") {
@@ -299,7 +300,7 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
       </div>
 
       {/* Customers Table Container */}
-      <div className="border border-border/80 border-b-0 rounded-t-lg rounded-b-none overflow-hidden bg-card/40 shadow-xs flex flex-col flex-1 min-h-0 mt-2">
+      <div className="border border-border/80 rounded-lg overflow-hidden bg-card/40 shadow-xs flex flex-col flex-1 min-h-0 mt-2">
         
         {/* Toolbar & Filters */}
         <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-2 h-12 shrink-0">
@@ -401,7 +402,7 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
           {/* Table Body */}
           <div className="flex-1 overflow-auto min-h-0">
             <table className="w-full border-collapse text-left text-sm relative font-ui">
-              <thead className="bg-muted/40 border-b border-border/60 text-muted-foreground text-[11px] font-medium uppercase sticky top-0 z-10 backdrop-blur-xs select-none">
+              <thead className="sticky top-0 bg-card backdrop-blur-xs font-ui text-xs font-medium text-muted-foreground border-b border-border/60 z-10 select-none">
                 <tr>
                   <th className="w-10 p-3 text-center">
                     <Checkbox
@@ -409,30 +410,30 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
                       onCheckedChange={(val) => handleSelectAll(!!val)}
                     />
                   </th>
-                  <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("name")}>
+                  <th className="p-3 cursor-pointer select-none font-semibold text-foreground hover:text-foreground" onClick={() => toggleSort("name")}>
                     <div className="flex items-center">
                       {isCorporateView ? "Company / Client" : "Customer"} {renderSortIcon("name")}
                     </div>
                   </th>
-                  <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("email")}>
+                  <th className="p-3 cursor-pointer select-none font-semibold text-foreground hover:text-foreground" onClick={() => toggleSort("email")}>
                     <div className="flex items-center">
                       Contact Email {renderSortIcon("email")}
                     </div>
                   </th>
                   {isCorporateView ? (
                     <>
-                      <th className="p-3">Tier Group</th>
-                      <th className="p-3">Credit Limit</th>
-                      <th className="p-3">Payment Terms</th>
+                      <th className="p-3 font-semibold text-foreground">Tier Group</th>
+                      <th className="p-3 font-semibold text-foreground">Credit Limit</th>
+                      <th className="p-3 font-semibold text-foreground">Payment Terms</th>
                     </>
                   ) : (
                     <>
-                      <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("phone")}>
+                      <th className="p-3 cursor-pointer select-none font-semibold text-foreground hover:text-foreground" onClick={() => toggleSort("phone")}>
                         <div className="flex items-center">
                           Phone {renderSortIcon("phone")}
                         </div>
                       </th>
-                      <th className="p-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort("city")}>
+                      <th className="p-3 cursor-pointer select-none font-semibold text-foreground hover:text-foreground" onClick={() => toggleSort("city")}>
                         <div className="flex items-center">
                           Location {renderSortIcon("city")}
                         </div>
@@ -503,7 +504,7 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
                         <>
                           <td className="p-3 whitespace-nowrap">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold uppercase ${
-                              customer.customerGroup === "corporate_vip"
+                              customer.customerGroup === "corporate"
                                 ? "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
                                 : (customer.customerGroup === "wholesale" ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300" : "bg-muted text-muted-foreground")
                             }`}>
@@ -535,42 +536,71 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
           </table>
         </div>
 
-        {/* Pagination Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-t border-border/60 bg-card/40 text-xs text-muted-foreground">
-          <div>
-            Showing{" "}
-            <span className="font-semibold text-foreground">
-              {total === 0 ? 0 : (page - 1) * perPage + 1}
-            </span>{" "}
-            to{" "}
-            <span className="font-semibold text-foreground">
-              {Math.min(page * perPage, total)}
-            </span>{" "}
-            of <span className="font-semibold text-foreground">{total}</span> customers
+        {/* Pagination Footer */}
+        <div className="flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 h-12 shrink-0 text-xs font-ui">
+          <div className="flex items-center gap-4 text-muted-foreground">
+            <span>
+              Showing {total > 0 ? (page - 1) * perPage + 1 : 0}–
+              {Math.min(page * perPage, total)} of {total} {isCorporateView ? "accounts" : "customers"}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span>Rows per page:</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1 select-none cursor-pointer">
+                    {perPage} <Icon name="keyboard_arrow_down" size={14} className="size-3.5 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-16 font-ui">
+                  {[10, 20, 50, 100].map((size) => (
+                    <DropdownMenuItem key={size} onClick={() => { setPerPage(size); setPage(1); }} className="cursor-pointer">
+                      {size}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
+
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1 || isLoading}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="h-8 gap-1"
-            >
-              <Icon name="chevron_left" size={14} />
-              Previous
-            </Button>
-            <span className="px-2 font-medium text-foreground">
-              Page {page} of {Math.max(1, Math.ceil(total / perPage))}
+            <span className="text-muted-foreground mr-2">
+              Page {page} of {Math.max(Math.ceil(total / perPage), 1)}
             </span>
             <Button
               variant="outline"
-              size="sm"
-              disabled={page >= Math.ceil(total / perPage) || isLoading}
-              onClick={() => setPage((p) => p + 1)}
-              className="h-8 gap-1"
+              size="icon"
+              className="h-8 w-8 cursor-pointer"
+              onClick={() => setPage(1)}
+              disabled={page <= 1 || isLoading}
             >
-              Next
-              <Icon name="chevron_right" size={14} />
+              <Icon name="first_page" size={16} />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 cursor-pointer"
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+              disabled={page <= 1 || isLoading}
+            >
+              <Icon name="chevron_left" size={16} />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 cursor-pointer"
+              onClick={() => setPage((prev) => Math.min(prev + 1, Math.max(Math.ceil(total / perPage), 1)))}
+              disabled={page >= Math.ceil(total / perPage) || isLoading}
+            >
+              <Icon name="chevron_right" size={16} />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 cursor-pointer"
+              onClick={() => setPage(Math.max(Math.ceil(total / perPage), 1))}
+              disabled={page >= Math.ceil(total / perPage) || isLoading}
+            >
+              <Icon name="last_page" size={16} />
             </Button>
           </div>
         </div>

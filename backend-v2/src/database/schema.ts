@@ -73,7 +73,7 @@ export const customers = pgTable('v2_customers', {
   companyName: varchar('company_name', { length: 150 }),
   companyTaxId: varchar('company_tax_id', { length: 50 }),
   crNumber: varchar('cr_number', { length: 50 }),
-  customerGroup: varchar('customer_group', { length: 50 }).notNull().default('retail'), // 'retail' | 'wholesale' | 'corporate_vip'
+  customerGroup: varchar('customer_group', { length: 50 }).notNull().default('retail'), // 'retail' | 'wholesale' | 'corporate'
   creditLimit: numeric('credit_limit', { precision: 12, scale: 2 }).notNull().default('0.00'),
   availableCredit: numeric('available_credit', { precision: 12, scale: 2 }).notNull().default('0.00'),
   paymentTerms: varchar('payment_terms', { length: 50 }).notNull().default('prepaid'), // 'prepaid' | 'net_15' | 'net_30' | 'net_60'

@@ -10,7 +10,7 @@ export interface CreateCustomerInput {
   companyName?: string
   companyTaxId?: string
   crNumber?: string
-  customerGroup?: 'retail' | 'wholesale' | 'corporate_vip'
+  customerGroup?: 'retail' | 'wholesale' | 'corporate'
   creditLimit?: number | string
   availableCredit?: number | string
   paymentTerms?: 'prepaid' | 'net_15' | 'net_30' | 'net_60'

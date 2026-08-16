@@ -15,6 +15,7 @@ import customersData from "@/app/dashboard/customers.json"
 import ordersData from "@/app/dashboard/orders.json"
 import { apiRequest } from "@/lib/api-client"
 import { formatPrice } from "@/lib/currency"
+import { toast } from "sonner"
 
 interface Customer {
   id: string
@@ -24,7 +25,7 @@ interface Customer {
   companyName?: string
   companyTaxId?: string
   crNumber?: string
-  customerGroup: "retail" | "wholesale" | "corporate_vip"
+  customerGroup: "retail" | "wholesale" | "corporate"
   creditLimit: number
   availableCredit: number
   paymentTerms: "prepaid" | "net_15" | "net_30" | "net_60"
@@ -113,7 +114,6 @@ export function CustomerDetails({ id }: { id: string }) {
   const [wishlistItems, setWishlistItems] = React.useState<any[]>([])
   const [tenantCurrency, setTenantCurrency] = React.useState<string>("INR")
   const [isLoading, setIsLoading] = React.useState(true)
-  const [showToast, setShowToast] = React.useState(false)
 
   React.useEffect(() => {
     let active = true
@@ -245,12 +245,10 @@ export function CustomerDetails({ id }: { id: string }) {
       }
 
       setInitialCustomer(JSON.parse(JSON.stringify(customer)))
-      setShowToast(true)
-      setTimeout(() => {
-        setShowToast(false)
-      }, 3000)
+      toast.success("Customer profile saved successfully")
     } catch (err) {
       console.error("Failed to save customer:", err)
+      toast.error("Failed to save customer profile")
     } finally {
       setIsSaving(false)
     }
@@ -306,39 +304,48 @@ export function CustomerDetails({ id }: { id: string }) {
     )
   }
 
+  const isCorporate = Boolean(
+    customer?.customerGroup === "corporate" ||
+    customer?.customerGroup === "wholesale" ||
+    (customer?.companyName && customer.companyName.trim().length > 0)
+  )
+
   return (
     <div className="flex flex-col h-full font-ui min-h-0">
       {/* Top Navigation / Header */}
       <div className="bg-background/95 pt-6 pb-2.5 px-6 md:px-8 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3.5">
           <Link
-            href="/dashboard/customers"
+            href={isCorporate ? "/dashboard/customers/corporate" : "/dashboard/customers"}
             className="text-muted-foreground hover:text-foreground duration-200 flex items-center justify-center size-8 rounded-lg hover:bg-muted/60 transition-colors"
           >
             <Icon name="arrow_back" className="size-5 text-[20px]" />
           </Link>
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-bold font-heading text-foreground tracking-tight leading-none">{customer.name}</h2>
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider ${
+              customer.customerGroup === "corporate" 
+                ? "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
+                : customer.customerGroup === "wholesale"
+                ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                : "bg-muted text-muted-foreground"
+            }`}>
+              {customer.customerGroup || "retail"}
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="h-8 shadow-xs cursor-pointer"
-            disabled={!hasChanges}
-            onClick={handleDiscard}
-          >
-            Discard
-          </Button>
-          <Button 
-            size="sm" 
-            className="h-8 shadow-xs bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer"
-            disabled={!hasChanges}
-            onClick={handleSave}
-          >
-            Save
-          </Button>
+          {!isCorporate && (
+            <Button 
+              variant="outline"
+              size="sm" 
+              className="h-8 shadow-xs text-xs px-3 cursor-pointer font-medium gap-1.5 rounded-lg border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              onClick={() => setCustomer(prev => prev ? { ...prev, customerGroup: "corporate" } : null)}
+            >
+              <Icon name="business" className="size-3.5 text-muted-foreground" />
+              Upgrade to Corporate
+            </Button>
+          )}
         </div>
       </div>
 
@@ -387,12 +394,12 @@ export function CustomerDetails({ id }: { id: string }) {
           </Card>
 
           {/* B2B Wholesale & Corporate Terms Card - Shown for Corporate / Wholesale clients */}
-          {(customer.customerGroup === "corporate_vip" || customer.customerGroup === "wholesale" || (customer.companyName && customer.companyName.trim().length > 0)) ? (
+          {(customer.customerGroup === "corporate" || customer.customerGroup === "wholesale" || (customer.companyName && customer.companyName.trim().length > 0)) ? (
             <Card>
               <CardHeader className="pb-3 border-b border-border/60 flex flex-row items-center justify-between">
                 <CardTitle className="text-base font-semibold font-heading text-foreground">B2B Corporate Account & Credit Terms</CardTitle>
                 <span className={`text-[11px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider ${
-                  customer.customerGroup === "corporate_vip" 
+                  customer.customerGroup === "corporate" 
                     ? "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
                     : "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
                 }`}>
@@ -420,7 +427,7 @@ export function CustomerDetails({ id }: { id: string }) {
                       onChange={(e) => setCustomer(prev => prev ? { ...prev, customerGroup: e.target.value as any } : null)}
                     >
                       <option value="wholesale">Wholesale (Bulk Pricing)</option>
-                      <option value="corporate_vip">Corporate VIP (Negotiated)</option>
+                      <option value="corporate">Corporate VIP (Negotiated)</option>
                       <option value="retail">Downgrade to Retail</option>
                     </select>
                   </div>
@@ -515,39 +522,62 @@ export function CustomerDetails({ id }: { id: string }) {
                 </div>
               </CardContent>
             </Card>
-          ) : (
-            <Card className="border-dashed">
-              <CardContent className="py-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Retail Customer Account</p>
-                  <p className="text-xs text-muted-foreground">Standard catalog pricing & upfront online payment.</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-8 cursor-pointer font-medium"
-                  onClick={() => setCustomer(prev => prev ? { ...prev, customerGroup: "wholesale" } : null)}
-                >
-                  <Icon name="business" className="size-3.5 mr-1.5" />
-                  Upgrade to Corporate Account
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          ) : null}
 
-          {/* Notes Card */}
+          {/* Default Address Card */}
           <Card>
             <CardHeader className="pb-3 border-b border-border/60">
-              <CardTitle className="text-base font-semibold font-heading text-foreground">Notes</CardTitle>
+              <CardTitle className="text-base font-semibold font-heading text-foreground">Default Address</CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 flex flex-col gap-2">
-              <textarea
-                className="min-h-24 w-full px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground/60"
-                placeholder="Add notes about this customer..."
-                value={customer.notes}
-                onChange={(e) => setCustomer(prev => prev ? { ...prev, notes: e.target.value } : null)}
-              />
-              <span className="text-xs text-muted-foreground">Notes are only visible to store staff.</span>
+            <CardContent className="pt-4 flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-[13px] font-medium text-foreground">Street Address</label>
+                <input
+                  type="text"
+                  className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={customer.address}
+                  onChange={(e) => setCustomer(prev => prev ? { ...prev, address: e.target.value } : null)}
+                  placeholder="Street address, building, apartment/suite"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[13px] font-medium text-foreground">City</label>
+                  <input
+                    type="text"
+                    className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    value={customer.city}
+                    onChange={(e) => setCustomer(prev => prev ? { ...prev, city: e.target.value } : null)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[13px] font-medium text-foreground">Province / State</label>
+                  <input
+                    type="text"
+                    className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    value={customer.province}
+                    onChange={(e) => setCustomer(prev => prev ? { ...prev, province: e.target.value } : null)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[13px] font-medium text-foreground">Pincode / Postal Code</label>
+                  <input
+                    type="text"
+                    className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono"
+                    value={customer.zip}
+                    onChange={(e) => setCustomer(prev => prev ? { ...prev, zip: e.target.value } : null)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[13px] font-medium text-foreground">Country</label>
+                  <input
+                    type="text"
+                    className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    value={customer.country}
+                    onChange={(e) => setCustomer(prev => prev ? { ...prev, country: e.target.value } : null)}
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -697,53 +727,21 @@ export function CustomerDetails({ id }: { id: string }) {
         </div>
 
         {/* Right Column */}
-        <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-6">
+        <div className="w-full lg:w-[340px] shrink-0 flex flex-col gap-6">
           
-          {/* Default Address Card */}
+          {/* Notes Card */}
           <Card>
             <CardHeader className="pb-3 border-b border-border/60">
-              <CardTitle className="text-base font-semibold font-heading text-foreground">Default Address</CardTitle>
+              <CardTitle className="text-base font-semibold font-heading text-foreground">Notes</CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 flex flex-col gap-3 text-sm">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-medium text-foreground">Street address</label>
-                <textarea
-                  rows={2}
-                  className="w-full px-2.5 py-1.5 text-xs bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
-                  value={customer.address}
-                  onChange={(e) => setCustomer(prev => prev ? { ...prev, address: e.target.value } : null)}
-                  placeholder="Street address, building, apartment/suite"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-foreground">City</label>
-                  <input
-                    type="text"
-                    className="w-full h-8 px-2.5 py-1 text-xs bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    value={customer.city}
-                    onChange={(e) => setCustomer(prev => prev ? { ...prev, city: e.target.value } : null)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-foreground">Pincode / Postal Code</label>
-                  <input
-                    type="text"
-                    className="w-full h-8 px-2.5 py-1 text-xs bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    value={customer.zip}
-                    onChange={(e) => setCustomer(prev => prev ? { ...prev, zip: e.target.value } : null)}
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-medium text-foreground">Country</label>
-                <input
-                  type="text"
-                  className="w-full h-8 px-2.5 py-1 text-xs bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  value={customer.country}
-                  onChange={(e) => setCustomer(prev => prev ? { ...prev, country: e.target.value } : null)}
-                />
-              </div>
+            <CardContent className="pt-4 flex flex-col gap-2">
+              <textarea
+                className="min-h-28 w-full px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground/60 resize-y"
+                placeholder="Add notes about this customer..."
+                value={customer.notes}
+                onChange={(e) => setCustomer(prev => prev ? { ...prev, notes: e.target.value } : null)}
+              />
+              <span className="text-xs text-muted-foreground">Notes are only visible to store staff.</span>
             </CardContent>
           </Card>
 
@@ -774,63 +772,41 @@ export function CustomerDetails({ id }: { id: string }) {
             </CardContent>
           </Card>
 
-          {/* Customer Tags Card */}
-          <Card>
-            <CardHeader className="pb-3 border-b border-border/60">
-              <CardTitle className="text-base font-semibold font-heading text-foreground">Tags</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4 flex flex-col gap-3 text-sm">
-              <div className="flex flex-wrap gap-2">
-                {customer.tags && customer.tags.map((tag, idx) => (
-                  <div key={idx} className="bg-muted px-2 py-0.5 rounded-md text-xs font-medium text-foreground flex items-center gap-1.5 select-none animate-in duration-200">
-                    {tag}
-                    <Icon 
-                      name="close" 
-                      className="size-3 text-muted-foreground cursor-pointer hover:text-foreground" 
-                      onClick={() => {
-                        setCustomer(prev => {
-                          if (!prev || !prev.tags) return prev
-                          return {
-                            ...prev,
-                            tags: prev.tags.filter((_, i) => i !== idx)
-                          }
-                        })
-                      }}
-                    />
-                  </div>
-                ))}
-                <input
-                  type="text"
-                  placeholder="Add tag..."
-                  className="h-6 px-2 py-0.5 text-xs bg-background border border-dashed border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring w-20 placeholder:text-muted-foreground/60"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const val = e.currentTarget.value.trim()
-                      if (val) {
-                        setCustomer(prev => {
-                          const tags = prev?.tags || []
-                          if (tags.includes(val)) return prev
-                          return prev ? { ...prev, tags: [...tags, val] } : null
-                        })
-                        e.currentTarget.value = ""
-                      }
-                    }
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
         </div>
       </div>
 
-      {/* Save Success Toast */}
-      {showToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-5 duration-300">
-          <Icon name="check_circle" className="size-4" />
-          <span className="text-sm font-medium">Customer profile saved successfully</span>
+      {/* Sticky Bottom Save/Discard Bar matching product-details */}
+      <div 
+        className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white/95 dark:bg-zinc-900/95 text-zinc-900 dark:text-zinc-100 px-5 py-3 rounded-xl shadow-xl border border-border/80 backdrop-blur-md flex items-center gap-6 transition-all duration-300 ${
+          hasChanges 
+            ? "opacity-100 translate-y-0 pointer-events-auto" 
+            : "opacity-0 translate-y-8 pointer-events-none"
+        }`}
+      >
+        <div className="flex flex-col gap-0.5 select-none">
+          <span className="text-xs font-semibold text-foreground">Unsaved changes</span>
+          <span className="text-[11px] text-muted-foreground">You have unsaved changes on this customer account.</span>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs cursor-pointer px-3"
+            onClick={handleDiscard}
+            disabled={isSaving}
+          >
+            Discard
+          </Button>
+          <Button
+            size="sm"
+            className="h-8 text-xs bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer px-4 inline-flex items-center gap-1.5 font-medium"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

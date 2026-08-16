@@ -12,6 +12,7 @@ import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -53,7 +54,7 @@ export interface Quotation {
   items?: QuotationItem[]
 }
 
-const TABS = ["All", "Pending Review", "Quoted", "Accepted", "Converted", "Rejected"]
+const TABS = ["All", "Pending", "Quoted", "Accepted", "Converted", "Rejected"]
 
 // Sparkline component matching orders-stats design
 function Sparkline({ data }: { data: number[] }) {
@@ -73,17 +74,17 @@ function Sparkline({ data }: { data: number[] }) {
 }
 
 function QuotationStatusBadge({ status }: { status: string }) {
-  let label = "Pending Review"
+  let label = "Pending"
   let color = "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
 
   if (status === "quoted") {
-    label = "Quoted / Sent"
+    label = "Quoted"
     color = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
   } else if (status === "accepted") {
     label = "Accepted"
     color = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
   } else if (status === "converted") {
-    label = "Converted to Order"
+    label = "Converted"
     color = "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
   } else if (status === "rejected") {
     label = "Rejected"
@@ -106,6 +107,10 @@ export function QuotationsView() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [activeTab, setActiveTab] = React.useState<string>("All")
   const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set())
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const [pageSize, setPageSize] = React.useState(20)
 
   // Search, Filter & Sort States
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -136,12 +141,17 @@ export function QuotationsView() {
     fetchQuotations()
   }, [fetchQuotations])
 
+  // Reset page when tab, search or sort changes
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, searchQuery, sortField, sortOrder])
+
   // Filter & Sort Logic
   const filteredQuotations = React.useMemo(() => {
     let result = [...quotations]
 
     // 1. Tab filter
-    if (activeTab === "Pending Review") {
+    if (activeTab === "Pending") {
       result = result.filter((q) => q.status === "pending_review")
     } else if (activeTab === "Quoted") {
       result = result.filter((q) => q.status === "quoted")
@@ -183,6 +193,12 @@ export function QuotationsView() {
     return result
   }, [quotations, activeTab, searchQuery, sortField, sortOrder])
 
+  // Paginated quotations slice
+  const paginatedQuotations = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredQuotations.slice(start, start + pageSize)
+  }, [filteredQuotations, currentPage, pageSize])
+
   // Select all rows handler
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -197,6 +213,24 @@ export function QuotationsView() {
     if (checked) next.add(id)
     else next.delete(id)
     setSelectedRows(next)
+  }
+
+  const toggleSort = (field: "date" | "total" | "quoteNumber") => {
+    if (sortField === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+    } else {
+      setSortField(field)
+      setSortOrder("asc")
+    }
+  }
+
+  const renderSortIcon = (field: "date" | "total" | "quoteNumber") => {
+    if (sortField !== field) {
+      return <Icon name="swap_vert" size={14} className="size-3.5! text-muted-foreground opacity-30 hover:opacity-100 transition-opacity ml-0.5" />
+    }
+    return sortOrder === "asc"
+      ? <Icon name="arrow_upward" size={14} className="size-3.5! text-foreground font-semibold ml-0.5" />
+      : <Icon name="arrow_downward" size={14} className="size-3.5! text-foreground font-semibold ml-0.5" />
   }
 
   // Summary Metrics
@@ -254,7 +288,7 @@ export function QuotationsView() {
           {/* Metric 1: Pending RFQs */}
           <div className="flex items-center justify-between px-3 py-2 md:py-0">
             <div>
-              <span className="text-xs font-medium text-muted-foreground select-none">Pending Review</span>
+              <span className="text-xs font-medium text-muted-foreground select-none">Pending</span>
               <div className="flex items-baseline gap-2 mt-1">
                 <span className="text-xl font-bold font-heading text-foreground font-mono">
                   {pendingCount}
@@ -268,7 +302,7 @@ export function QuotationsView() {
           {/* Metric 2: Active Quoted */}
           <div className="flex items-center justify-between px-3 py-2 md:py-0">
             <div>
-              <span className="text-xs font-medium text-muted-foreground select-none">Active Quotes Sent</span>
+              <span className="text-xs font-medium text-muted-foreground select-none">Quoted</span>
               <div className="flex items-baseline gap-2 mt-1">
                 <span className="text-xl font-bold font-heading text-foreground font-mono">
                   {quotedCount}
@@ -282,7 +316,7 @@ export function QuotationsView() {
           {/* Metric 3: Converted Pipeline */}
           <div className="flex items-center justify-between px-3 py-2 md:py-0">
             <div>
-              <span className="text-xs font-medium text-muted-foreground select-none">Converted Pipeline</span>
+              <span className="text-xs font-medium text-muted-foreground select-none">Converted</span>
               <div className="flex items-baseline gap-2 mt-1">
                 <span className="text-xl font-bold font-heading text-foreground font-mono">
                   {formatPrice(convertedTotal, { currency: "SAR" })}
@@ -295,7 +329,7 @@ export function QuotationsView() {
       </div>
 
       {/* Main Table Container */}
-      <div className="border border-border/80 border-b-0 rounded-t-lg rounded-b-none overflow-hidden bg-card/40 shadow-xs flex flex-col flex-1 min-h-0 mt-2">
+      <div className="border border-border/80 rounded-lg overflow-hidden bg-card/40 shadow-xs flex flex-col flex-1 min-h-0 mt-2">
         
         {/* Toolbar & Filter Tabs */}
         <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-2 h-12 shrink-0">
@@ -392,7 +426,7 @@ export function QuotationsView() {
         {/* Table Body */}
         <div className="flex-1 overflow-auto min-h-0">
           <table className="w-full border-collapse text-left text-sm relative font-ui">
-            <thead className="bg-muted/40 border-b border-border/60 text-muted-foreground text-[11px] font-medium uppercase sticky top-0 z-10 backdrop-blur-xs select-none">
+            <thead className="sticky top-0 bg-card backdrop-blur-xs font-ui text-xs font-medium text-muted-foreground border-b border-border/60 z-10 select-none">
               <tr>
                 <th className="w-10 p-3 text-center">
                   <Checkbox
@@ -400,13 +434,25 @@ export function QuotationsView() {
                     onCheckedChange={(val) => handleSelectAll(!!val)}
                   />
                 </th>
-                <th className="p-3">Quote #</th>
-                <th className="p-3">Client / Company</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Subtotal</th>
-                <th className="p-3">Total (Inc. VAT)</th>
-                <th className="p-3">Date</th>
-                <th className="p-3 text-right">Action</th>
+                <th className="p-3 font-semibold text-foreground select-none cursor-pointer hover:text-foreground" onClick={() => toggleSort("quoteNumber")}>
+                  <div className="flex items-center">
+                    Quote # {renderSortIcon("quoteNumber")}
+                  </div>
+                </th>
+                <th className="p-3 font-semibold text-foreground">Client / Company</th>
+                <th className="p-3 font-semibold text-foreground">Status</th>
+                <th className="p-3 font-semibold text-foreground">Subtotal</th>
+                <th className="p-3 font-semibold text-foreground select-none cursor-pointer hover:text-foreground" onClick={() => toggleSort("total")}>
+                  <div className="flex items-center">
+                    Total (Inc. VAT) {renderSortIcon("total")}
+                  </div>
+                </th>
+                <th className="p-3 font-semibold text-foreground select-none cursor-pointer hover:text-foreground" onClick={() => toggleSort("date")}>
+                  <div className="flex items-center">
+                    Date {renderSortIcon("date")}
+                  </div>
+                </th>
+                <th className="p-3 text-right font-semibold text-foreground">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -449,7 +495,7 @@ export function QuotationsView() {
                   </td>
                 </tr>
               ) : (
-                filteredQuotations.map((q) => {
+                paginatedQuotations.map((q) => {
                   const isChecked = selectedRows.has(q.id)
                   return (
                     <tr
@@ -505,9 +551,71 @@ export function QuotationsView() {
         </div>
 
         {/* Pagination Footer */}
-        <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-t border-border/60 bg-card/40 text-xs text-muted-foreground">
-          <div>
-            Showing <span className="font-semibold text-foreground">{filteredQuotations.length}</span> quotations
+        <div className="flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 h-12 shrink-0 text-xs font-ui">
+          <div className="flex items-center gap-4 text-muted-foreground">
+            <span>
+              Showing {filteredQuotations.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}–
+              {Math.min(currentPage * pageSize, filteredQuotations.length)} of {filteredQuotations.length} quotations
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span>Rows per page:</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1 select-none cursor-pointer">
+                    {pageSize} <Icon name="keyboard_arrow_down" size={14} className="size-3.5 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-16 font-ui">
+                  {[10, 20, 50, 100].map((size) => (
+                    <DropdownMenuItem key={size} onClick={() => { setPageSize(size); setCurrentPage(1); }} className="cursor-pointer">
+                      {size}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground mr-2">
+              Page {currentPage} of {Math.max(Math.ceil(filteredQuotations.length / pageSize), 1)}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 cursor-pointer"
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1 || isLoading}
+            >
+              <Icon name="first_page" size={16} />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 cursor-pointer"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1 || isLoading}
+            >
+              <Icon name="chevron_left" size={16} />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 cursor-pointer"
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.max(Math.ceil(filteredQuotations.length / pageSize), 1)))}
+              disabled={currentPage >= Math.ceil(filteredQuotations.length / pageSize) || isLoading}
+            >
+              <Icon name="chevron_right" size={16} />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 cursor-pointer"
+              onClick={() => setCurrentPage(Math.max(Math.ceil(filteredQuotations.length / pageSize), 1))}
+              disabled={currentPage >= Math.ceil(filteredQuotations.length / pageSize) || isLoading}
+            >
+              <Icon name="last_page" size={16} />
+            </Button>
           </div>
         </div>
       </div>

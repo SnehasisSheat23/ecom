@@ -28,7 +28,7 @@ async function runB2BTest() {
     companyName: 'Al-Noor Wholesale Contracting',
     companyTaxId: '300000000000003',
     crNumber: '1010000000',
-    customerGroup: 'corporate_vip',
+    customerGroup: 'corporate',
     creditLimit: 50000,
     availableCredit: 50000,
     paymentTerms: 'net_30',
