@@ -281,7 +281,7 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
       <div className="flex items-center justify-between pb-2">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground select-none">
-            {isCorporateView ? "Corporate / B2B Accounts" : "Customers"}
+            {isCorporateView ? "Corporate" : "Customers"}
           </h1>
           {isCorporateView && (
             <p className="text-xs text-muted-foreground mt-0.5">Manage contracted corporate clients, credit terms & VAT tax IDs.</p>
