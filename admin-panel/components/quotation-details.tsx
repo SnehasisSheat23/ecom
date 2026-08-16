@@ -47,30 +47,49 @@ export interface Quotation {
 }
 
 function QuotationStatusBadge({ status }: { status: string }) {
+  const s = (status || "").toLowerCase()
   let label = "Pending"
-  let color = "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+  let dotColor = "bg-amber-500"
+  let bgColor = "bg-amber-100 dark:bg-amber-900/30"
+  let textColor = "text-amber-800 dark:text-amber-400"
 
-  if (status === "quoted") {
+  if (s === "quoted") {
     label = "Quoted"
-    color = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
-  } else if (status === "accepted") {
+    dotColor = "bg-blue-500"
+    bgColor = "bg-blue-100/80 dark:bg-blue-900/30"
+    textColor = "text-blue-800 dark:text-blue-400"
+  } else if (s === "accepted") {
     label = "Accepted"
-    color = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-  } else if (status === "converted") {
+    dotColor = "bg-emerald-500"
+    bgColor = "bg-emerald-100 dark:bg-emerald-900/30"
+    textColor = "text-emerald-800 dark:text-emerald-400"
+  } else if (s === "converted") {
     label = "Converted"
-    color = "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
-  } else if (status === "rejected") {
+    dotColor = "bg-purple-500"
+    bgColor = "bg-purple-100 dark:bg-purple-900/30"
+    textColor = "text-purple-800 dark:text-purple-400"
+  } else if (s === "rejected") {
     label = "Rejected"
-    color = "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
-  } else if (status === "expired") {
+    dotColor = "bg-rose-500"
+    bgColor = "bg-rose-100 dark:bg-rose-900/30"
+    textColor = "text-rose-800 dark:text-rose-400"
+  } else if (s === "expired") {
     label = "Expired"
-    color = "bg-muted text-muted-foreground border-border/60"
+    dotColor = "bg-zinc-400"
+    bgColor = "bg-muted/50"
+    textColor = "text-zinc-600 dark:text-zinc-300"
+  } else if (s === "pending_review" || s === "pending") {
+    label = "Pending"
+    dotColor = "bg-amber-500"
+    bgColor = "bg-amber-100 dark:bg-amber-900/30"
+    textColor = "text-amber-800 dark:text-amber-400"
   }
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold uppercase tracking-wider border ${color}`}>
+    <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-medium text-xs ${bgColor} ${textColor}`}>
+      <div className={`size-1.5 rounded-full ${dotColor}`} />
       {label}
-    </span>
+    </div>
   )
 }
 
@@ -199,7 +218,7 @@ export function QuotationDetails({ id }: { id: string }) {
   return (
     <div className="flex flex-col h-full font-ui min-h-0">
       {/* Top Header Bar */}
-      <div className="bg-background/95 pt-6 pb-2.5 px-6 md:px-8 flex items-center justify-between gap-3.5 shrink-0 border-b border-border/60">
+      <div className="bg-background/95 pt-6 pb-2.5 px-6 md:px-8 flex items-center justify-between gap-3.5 shrink-0 ">
         <div className="flex items-center gap-3.5">
           <Link
             href="/dashboard/quotations"
@@ -222,16 +241,14 @@ export function QuotationDetails({ id }: { id: string }) {
             size="sm"
             disabled={isSaving}
             onClick={handleSave}
-            className="h-8 shadow-xs text-xs px-4 bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer font-semibold"
+            className="h-8 shadow-xs rounded-lg text-xs px-4 bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer font-semibold"
           >
             {isSaving ? (
               <>
-                <Icon name="progress_activity" className="size-3.5 animate-spin mr-1.5" />
                 Saving...
               </>
             ) : (
               <>
-                <Icon name="send" className="size-3.5 mr-1.5" />
                 {quotation.status === "pending_review" ? "Send Official Quote" :
                  quotation.status === "quoted" ? "Send Revised Quote" :
                  quotation.status === "converted" ? "Save Changes" :
