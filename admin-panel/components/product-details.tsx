@@ -58,7 +58,6 @@ export function ProductDetails({ id }: { id: string }) {
   const [isEditingSEO, setIsEditingSEO] = React.useState(false)
   const [description, setDescription] = React.useState("")
   const [isGeneratingDesc, setIsGeneratingDesc] = React.useState(false)
-  const [showToast, setShowToast] = React.useState(false)
   const [isUploadingImage, setIsUploadingImage] = React.useState(false)
   const [variantToDeleteIdx, setVariantToDeleteIdx] = React.useState<number | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false)
@@ -687,10 +686,6 @@ export function ProductDetails({ id }: { id: string }) {
           setInitialProduct(JSON.parse(JSON.stringify(product)))
         }
         toast.success("Product saved successfully")
-        setShowToast(true)
-        setTimeout(() => {
-          setShowToast(false)
-        }, 3000)
       } else {
         const body = await res.json().catch(() => ({}))
         toast.error(body.error || "Failed to save product")
@@ -1028,13 +1023,6 @@ export function ProductDetails({ id }: { id: string }) {
           </Button>
         </div>
       </div>
-
-      {showToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-5 duration-300">
-          <Icon name="check_circle" className="size-4" />
-          <span className="text-sm font-medium">Product saved successfully</span>
-        </div>
-      )}
 
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
