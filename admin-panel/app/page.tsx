@@ -2,35 +2,21 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Icon } from "@/components/ui/icon"
 import { apiRequest } from "@/lib/api-client"
-
-// Seed initial default accounts
-const DEFAULT_ACCOUNTS = [
-  {
-    email: "admin@example.com",
-    password: "password123",
-    name: "Admin User (Default)",
-  },
-]
-
-type Mode = "login" | "register"
 
 export default function LoginPage() {
   const router = useRouter()
-  const [mode, setMode] = React.useState<Mode>("login")
   const [loading, setLoading] = React.useState(false)
   const [isRedirecting, setIsRedirecting] = React.useState(true)
 
   // Form states
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
-  const [firstName, setFirstName] = React.useState("")
-  const [lastName, setLastName] = React.useState("")
 
   // Check if already authenticated
   React.useEffect(() => {
@@ -39,7 +25,6 @@ export default function LoginPage() {
     if (session && token) {
       router.push("/dashboard/products")
     } else {
-      // Defer the state update to prevent synchronous cascading renders inside the hook
       setTimeout(() => {
         setIsRedirecting(false)
       }, 0)
@@ -64,76 +49,36 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      if (mode === "login") {
-        const res = await apiRequest("/auth/admin/login", {
-          method: "POST",
-          body: JSON.stringify({ email: email.trim(), password }),
-        })
+      const res = await apiRequest("/auth/admin/login", {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim(), password }),
+      })
 
-        const data = await res.json().catch(() => ({}))
+      const data = await res.json().catch(() => ({}))
 
-        if (res.ok && data.data) {
-          const { user, accessToken } = data.data
-          const displayName = user.name || `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email.split("@")[0]
+      if (res.ok && data.data) {
+        const { user, accessToken } = data.data
+        const displayName =
+          user.name ||
+          `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+          user.email.split("@")[0]
 
-          localStorage.setItem("access_token", accessToken)
-          localStorage.setItem(
-            "user_session",
-            JSON.stringify({
-              id: user.id,
-              email: user.email,
-              name: displayName,
-              role: user.role || "admin",
-              isAdmin: true,
-            })
-          )
-          toast.success(`Welcome back, ${displayName}!`)
-          router.push("/dashboard/products")
-          return
-        } else {
-          toast.error(data.error || "Invalid email or password")
-        }
+        localStorage.setItem("access_token", accessToken)
+        localStorage.setItem(
+          "user_session",
+          JSON.stringify({
+            id: user.id,
+            email: user.email,
+            name: displayName,
+            role: user.role || "admin",
+            isAdmin: true,
+          })
+        )
+        toast.success(`Welcome back, ${displayName}!`)
+        router.push("/dashboard/products")
+        return
       } else {
-        if (password.length < 6) {
-          toast.error("Password must be at least 6 characters long")
-          setLoading(false)
-          return
-        }
-
-        const res = await apiRequest("/auth/register", {
-          method: "POST",
-          body: JSON.stringify({
-            email: email.trim(),
-            password,
-            firstName: firstName.trim() || undefined,
-            lastName: lastName.trim() || undefined,
-          }),
-        })
-
-        const data = await res.json().catch(() => ({}))
-
-        if (res.ok && data.data) {
-          const { customer, accessToken } = data.data
-          const displayName =
-            `${customer.firstName || ""} ${customer.lastName || ""}`.trim() ||
-            customer.email.split("@")[0]
-
-          localStorage.setItem("access_token", accessToken)
-          localStorage.setItem(
-            "user_session",
-            JSON.stringify({
-              id: customer.id,
-              email: customer.email,
-              name: displayName,
-              isAdmin: true,
-            })
-          )
-          toast.success("Account created successfully!")
-          router.push("/dashboard/products")
-          return
-        } else {
-          toast.error(data.error || "Registration failed")
-        }
+        toast.error(data.error || "Invalid email or password")
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to connect to authentication server")
@@ -153,216 +98,122 @@ export default function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2 bg-white dark:bg-zinc-950 font-sans">
       {/* Left Column: Form */}
-      <div className="relative flex flex-col justify-center px-8 py-12 md:px-16 lg:px-24">
+      <div className="relative flex flex-col justify-between px-8 py-10 md:px-16 lg:px-20">
         {/* Branding header in the top left */}
-        <div className="absolute top-8 left-8 flex items-center gap-2 font-medium">
-          <div className="flex h-6 w-6 items-center justify-center rounded bg-black text-white dark:bg-white dark:text-black">
-            <Icon name="terminal" className="size-4 text-[16px]!" />
-          </div>
-          <span className="text-sm font-semibold tracking-tight text-zinc-950 dark:text-zinc-50 font-ui">
-            Acme Inc.
-          </span>
+        <div className="flex items-center gap-3">
+          <img
+            src="/image.png"
+            alt="Abdullah Bakheet"
+            className="h-12 w-auto object-contain"
+          />
         </div>
 
-        <div className="mx-auto flex w-full max-w-[350px] flex-col gap-6">
-          <div className="flex flex-col gap-2 text-center">
+        {/* Center Login Form */}
+        <div className="mx-auto flex w-full max-w-[360px] flex-col gap-6 my-auto py-12">
+          <div className="flex flex-col gap-2">
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50 font-ui">
-              {mode === "login" ? "Login to your account" : "Create a new account"}
+              Admin Portal
             </h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              {mode === "login"
-                ? "Enter your email below to login to your account"
-                : "Enter your details below to create your account"}
+              Sign in with your administrative credentials to manage products, orders, and quotations.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {/* Dynamic Name Input in Register Mode */}
-            {mode === "register" && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="firstName" className="text-zinc-800 dark:text-zinc-200">
-                    First Name
-                  </Label>
-                  <Input
-                    id="firstName"
-                    type="text"
-                    placeholder="John"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    disabled={loading}
-                    className="h-9 px-3 rounded-md border-zinc-200/80 dark:border-zinc-800"
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="lastName" className="text-zinc-800 dark:text-zinc-200">
-                    Last Name
-                  </Label>
-                  <Input
-                    id="lastName"
-                    type="text"
-                    placeholder="Doe"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    disabled={loading}
-                    className="h-9 px-3 rounded-md border-zinc-200/80 dark:border-zinc-800"
-                  />
-                </div>
-              </div>
-            )}
-
             <div className="grid gap-1.5">
-              <Label htmlFor="email" className="text-zinc-800 dark:text-zinc-200">
-                Email
+              <Label htmlFor="email" className="text-zinc-800 dark:text-zinc-200 text-sm font-medium">
+                Email Address
               </Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="m@example.com"
+                placeholder="admin@example.com"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
-                className="h-9 px-3 rounded-md border-zinc-200/80 dark:border-zinc-800"
+                className="h-10 px-3.5 rounded-lg border-zinc-200 dark:border-zinc-800 focus-visible:ring-zinc-950"
               />
             </div>
 
             <div className="grid gap-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-zinc-800 dark:text-zinc-200">
+                <Label htmlFor="password" className="text-zinc-800 dark:text-zinc-200 text-sm font-medium">
                   Password
                 </Label>
-                {mode === "login" && (
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      toast.info("Password recovery is not configured yet.")
-                    }}
-                    className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 hover:underline transition-colors font-medium"
-                  >
-                    Forgot your password?
-                  </a>
-                )}
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    toast.info("Please contact system administrator to reset your credentials.")
+                  }}
+                  className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 hover:underline transition-colors font-medium"
+                >
+                  Forgot password?
+                </a>
               </div>
               <Input
                 id="password"
                 type="password"
-                placeholder={mode === "login" ? "••••••••" : "At least 8 characters"}
+                placeholder="••••••••"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
-                className="h-9 px-3 rounded-md border-zinc-200/80 dark:border-zinc-800"
+                className="h-10 px-3.5 rounded-lg border-zinc-200 dark:border-zinc-800 focus-visible:ring-zinc-950"
               />
             </div>
 
             <Button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 h-9 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 cursor-pointer font-medium rounded-md"
+              className="w-full mt-2 h-10 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 cursor-pointer font-medium rounded-lg shadow-sm transition-all"
             >
               {loading ? (
                 <div className="flex items-center justify-center gap-2">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  <span>{mode === "login" ? "Logging in..." : "Creating Account..."}</span>
+                  <span>Signing in...</span>
                 </div>
-              ) : mode === "login" ? (
-                "Login"
               ) : (
-                "Create Account"
+                "Sign In"
               )}
             </Button>
           </form>
+        </div>
 
-          <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800"></div>
-            <span className="flex-shrink mx-4 text-xs uppercase text-zinc-400 dark:text-zinc-600 font-normal">
-              Or continue with
-            </span>
-            <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800"></div>
-          </div>
-
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => toast.info("GitHub OAuth login is not configured yet.")}
-            className="h-9 w-full flex items-center justify-center gap-2 font-medium cursor-pointer border-zinc-200/80 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-md"
-          >
-            <svg className="size-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-            </svg>
-            Login with GitHub
-          </Button>
-
-          <p className="text-sm text-center text-zinc-500 dark:text-zinc-400 mt-2">
-            {mode === "login" ? "Don't have an account? " : "Already have an account? "}
-            <button
-              type="button"
-              onClick={() => {
-                setMode(mode === "login" ? "register" : "login")
-                setEmail("")
-                setPassword("")
-                setFirstName("")
-                setLastName("")
-              }}
-              className="font-medium text-zinc-900 underline hover:text-zinc-700 dark:text-zinc-50 dark:hover:text-zinc-300 cursor-pointer"
-            >
-              {mode === "login" ? "Sign up" : "Sign in"}
-            </button>
-          </p>
+        {/* Footer info */}
+        <div className="text-xs text-zinc-400 dark:text-zinc-600 flex items-center justify-between">
+          <span>© {new Date().getFullYear()} Abdullah Bakheet</span>
+          <span>Enterprise Management</span>
         </div>
       </div>
 
-      {/* Right Column: Abstract Design Graphic */}
-      <div className="hidden lg:flex items-center justify-center bg-zinc-100 dark:bg-zinc-900 relative border-l border-zinc-200/50 dark:border-zinc-800/50">
-        <svg
-          className="w-[450px] h-[450px] text-zinc-200/80 dark:text-zinc-800/50 animate-in fade-in zoom-in duration-500"
-          viewBox="0 0 200 200"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="0.75"
-        >
-          {/* Nested concentric circles */}
-          <circle cx="100" cy="100" r="15" />
-          <circle cx="100" cy="100" r="35" />
-          <circle cx="100" cy="100" r="55" strokeDasharray="3 3" />
-          <circle cx="100" cy="100" r="75" />
+      {/* Right Column: Hero Graphic Image */}
+      <div className="hidden lg:relative lg:flex items-end justify-start p-12 overflow-hidden bg-zinc-950">
+        <Image
+          src="/images/riyadh_hero_3.png"
+          alt="Abdullah Bakheet Riyadh Operations"
+          fill
+          priority
+          className="object-cover object-center opacity-85"
+        />
+        {/* Modern dark gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
 
-          {/* Radiating spoke lines */}
-          <line x1="100" y1="20" x2="100" y2="180" />
-          <line x1="20" y1="100" x2="180" y2="100" />
-          <line x1="43.43" y1="43.43" x2="156.57" y2="156.57" />
-          <line x1="43.43" y1="156.57" x2="156.57" y2="43.43" />
-
-          {/* Inner circle background container for the image icon */}
-          <circle
-            cx="100"
-            cy="100"
-            r="16"
-            fill="white"
-            className="dark:fill-zinc-950"
-            stroke="currentColor"
-            strokeWidth="0.75"
-          />
-
-          {/* Clean image placeholder symbol in the center */}
-          <g
-            transform="translate(93, 93)"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-zinc-400 dark:text-zinc-500"
-          >
-            {/* Outline of image rectangle */}
-            <rect x="0" y="0" width="14" height="14" rx="2" stroke="currentColor" fill="none" />
-            {/* Image peaks/mountains */}
-            <path d="M1 11l3.5-3.5a1 1 0 0 1 1.4 0L9 11m-1.5-1.5l2-2a1 1 0 0 1 1.4 0L13 10.5" stroke="currentColor" fill="none" />
-            {/* Image sun */}
-            <circle cx="4.5" cy="4.5" r="1" fill="currentColor" stroke="none" />
-          </g>
-        </svg>
+        {/* Hero Content Card */}
+        <div className="relative z-10 max-w-lg text-white space-y-3">
+          <div className="inline-flex items-center gap-2  text-xs">
+            <span className="font-medium tracking-wide">Abdullah Bakheet Co.</span>
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight text-white font-ui uppercase leading-tight">
+            BEST TRADING COMPANY IN SAUDI ARABIA, RIYADH
+          </h2>
+          <p className="text-sm text-zinc-200 leading-relaxed font-normal">
+            Established in 2004, we have built a strong reputation for providing food essentials to restaurants, hotels, caterers, and wholesalers across the Kingdom. With over two decades of industry expertise, we have cultivated long-term relationships with top international brands.
+          </p>
+        </div>
       </div>
     </div>
   )
 }
+
