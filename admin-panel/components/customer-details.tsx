@@ -477,7 +477,7 @@ export function CustomerDetails({ id }: { id: string }) {
                         max="100"
                         step="1"
                         placeholder="0"
-                        className="w-full h-9 px-3 pr-8 py-2 text-sm bg-background border border-border/60 rounded-md font-mono font-bold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="w-full h-9 px-3 pr-8 py-2 text-sm bg-background border border-border/60 rounded-md font-mono  focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         value={customer.accountDiscountPercent === 0 ? "" : customer.accountDiscountPercent}
                         onChange={(e) => {
                           const val = parseFloat(e.target.value) || 0
@@ -495,7 +495,7 @@ export function CustomerDetails({ id }: { id: string }) {
                       min="0"
                       step="1000"
                       placeholder="0"
-                      className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md font-mono font-bold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md font-mono  focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       value={customer.creditLimit === 0 ? "" : customer.creditLimit}
                       onChange={(e) => {
                         const val = parseFloat(e.target.value) || 0
@@ -511,7 +511,7 @@ export function CustomerDetails({ id }: { id: string }) {
                       min="0"
                       step="1000"
                       placeholder="0"
-                      className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md font-mono font-bold text-emerald-600 dark:text-emerald-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md font-mono   focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       value={customer.availableCredit === 0 ? "" : customer.availableCredit}
                       onChange={(e) => {
                         const val = parseFloat(e.target.value) || 0
