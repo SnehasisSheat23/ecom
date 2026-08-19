@@ -58,7 +58,7 @@ export default function AboutPrinciples() {
                         {/* Scales Image */}
                         <div className="w-full h-[250px] lg:flex-grow bg-gray-100 overflow-hidden">
                             <img
-                                src="https://www.dropbox.com/scl/fi/htw564rdcp2frutx4q5j2/948f6236332983ad25e7ff28ce62bed5ac361bcf.jpg?rlkey=49yc26gunrc5grcyc9lhrs7fh&st=49qug2nt&raw=1"
+                                src="/images/948f6236332983ad25e7ff28ce62bed5ac361bcf.jpg"
                                 alt="Scales of Justice"
                                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
                             />
@@ -68,7 +68,7 @@ export default function AboutPrinciples() {
                     {/* Middle Column: Tall Floating Island Image */}
                     <div className="lg:col-span-4 h-[400px] lg:h-auto bg-gray-100 overflow-hidden">
                         <img
-                            src="https://www.dropbox.com/scl/fi/4d32arln0lgbd3d8rr0c7/0517b4886cef67fc8979157e419d49271f57a298.jpg?rlkey=sh28hri9p7uhcqbumz9lavi4r&st=wtny6sye&raw=1"
+                            src="/images/0517b4886cef67fc8979157e419d49271f57a298.jpg"
                             alt="Floating Island Silhouette"
                             className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
                         />
@@ -91,13 +91,13 @@ export default function AboutPrinciples() {
                         {/* 3 Small Images Grid */}
                         <div className="grid grid-cols-3 gap-3 md:gap-5 h-[150px] md:h-[220px]">
                             <div className="bg-gray-100 overflow-hidden">
-                                <img src="https://www.dropbox.com/scl/fi/tmdxr5zwfz9adf8kesw4p/5ddbedaa1b096f1ed11999fed1b33a77c55c981f.jpg?rlkey=1m39fixsph18m37tps7779pk2&st=xdr17iyy&raw=1" alt="Tech Abstract" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                                <img src="/images/5ddbedaa1b096f1ed11999fed1b33a77c55c981f.jpg" alt="Tech Abstract" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
                             </div>
                             <div className="bg-gray-100 overflow-hidden">
-                                <img src="https://www.dropbox.com/scl/fi/ug15lj7y5ybfizclajrcn/ce44d23a6808866cb7252fd4ec93e027d262ed96.jpg?rlkey=qxgwsok1aauks0yfe3kduhdro&st=ho4hl7k5&raw=1" alt="Team Hands Stacked" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                                <img src="/images/ce44d23a6808866cb7252fd4ec93e027d262ed96.jpg" alt="Team Hands Stacked" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
                             </div>
                             <div className="bg-gray-100 overflow-hidden">
-                                <img src="https://www.dropbox.com/scl/fi/yaf6aqa5wns7fv0swjuyp/131977cd0b2d6ff8b75cd2dae706a110c11b183b.jpg?rlkey=kuqh2pyzjwn0tw1nx25nltiez&st=wxxrjj3l&raw=1" alt="Team Hands Circle" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                                <img src="/images/131977cd0b2d6ff8b75cd2dae706a110c11b183b.jpg" alt="Team Hands Circle" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
                             </div>
                         </div>
 

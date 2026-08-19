@@ -95,7 +95,7 @@ export default function ContactForm() {
                     {/* Right Image Area */}
                     <div className="w-full lg:w-1/2 h-[400px] lg:h-auto bg-gray-100 relative overflow-hidden group">
                         <img
-                            src="https://www.dropbox.com/scl/fi/vbw7zvz40bpyvp0rhmzog/7dfedd5318a6dcc977273869f52740a1cdf8731b.jpg?rlkey=bt4bn1k4vkf8ax96pnvpmkf3d&st=xx3jr8z6&raw=1"
+                            src="/images/7dfedd5318a6dcc977273869f52740a1cdf8731b.jpg"
                             alt={isArabic ? "موقع المكتب" : "Office Location"}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                         />

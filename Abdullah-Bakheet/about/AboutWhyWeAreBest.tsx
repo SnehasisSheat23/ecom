@@ -11,25 +11,25 @@ export default function AboutWhyWeAreBest() {
             id: '01',
             title: isArabic ? 'عقود من الثقة والتميز' : 'Decades of Trust & Excellence',
             description: isArabic ? 'مع أكثر من عقدين من الزمن في طليعة توزيع الأغذية، تقدم شركة عبدالله بخيت للتجارة خبرة عميقة في هذا القطاع وسجلاً حافلاً من الموثوقية لكل شراكة. على مر السنين، أتقننا إدارة سلسلة التوريد، واللوجستيات المبردة، والمصادر في جميع أنحاء المملكة.' : 'With over two decades at the forefront of food distribution, Abdullah Bakheet Trading Co. brings deep industry expertise and an unwavering track record of reliability to every partnership. Over the years, we have mastered the complexities of supply chain management, temperature-controlled logistics, and market sourcing across Saudi Arabia.',
-            image: "https://www.dropbox.com/scl/fi/xiruyemchkag3wejog5rs/26ecd8c11d1a7627d451935a0b08216dfe692877.jpg?rlkey=in7v4lofw52pi15hlgoxqyncr&st=etp1lrjg&raw=1",
+            image: "/images/26ecd8c11d1a7627d451935a0b08216dfe692877.jpg",
         },
         {
             id: '02',
             title: isArabic ? 'استيراد الأفضل دائمًا من العالم' : 'Sourcing the Best, Globally',
             description: isArabic ? 'التزامنا بالتميز لا يعرف حدودًا. من خلال الشراكة الحصرية مع العلامات التجارية العالمية، تجلب شركة عبدالله بخيت أجود المكونات مباشرة إلى المملكة. نختار كل شريك بعناية بناءً على معايير جودة صارمة تضمن نكهة أصيلة وتماسكًا عاليًا.' : 'Our commitment to excellence knows no borders. By partnering exclusively with world-class international brands, Abdullah Bakheet Trading Co. brings the globe\'s finest ingredients directly to Saudi Arabia. We carefully select each partner based on rigorous quality standards, ensuring that every product we distribute delivers authentic flavor, superior consistency.',
-            image: "https://www.dropbox.com/scl/fi/wjsqdcy6vzeetzq49lo0t/5ddcac74b11df9dd4a3fcd5f317deaa20a03c148.jpg?rlkey=g8ibn4ibfuen5iorvldbnjkoz&st=8udeoz06&raw=1",
+            image: "/images/5ddcac74b11df9dd4a3fcd5f317deaa20a03c148.jpg",
         },
         {
             id: '03',
             title: isArabic ? 'لوجستيات سلسة وموثوقة' : 'Seamless & Reliable Logistics',
             description: isArabic ? 'من لحظة تقديم الطلب حتى التسليم النهائي، تم تصميم سلسلة التوريد لدينا للسرعة والدقة والموثوقية. مدعومة بإدارة مخزون متقدمة أسطول مبرد، تضمن الشركة التوزيع السلس إلى كل أنحاء المملكة العربية السعودية.' : 'From the moment an order is placed to its final doorstep delivery, our supply chain is engineered for speed, accuracy, and reliability. Powered by advanced inventory management and a temperature-controlled fleet, Abdullah Bakheet Trading Co. ensures seamless distribution to every corner of Saudi Arabia. We eliminate logistics bottlenecks.',
-            image: "https://www.dropbox.com/scl/fi/edeokd1ld2rcqqpem184m/e85b6c3aa0bac31c26e2ecfc001fa0d2b87d652a.jpg?rlkey=hg9ksm3f0fo2qg1nojlfnqz1y&st=pxww8gfp&raw=1",
+            image: "/images/e85b6c3aa0bac31c26e2ecfc001fa0d2b87d652a.jpg",
         },
         {
             id: '04',
             title: isArabic ? 'حلول مخصصة للأعمال' : 'Tailored Solutions for Business',
             description: isArabic ? 'لكل عملية طهي متطلبات ممتازة. في شركة عبدالله بخيت للتجارة، نتجاوز التوزيع القياسي من خلال تقديم خدمات التوريد والتغليف المخصصة لجميع احتياجات عملائنا الكرام.' : 'Every culinary operation has distinct requirements, and off-the-shelf solutions don\'t always fit. At Abdullah Bakheet Trading Co., we go beyond standard distribution by offering tailored sourcing and custom packaging services. Whether you need high-volume bulk orders, niche international ingredients, or specific portion sizes and private-label packaging.',
-            image: "https://www.dropbox.com/scl/fi/dh6e8axs9nn4nwazfve00/f80fb68d29406016fbe0fd41c081dbe15d70b847.jpg?rlkey=s3tmfma86ubnegl91k2odk3zu&st=dnjzlk4c&raw=1",
+            image: "/images/f80fb68d29406016fbe0fd41c081dbe15d70b847.jpg",
         }
     ];
 

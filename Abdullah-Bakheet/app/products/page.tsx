@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import ProductsHero from '@/products/ProductsHero';
 import ProductListing from '@/products/ProductListing';
 import ConnectCTA from '@/components/ConnectCTA';
@@ -10,7 +11,9 @@ export default function ProductsPage() {
             <ProductsHero />
 
             {/* 2. New Product Listing / Filters */}
-            <ProductListing />
+            <Suspense fallback={<div className="w-full py-20 text-center text-gray-500">Loading products...</div>}>
+                <ProductListing />
+            </Suspense>
 
             {/* 3. Global Connect CTA */}
             <ConnectCTA />

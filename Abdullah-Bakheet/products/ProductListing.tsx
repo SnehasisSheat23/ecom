@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { CartIcon } from 'lucide-animated';
 import { useShop } from '@/context/ShopContext';
 import { fetchProducts, fetchCategories, StorefrontProduct } from '@/lib/api';
@@ -18,8 +18,15 @@ const ToggleSwitch = ({ label, isActive, onClick, isArabic }: { label: string; i
     </button>
 );
 
+function normalizeStr(str: string): string {
+    return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 export default function ProductListing() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const urlCategory = searchParams.get('category');
+
     const { addToCart, currency, language, formatPrice, isCorporateUser } = useShop();
     const isArabic = language.startsWith('Arabic');
 
@@ -64,10 +71,91 @@ export default function ProductListing() {
         return () => { isMounted = false; };
     }, [currency, isArabic]);
 
+    // Synchronize category from URL search params (?category=...)
+    useEffect(() => {
+        if (!urlCategory) {
+            setActiveCategory('ALL');
+            return;
+        }
+
+        const normParam = normalizeStr(urlCategory);
+        if (!normParam || normParam === 'all') {
+            setActiveCategory('ALL');
+            return;
+        }
+
+        // Try exact match on slug or name in categories
+        const matchedCat = categories.find(c => 
+            c.slug.toLowerCase() === urlCategory.toLowerCase() ||
+            c.name.toUpperCase() === urlCategory.toUpperCase() ||
+            normalizeStr(c.slug) === normParam ||
+            normalizeStr(c.name) === normParam ||
+            normalizeStr(c.name).includes(normParam) ||
+            normParam.includes(normalizeStr(c.name))
+        );
+
+        if (matchedCat) {
+            setActiveCategory(matchedCat.slug || matchedCat.name);
+        } else {
+            // Check products directly
+            const matchedProd = products.find(p => {
+                const normCat = normalizeStr(p.category);
+                const normSlug = normalizeStr(p.categorySlug || '');
+                return normCat === normParam || normSlug === normParam || normCat.includes(normParam) || normParam.includes(normCat);
+            });
+            if (matchedProd) {
+                setActiveCategory(matchedProd.category);
+            } else {
+                setActiveCategory(urlCategory);
+            }
+        }
+    }, [urlCategory, categories, products]);
+
+    const handleCategoryClick = useCallback((targetSlugOrName: string) => {
+        if (targetSlugOrName === 'ALL' || targetSlugOrName === activeCategory) {
+            setActiveCategory('ALL');
+            router.replace('/products', { scroll: false });
+        } else {
+            setActiveCategory(targetSlugOrName);
+            router.replace(`/products?category=${encodeURIComponent(targetSlugOrName)}`, { scroll: false });
+        }
+    }, [activeCategory, router]);
+
+    const isCatActive = useCallback((catObj: { name: string; slug: string }) => {
+        if (activeCategory === 'ALL' && (catObj.slug === 'ALL' || catObj.name === 'ALL')) return true;
+        if (activeCategory === 'ALL') return false;
+
+        const normActive = normalizeStr(activeCategory);
+        const normSlug = normalizeStr(catObj.slug);
+        const normName = normalizeStr(catObj.name);
+
+        return (
+            activeCategory.toLowerCase() === catObj.slug.toLowerCase() ||
+            activeCategory.toUpperCase() === catObj.name.toUpperCase() ||
+            normActive === normSlug ||
+            normActive === normName ||
+            normName.includes(normActive) ||
+            normActive.includes(normName)
+        );
+    }, [activeCategory]);
+
     const filteredProducts = useMemo(() => {
         return products.filter((product) => {
-            if (activeCategory && activeCategory !== 'ALL' && product.category.toUpperCase() !== activeCategory.toUpperCase()) {
-                return false;
+            if (activeCategory && activeCategory !== 'ALL') {
+                const normActive = normalizeStr(activeCategory);
+                const normProdCat = normalizeStr(product.category);
+                const normProdSlug = normalizeStr(product.categorySlug || '');
+
+                const isMatch = (
+                    product.category.toUpperCase() === activeCategory.toUpperCase() ||
+                    normProdCat === normActive ||
+                    normProdSlug === normActive ||
+                    normProdCat.includes(normActive) ||
+                    normActive.includes(normProdCat) ||
+                    (normProdSlug && (normProdSlug.includes(normActive) || normActive.includes(normProdSlug)))
+                );
+
+                if (!isMatch) return false;
             }
             if (product.price > priceRange) {
                 return false;
@@ -161,8 +249,8 @@ export default function ProductListing() {
                                     <ToggleSwitch
                                         key={catObj.slug}
                                         label={isArabic ? (catObj.arabicName || catObj.name) : catObj.name}
-                                        isActive={activeCategory === catObj.slug}
-                                        onClick={() => setActiveCategory(activeCategory === catObj.slug ? 'ALL' : catObj.slug)}
+                                        isActive={isCatActive(catObj)}
+                                        onClick={() => handleCategoryClick(catObj.slug)}
                                         isArabic={isArabic}
                                     />
                                 ))}

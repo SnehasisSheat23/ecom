@@ -1,7 +1,7 @@
 export const ALL_PRODUCTS = [
-    { id: '1', title: 'TOMATO KETCHUP PORTION', arabic: 'كاتشب طماطم مظاريف', category: 'KETCHUP', size: '( 1000 x 8 g )', price: 180, inStock: true, onSale: true, img: 'https://www.dropbox.com/scl/fi/tmhvpb1857h9n4v5myxw3/1ed8a4787fc118d97bbd66fcda1f1ccdfb113b82-1.png?rlkey=pk43p6i80m5rb06dc1yi3jk0t&st=qvvnx4z3&raw=1' },
+    { id: '1', title: 'TOMATO KETCHUP PORTION', arabic: 'كاتشب طماطم مظاريف', category: 'KETCHUP', size: '( 1000 x 8 g )', price: 180, inStock: true, onSale: true, img: '/images/1ed8a4787fc118d97bbd66fcda1f1ccdfb113b82-1.png' },
     { id: '2', title: 'TOMATO KETCHUP SQUEEZE', arabic: 'كاتشب طماطم عصر', category: 'KETCHUP', size: '( 12 x 340 g )', price: 120, inStock: true, onSale: false},
-    { id: '3', title: 'TOMATO KETCHUP GALLON', arabic: 'جالون كاتشب طماطم', category: 'KETCHUP', size: '( 4 x 5 Kg )', price: 500, inStock: true, onSale: true, img: 'https://www.dropbox.com/scl/fi/vveb76ej83cno5x2pg57h/1c35a3fc83b5d3bd6338a52ac7609f4819064413.jpg?rlkey=fbvucajcoeymqkyjnlgv7u7id&st=wzt3d0i4&raw=1' },
+    { id: '3', title: 'TOMATO KETCHUP GALLON', arabic: 'جالون كاتشب طماطم', category: 'KETCHUP', size: '( 4 x 5 Kg )', price: 500, inStock: true, onSale: true, img: '/images/1c35a3fc83b5d3bd6338a52ac7609f4819064413.jpg' },
     { id: '4', title: 'WHITE VINEGAR BOTTLE', arabic: 'خل أبيض نقي', category: 'VINEGAR', size: '( 12 x 473 ml )', price: 95, inStock: true, onSale: false, img: '/images/white-vinegar-bottle.png' },
     { id: '5', title: 'WHITE VINEGAR GALLON', arabic: 'جالون خل أبيض', category: 'VINEGAR', size: '( 4 x 3.78 L )', price: 210, inStock: true, onSale: true, img: '/images/white-vinegar-gallon.png' },
     { id: '6', title: 'PICKLED CUCUMBER SLICED', arabic: 'خيار مخلل شرائح', category: 'PICKLES', size: '( 6 x 3 Kg )', price: 340, inStock: true, onSale: false, img: '/images/pickled-cucumber-sliced.png' },

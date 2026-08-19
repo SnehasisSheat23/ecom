@@ -30,7 +30,7 @@ export default function AboutStory() {
                         </h2>
 
                         <div className="hidden md:block w-[100px] h-[100px] lg:w-[150px] lg:h-[150px] bg-white shadow-sm p-2 hover:scale-110 transition-transform duration-500 md:translate-x-18">
-                            <img src="https://www.dropbox.com/scl/fi/ghm0y10v7izketqw47msx/e307efad5c4c43cfa7dbe3a5922100bb8a19ae1e.png?rlkey=vz9cq5gbz4qz5ipy4u8ucdlsu&st=ti7cf8wm&raw=1" alt={isArabic ? 'شاي تويننجز الأخضر' : 'Twinings Green Tea'} className="w-full h-full object-contain" />
+                            <img src="/images/e307efad5c4c43cfa7dbe3a5922100bb8a19ae1e.png" alt={isArabic ? 'شاي تويننجز الأخضر' : 'Twinings Green Tea'} className="w-full h-full object-contain" />
                         </div>
 
                         <div className="hidden lg:block w-[50px] h-[130px] bg-[#fbdc3c] flex-shrink-0 ml-auto -translate-x-20"></div>
@@ -42,7 +42,7 @@ export default function AboutStory() {
                         <div className="hidden lg:block w-[50px] h-[130px] bg-[#fbdc3c] flex-shrink-0 mr-auto translate-x-5"></div>
 
                         <div className="hidden md:block w-[120px] h-[120px] lg:w-[150px] lg:h-[150px] bg-white shadow-sm p-2 hover:scale-110 transition-transform duration-500 md:-translate-x-33">
-                            <img src="https://www.dropbox.com/scl/fi/62z89k3rjd900axspqkk2/fb6086db76f48ad87a9eaa300b5e268336554933.png?rlkey=ggvuiqbumar332ffi6rz8tdxq&st=lqtsdo7c&raw=1" alt={isArabic ? 'كوكتيل فواكه' : 'Fruit Cocktail'} className="w-full h-full object-contain" />
+                            <img src="/images/fb6086db76f48ad87a9eaa300b5e268336554933.png" alt={isArabic ? 'كوكتيل فواكه' : 'Fruit Cocktail'} className="w-full h-full object-contain" />
                         </div>
 
                         <h2 className={`font-heading text-[14vw] md:text-[100px] lg:text-[150px] uppercase text-[#1a2b25] leading-[0.8] tracking-wider scale-y-110 transform origin-bottom whitespace-nowrap relative md:-translate-x-30 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>

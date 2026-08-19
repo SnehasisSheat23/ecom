@@ -81,7 +81,7 @@ export default function ContactHero() {
             {/* Building Image */}
             <div className="w-full h-[320px] md:h-[400px] bg-gray-100 overflow-hidden relative shadow-sm">
               <img
-                src="https://www.dropbox.com/scl/fi/d3cfs4jr337wjffqi12jy/939a574cbba7559a1c3bd7d055026bc77d8899d5.png?rlkey=v412gcsow26zvudqbtdqxdrh6&st=nmilevxt&raw=1"
+                src="/images/939a574cbba7559a1c3bd7d055026bc77d8899d5.png"
                 alt={isArabic ? "مقر الشركة" : "Modern Architecture Building"}
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 object-bottom"
               />
@@ -121,7 +121,7 @@ export default function ContactHero() {
           {/* Sun Dried Tomatoes Image */}
           <div className="w-full h-[400px] md:h-auto flex-grow bg-gray-100 overflow-hidden relative shadow-sm min-h-[350px]">
             <img
-              src="https://www.dropbox.com/scl/fi/p368xixquk9sf4b1b4opg/60c191d3da71d6d25e508bb753e355df4b36ddd6.png?rlkey=ufwm9zudj52gwtova1bvkgmi5&st=83vje8ix&raw=1"
+              src="/images/60c191d3da71d6d25e508bb753e355df4b36ddd6.png"
               alt={isArabic ? "طماطم مجففة بالشمس" : "Sun Dried Tomatoes Packaging"}
               className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
             />

@@ -85,14 +85,14 @@ export default function Footer() {
                     <div className={`lg:col-span-2 ${isArabic ? 'text-right' : 'text-left'}`}>
                         <h4 className="font-medium text-lg mb-6">{t.categoriesTitle}</h4>
                         <ul className="grid grid-cols-1 sm:grid-cols-1 gap-y-4 gap-x-4 text-[15px] text-gray-400">
-                            <li><Link href="/category/ketchup" className="hover:text-white transition-colors">{tCat.ketchup}</Link></li>
-                            <li><Link href="/category/french-fries" className="hover:text-white transition-colors">{tCards.frenchFriesTitle}</Link></li>
-                            <li><Link href="/category/vinegar" className="hover:text-white transition-colors">{tCat.vinegar}</Link></li>
-                            <li><Link href="/category/frozen-items" className="hover:text-white transition-colors">{tCards.frozenItemsTitle}</Link></li>
-                            <li><Link href="/category/pickles" className="hover:text-white transition-colors">{tCat.pickles}</Link></li>
-                            <li><Link href="/category/seasonings" className="hover:text-white transition-colors">{tCards.seasoningsTitle}</Link></li>
-                            <li><Link href="/category/sauces-dressings" className="hover:text-white transition-colors">{tCat.sauces}</Link></li>
-                            <li><Link href="/category/oils" className="hover:text-white transition-colors">{tCat.oils}</Link></li>
+                            <li><Link href="/products?category=KETCHUP" className="hover:text-white transition-colors">{tCat.ketchup}</Link></li>
+                            <li><Link href="/products?category=FRENCH+FRIES" className="hover:text-white transition-colors">{tCards.frenchFriesTitle}</Link></li>
+                            <li><Link href="/products?category=VINEGAR" className="hover:text-white transition-colors">{tCat.vinegar}</Link></li>
+                            <li><Link href="/products?category=PICKLES" className="hover:text-white transition-colors">{tCards.frozenItemsTitle}</Link></li>
+                            <li><Link href="/products?category=PICKLES" className="hover:text-white transition-colors">{tCat.pickles}</Link></li>
+                            <li><Link href="/products?category=SAUCES+%26+DRESSING" className="hover:text-white transition-colors">{tCards.seasoningsTitle}</Link></li>
+                            <li><Link href="/products?category=SAUCES+%26+DRESSING" className="hover:text-white transition-colors">{tCat.sauces}</Link></li>
+                            <li><Link href="/products?category=OILS" className="hover:text-white transition-colors">{tCat.oils}</Link></li>
                         </ul>
                     </div>
 
@@ -154,7 +154,7 @@ export default function Footer() {
                     {/* Central Product Image */}
                     <div className="absolute top-1/2 left-1/3 translate-x-1/2 translate-y-[-220%] z-30 w-32 h-32 md:w-40 md:h-40 bg-white rounded-full border-4 border-black flex items-center justify-center overflow-hidden">
                         <Image
-                            src="https://www.dropbox.com/scl/fi/es43uex45can2jctwzil2/a86ce4a691c715f9e05179a25eb352f4328feeab.jpg?rlkey=7ypjvozxl400cmr5rvyh5doin&st=qhuq411q&raw=1"
+                            src="/images/a86ce4a691c715f9e05179a25eb352f4328feeab.jpg"
                             alt="Nestol Mustard"
                             className="h-[80%] w-auto object-contain"
                             width={160}

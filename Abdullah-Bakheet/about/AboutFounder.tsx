@@ -53,7 +53,7 @@ export default function AboutFounder() {
                     {/* Right Column: Founder Image */}
                     <div className="w-full h-[400px] md:h-[400px] lg:h-[450px] bg-gray-100 overflow-hidden relative shadow-sm">
                         <img
-                            src="https://www.dropbox.com/scl/fi/omqfwnz7zczht6ex6g72w/b22054ac3fcf29a0776a645093bbda2fc2666665.jpg?rlkey=mjrwrd5gp53ubto53ahongc3c&st=4sj484et&raw=1"
+                            src="/images/b22054ac3fcf29a0776a645093bbda2fc2666665.jpg"
                             alt={isArabic ? 'مؤسسنا' : 'Our Founder'}
                             className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 object-top"
                         />

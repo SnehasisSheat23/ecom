@@ -21,9 +21,9 @@ export default function AboutHero() {
                         {/* Promotional Image */}
                         <div className="w-full h-[450px] md:h-[550px] bg-gray-100 overflow-hidden relative shadow-sm">
                             <img
-                                src="https://www.dropbox.com/scl/fi/f8hzjpr9gykd1vfcntxdg/9bffb676f3fc5952905460da449301cf3bbd3f8e.png?rlkey=8m79w5v50wbqs3feutwg8zd4u&st=arezi8rg&raw=1"
+                                src="/images/9bffb676f3fc5952905460da449301cf3bbd3f8e.png"
                                 alt="Global Taste You Can Trust"
-                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                                className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-700"
                             />
                         </div>
 
