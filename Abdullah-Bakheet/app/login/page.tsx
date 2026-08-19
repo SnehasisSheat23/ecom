@@ -187,39 +187,32 @@ function LoginForm() {
                 </div>
             </div>
 
-            {/* Right Column - Image & Testimonial */}
-            <div className="hidden lg:flex w-1/2 relative bg-gray-900 overflow-hidden">
+            {/* Right Column - Hero Graphic Image matching Admin Panel */}
+            <div className="hidden lg:relative lg:flex w-1/2 items-end justify-start p-12 overflow-hidden bg-zinc-950">
                 <img 
-                    src="https://images.unsplash.com/photo-1586521995568-39abaa0c2311?q=80&w=2000&auto=format&fit=crop" 
-                    alt="Riyadh Skyline" 
-                    className="absolute inset-0 w-full h-full object-cover opacity-80"
+                    src="/images/riyadh_hero_3.png" 
+                    alt="Abdullah Bakheet Riyadh Operations" 
+                    className="absolute inset-0 w-full h-full object-cover object-center opacity-85"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                {/* Modern dark gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
                 
-                <div className="absolute bottom-12 left-12 right-12">
-                    <div className="backdrop-blur-md bg-white/10 border border-white/20 p-10 rounded-xl">
-                        <div className="flex justify-between items-start mb-6">
-                            <div className="text-white text-6xl font-serif leading-none opacity-80">“</div>
-                            <div className="flex gap-1">
-                                {[...Array(5)].map((_, i) => (
-                                    <svg key={i} width="16" height="16" viewBox="0 0 24 24" fill="#fbdc3c" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-                                    </svg>
-                                ))}
-                            </div>
-                        </div>
-                        
-                        <p className={`text-white text-xl md:text-2xl font-medium leading-relaxed mb-10 ${isArabic ? 'text-right' : 'text-left'}`}>
-                            {isArabic ? 'غيرت المنصة طريقة تخطيطنا وتنفيذنا للمشاريع. إنها بمثابة عضو إضافي في الفريق يعمل على مدار الساعة.' : "The platform transformed how we plan and execute our projects. It's like having an extra team member who never sleeps."}
-                        </p>
-                        
-                        <div className="flex justify-between items-end">
-                            <div className={isArabic ? 'text-right' : 'text-left'}>
-                                <h4 className="text-white font-bold text-lg">{isArabic ? 'ريتويكا سينغوبتا' : 'Ritwika Sengupta'}</h4>
-                                <p className="text-gray-300 text-sm">{isArabic ? 'الرئيس التنفيذي والمؤسس' : 'CEO & Founder, ABC Company'}</p>
-                            </div>
-                        </div>
+                {/* Hero Content Card */}
+                <div className={`relative z-10 max-w-lg text-white space-y-3 ${isArabic ? 'text-right' : 'text-left'}`}>
+                    <div className={`inline-flex items-center gap-2 text-xs  ${isArabic ? 'flex-row-reverse' : ''}`}>
+                        <span className="font-semibold tracking-wider ">
+                            {isArabic ? 'شركة عبدالله بخيت للتجارة' : 'Abdullah Bakheet Co.'}
+                        </span>
                     </div>
+                    <h2 className="text-xl font-semibold  text-white ">
+                        {isArabic ? 'أفضل شركة تجارية في المملكة العربية السعودية، الرياض' : 'BEST TRADING COMPANY IN SAUDI ARABIA, RIYADH'}
+                    </h2>
+                    <p className="text-sm text-zinc-200 leading-relaxed font-normal">
+                        {isArabic 
+                            ? 'تأسست الشركة في عام 2004، وبنينا سمعة راسخة في توفير المستلزمات الغذائية للمطاعم والفنادق وشركات الإعاشة وتجار الجملة في جميع أنحاء المملكة. مع أكثر من عقدين من الخبرة في هذا القطاع، طورنا شراكات طويلة الأمد مع كبرى العلامات التجارية العالمية.'
+                            : 'Established in 2004, we have built a strong reputation for providing food essentials to restaurants, hotels, caterers, and wholesalers across the Kingdom. With over two decades of industry expertise, we have cultivated long-term relationships with top international brands.'
+                        }
+                    </p>
                 </div>
             </div>
         </div>

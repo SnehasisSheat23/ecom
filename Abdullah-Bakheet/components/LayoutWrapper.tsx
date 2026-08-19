@@ -27,45 +27,49 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
     // showIntro: whether the intro overlay is mounted
     const [showIntro, setShowIntro] = useState(false);
     // contentReady: whether React should stop hiding the content div
-    const [contentReady, setContentReady] = useState(false);
+    const [contentReady, setContentReady] = useState(true);
 
     useEffect(() => {
-        if (isAuthPage) {
+        if (isAuthPage || pathname !== '/') {
             setContentReady(true);
+            setShowIntro(false);
             return;
         }
-        const seen = sessionStorage.getItem(INTRO_SEEN_KEY);
-        if (seen) {
-            // Already seen — show immediately, no intro
+
+        try {
+            const seen = localStorage.getItem(INTRO_SEEN_KEY) || sessionStorage.getItem(INTRO_SEEN_KEY);
+            if (!seen) {
+                // First visit to home page — hide content and play single intro
+                setContentReady(false);
+                document.body.style.overflow = 'hidden';
+                setShowIntro(true);
+            } else {
+                setContentReady(true);
+                setShowIntro(false);
+            }
+        } catch {
             setContentReady(true);
-        } else {
-            // First visit — hide content, play intro
-            document.body.style.overflow = 'hidden';
-            setShowIntro(true);
+            setShowIntro(false);
         }
-    }, [isAuthPage]);
+    }, [isAuthPage, pathname]);
 
     const handleIntroComplete = () => {
-        sessionStorage.setItem(INTRO_SEEN_KEY, '1');
+        try {
+            localStorage.setItem(INTRO_SEEN_KEY, '1');
+            sessionStorage.setItem(INTRO_SEEN_KEY, '1');
+        } catch {}
         document.body.style.overflow = '';
-
-        // 1. Unmount the intro overlay immediately
         setShowIntro(false);
-
-        // 2. Mark content ready so React removes the opacity:0 style,
-        //    then let GSAP own the fade-in from there.
-        //    Double RAF ensures React has committed its re-render to the DOM
-        //    before GSAP reads element state.
         setContentReady(true);
 
         requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
+            if (contentRef.current) {
                 gsap.fromTo(
                     contentRef.current,
                     { opacity: 0 },
-                    { opacity: 1, duration: 0.9, ease: 'power3.out' }
+                    { opacity: 1, duration: 0.6, ease: 'power2.out' }
                 );
-            });
+            }
         });
     };
 
