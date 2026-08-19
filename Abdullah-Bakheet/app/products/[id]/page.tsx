@@ -389,8 +389,8 @@ function ProductDescriptionContent() {
                                                 {formatPrice(product.price)}
                                             </span>
                                         </div>
-                                        <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
-                                            <span>🏢 {isArabic ? 'سعر الشركاء المعتمد' : 'VIP Corporate Partner Rate'}</span>
+                                        <div className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded w-fit">
+                                            <span>{isArabic ? 'سعر الشركات' : 'Corporate Rate'}</span>
                                         </div>
                                     </div>
                                 ) : (

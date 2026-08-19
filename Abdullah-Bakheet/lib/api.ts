@@ -449,7 +449,17 @@ export async function loginApi(payload: { email: string; password?: string; phon
   return json.data
 }
 
-export async function registerApi(payload: { email: string; password?: string; firstName?: string; lastName?: string; phone?: string }) {
+export async function registerApi(payload: { 
+  email: string; 
+  password?: string; 
+  firstName?: string; 
+  lastName?: string; 
+  phone?: string;
+  companyName?: string;
+  companyTaxId?: string;
+  crNumber?: string;
+  customerGroup?: 'retail' | 'corporate' | 'wholesale';
+}) {
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: 'POST',
     headers: buildHeaders(),

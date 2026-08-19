@@ -26,6 +26,18 @@ export default function RfqRequestPage() {
     const [targetOverallBudget, setTargetOverallBudget] = useState('');
     const [notes, setNotes] = useState('');
 
+    // Auto-sync form when user state loads
+    React.useEffect(() => {
+        if (user) {
+            if (user.companyName) setCompanyName(user.companyName);
+            if (user.companyTaxId || user.crNumber) setTaxNumber(user.companyTaxId || user.crNumber || '');
+            const fullName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim();
+            if (fullName) setContactName(fullName);
+            if (user.email) setContactEmail(user.email);
+            if (user.phone) setContactPhone(user.phone);
+        }
+    }, [user]);
+
     // Per-item target prices (item.id -> custom target price string)
     const [targetUnitPrices, setTargetUnitPrices] = useState<Record<string, string>>({});
 
@@ -362,6 +374,22 @@ export default function RfqRequestPage() {
                         {/* ========================================================= */}
                         {/* SECTION 2: COMPANY & LOGISTICS (SIDE BY SIDE) */}
                         {/* ========================================================= */}
+                        {user && (
+                            <div className="bg-gray-50 border border-gray-200/80 rounded-lg p-3 flex items-center justify-between text-xs mb-6">
+                                <div>
+                                    <p className="font-semibold text-gray-900 leading-tight">
+                                        {isArabic ? `مرحباً ${user.name || user.email}` : `Signed in as ${user.companyName || user.name || user.email}`}
+                                    </p>
+                                    <p className="text-gray-500 text-[11px] mt-0.5">
+                                        {isArabic ? 'تم ملء بيانات المنشأة والتواصل تلقائياً من حسابك' : 'Company and contact details have been automatically populated'}
+                                    </p>
+                                </div>
+                                <span className="text-[11px] font-medium text-gray-600 bg-gray-200/60 px-2 py-0.5 rounded">
+                                    {isArabic ? 'معبأ تلقائياً' : 'Auto-Populated'}
+                                </span>
+                            </div>
+                        )}
+
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-8 border-b border-gray-200">
                             
                             {/* Card A: Company & Procurement Representative */}

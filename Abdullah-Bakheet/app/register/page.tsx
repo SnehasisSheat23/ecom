@@ -11,12 +11,16 @@ function RegisterForm() {
     const redirectUrl = searchParams.get('redirect');
     const action = searchParams.get('action');
     const itemId = searchParams.get('item');
+    const isCorporate = searchParams.get('type') === 'corporate';
     const initialEmail = searchParams.get('email') || '';
     const initialName = searchParams.get('name') || searchParams.get('firstName') || '';
     const initialPhone = searchParams.get('phone') || '';
+    const initialCompany = searchParams.get('company') || '';
 
     const [firstName, setFirstName] = useState(initialName.split(' ')[0] || '');
     const [lastName, setLastName] = useState(initialName.split(' ').slice(1).join(' ') || '');
+    const [companyName, setCompanyName] = useState(initialCompany);
+    const [companyTaxId, setCompanyTaxId] = useState('');
     const [email, setEmail] = useState(initialEmail);
     const [phone, setPhone] = useState(initialPhone);
     const [password, setPassword] = useState('');
@@ -36,10 +40,23 @@ function RegisterForm() {
             setErrorMessage('Passwords do not match');
             return;
         }
+        if (isCorporate && !companyName.trim()) {
+            setErrorMessage('Please enter your Company / Business name');
+            return;
+        }
         setIsLoading(true);
         setErrorMessage(null);
         try {
-            await register({ firstName, lastName, email, phone, password });
+            await register({ 
+                firstName, 
+                lastName, 
+                email, 
+                phone, 
+                password,
+                companyName: isCorporate ? companyName : undefined,
+                companyTaxId: isCorporate ? companyTaxId : undefined,
+                customerGroup: isCorporate ? 'corporate' : 'retail',
+            });
             if (redirectUrl) {
                 const target = action ? `${redirectUrl}${redirectUrl.includes('?') ? '&' : '?'}action=${action}${itemId ? `&item=${itemId}` : ''}` : redirectUrl;
                 router.push(target);
@@ -70,13 +87,57 @@ function RegisterForm() {
                     
                     <div className="bg-[#fbdc3c] py-2 px-4 inline-block w-fit mb-6">
                         <h1 className="font-heading text-5xl md:text-6xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none pt-2">
-                            CREATE ACCOUNT
+                            {isCorporate ? 'BUSINESS REGISTRATION' : 'CREATE ACCOUNT'}
                         </h1>
                     </div>
                     
-                    <p className="text-gray-500 mb-6 text-[15px]">
-                        Already have an account? <Link href={`/login${redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}${action ? `&action=${action}` : ''}${itemId ? `&item=${itemId}` : ''}` : ''}`} className="text-black font-bold hover:underline">Sign in</Link>
+                    <p className="text-gray-500 mb-5 text-[15px]">
+                        {isCorporate ? (
+                            <>
+                                Already have a business account? <Link href={`/login?type=corporate${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}${action ? `&action=${action}` : ''}${itemId ? `&item=${itemId}` : ''}` : ''}`} className="text-black font-bold hover:underline">Business sign in</Link>
+                            </>
+                        ) : (
+                            <>
+                                Already have an account? <Link href={`/login${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}${action ? `&action=${action}` : ''}${itemId ? `&item=${itemId}` : ''}` : ''}`} className="text-black font-bold hover:underline">Sign in</Link>
+                            </>
+                        )}
                     </p>
+
+                    <div className="border-t border-gray-100 pt-3 pb-1 flex items-center justify-between text-[12px] mb-6">
+                        {isCorporate ? (
+                            <>
+                                <div>
+                                    <p className="font-medium text-gray-700">Looking for personal registration?</p>
+                                    <p className="text-gray-400 text-[11px]">Register an individual account for personal shopping</p>
+                                </div>
+                                <Link 
+                                    href={`/register${redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : ''}`}
+                                    className="text-xs font-semibold text-gray-900 hover:underline whitespace-nowrap ml-3"
+                                >
+                                    Personal register →
+                                </Link>
+                            </>
+                        ) : (
+                            <>
+                                <div>
+                                    <p className="font-medium text-gray-700">Purchasing for a company or business?</p>
+                                    <p className="text-gray-400 text-[11px]">Register for wholesale pricing and corporate credit terms</p>
+                                </div>
+                                <Link 
+                                    href={`/register?type=corporate${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}` : ''}`}
+                                    className="text-xs font-semibold text-gray-900 hover:underline whitespace-nowrap ml-3"
+                                >
+                                    Business register →
+                                </Link>
+                            </>
+                        )}
+                    </div>
+
+                    {isCorporate && (
+                        <div className="mb-5 p-3 bg-gray-50 border border-gray-200/70 rounded-lg text-xs text-gray-600 leading-relaxed">
+                            <span className="font-semibold text-gray-900">Corporate Account:</span> Access wholesale discounted rates across the catalog, corporate Net 30 credit lines, and fast quotation processing.
+                        </div>
+                    )}
 
                     {errorMessage && (
                         <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-md">
@@ -85,10 +146,40 @@ function RegisterForm() {
                     )}
 
                     <form onSubmit={handleRegister} className="space-y-6">
+                        {isCorporate && (
+                            <div className="space-y-4 pt-1">
+                                <div className="space-y-2">
+                                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">
+                                        COMPANY / BUSINESS NAME <span className="text-green-500">*</span>
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        value={companyName}
+                                        onChange={(e) => setCompanyName(e.target.value)}
+                                        className="w-full bg-white border border-gray-200 rounded p-3.5 text-[15px] focus:outline-none focus:border-gray-400 transition-colors"
+                                        placeholder="e.g. Royal Catering Services LLC" 
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">
+                                        VAT / TAX REGISTRATION NUMBER (TRN)
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        value={companyTaxId}
+                                        onChange={(e) => setCompanyTaxId(e.target.value)}
+                                        className="w-full bg-white border border-gray-200 rounded p-3.5 text-[15px] focus:outline-none focus:border-gray-400 transition-colors"
+                                        placeholder="e.g. 100234567800003" 
+                                    />
+                                </div>
+                            </div>
+                        )}
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">
-                                    FIRST NAME
+                                    {isCorporate ? 'CONTACT FIRST NAME' : 'FIRST NAME'}
                                 </label>
                                 <input 
                                     type="text" 
@@ -101,7 +192,7 @@ function RegisterForm() {
                             </div>
                             <div className="space-y-2">
                                 <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">
-                                    LAST NAME
+                                    {isCorporate ? 'CONTACT LAST NAME' : 'LAST NAME'}
                                 </label>
                                 <input 
                                     type="text" 

@@ -30,22 +30,19 @@ export default function CartPage() {
             {/* Corporate Banner if logged in */}
             {isCorporateUser && (
                 <div className="max-w-[1200px] mx-auto w-full px-4 mb-6">
-                    <div className="bg-emerald-900 text-white rounded-xl p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm border border-emerald-800">
-                        <div className="flex items-center gap-3">
-                            <span className="text-2xl">🏢</span>
-                            <div>
-                                <h4 className="font-bold text-sm md:text-base">
-                                    {isArabic ? `حساب مؤسسي معتمد: ${user?.companyName || 'مؤسستك'}` : `Corporate Partner Account: ${user?.companyName || 'Your Company'}`}
-                                </h4>
-                                <p className="text-xs text-emerald-200">
-                                    {isArabic 
-                                        ? `الرصيد الائتماني المتاح: ${formatPrice(user?.availableCredit || 0)} | شروط الدفع: ${user?.paymentTerms?.toUpperCase() || 'NET 30'}`
-                                        : `Available Credit Line: ${formatPrice(user?.availableCredit || 0)} | Payment Terms: ${user?.paymentTerms?.toUpperCase() || 'NET 30'}`}
-                                </p>
-                            </div>
+                    <div className="bg-gray-50 border border-gray-200/80 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                        <div>
+                            <h4 className="font-semibold text-gray-900 text-xs">
+                                {isArabic ? `حساب شركات: ${user?.companyName || 'مؤسستك'}` : `Corporate Account: ${user?.companyName || 'Your Company'}`}
+                            </h4>
+                            <p className="text-[11px] text-gray-500 mt-0.5">
+                                {isArabic 
+                                    ? `الرصيد الائتماني المتاح: ${formatPrice(user?.availableCredit || 0)} | شروط الدفع: ${user?.paymentTerms?.toUpperCase() || 'NET 30'}`
+                                    : `Available Credit Line: ${formatPrice(user?.availableCredit || 0)} | Payment Terms: ${user?.paymentTerms?.toUpperCase() || 'NET 30'}`}
+                            </p>
                         </div>
-                        <span className="bg-[#fbdc3c] text-[#1a2b25] text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
-                            {user?.accountDiscountPercent ? `VIP -${user.accountDiscountPercent}% Applied` : 'Wholesale Rates Active'}
+                        <span className="text-[11px] font-medium text-gray-700 bg-gray-200/70 px-2.5 py-1 rounded w-fit">
+                            {user?.accountDiscountPercent ? `-${user.accountDiscountPercent}% Discount` : (isArabic ? 'أسعار الجملة مفعلة' : 'Wholesale Rates Active')}
                         </span>
                     </div>
                 </div>

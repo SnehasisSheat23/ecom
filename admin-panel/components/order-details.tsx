@@ -19,10 +19,13 @@ import { toast } from "sonner"
 
 interface Customer {
   name: string
+  company?: string
+  taxNumber?: string
   email: string
   phone: string | null
   city: string
   line1: string
+  schedule?: string
   state: string
   postalCode: string
   country: string
@@ -38,7 +41,7 @@ interface LineItem {
   metadata?: Record<string, unknown>
 }
 
-type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+type OrderStatus = 'PENDING' | 'PENDING_PAYMENT' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
 
 interface Order {
   id: string
@@ -80,6 +83,9 @@ interface CustomerRecord {
   lastName?: string | null
   email?: string | null
   phone?: string | null
+  companyName?: string | null
+  companyTaxId?: string | null
+  crNumber?: string | null
 }
 
 interface BackendOrderItem {
@@ -93,13 +99,18 @@ interface BackendOrderItem {
 }
 
 interface BackendAddressSnapshot {
+  name?: string
   fullName?: string
+  company?: string
+  taxNumber?: string
   email?: string
   city?: string
   phone?: string
   line1?: string
   line2?: string | null
   address?: string
+  deliverySite?: string
+  notes?: string
   state?: string
   postalCode?: string
   pincode?: string
@@ -109,6 +120,8 @@ interface BackendAddressSnapshot {
 interface BackendOrder {
   id: string
   orderNumber?: string
+  customerName?: string
+  customerEmail?: string
   status?: string
   guestEmail?: string | null
   shippingAddressSnapshot?: BackendAddressSnapshot | null
@@ -129,25 +142,57 @@ const mapBackendOrderToFrontend = (item: BackendOrder): Order => {
   let paymentStatus: "Paid" | "Pending" | "Refunded" = "Pending"
   let fulfillmentStatus: "Fulfilled" | "Unfulfilled" | "Partially Fulfilled" = "Unfulfilled"
 
-  const status = item.status || "PENDING"
-  if (status === "DELIVERED" || status === "SHIPPED") {
-    paymentStatus = "Paid"
-    fulfillmentStatus = "Fulfilled"
-  } else if (status === "CONFIRMED" || status === "PROCESSING") {
-    paymentStatus = "Paid"
-    fulfillmentStatus = "Unfulfilled"
-  } else if (status === "CANCELLED") {
-    paymentStatus = "Refunded"
-    fulfillmentStatus = "Unfulfilled"
+  const rawStatus = (item.status || "PENDING").toUpperCase()
+  let mappedStatus: OrderStatus = 'PENDING'
+
+  if (rawStatus === 'PENDING_PAYMENT') {
+    mappedStatus = 'PENDING_PAYMENT'
+    paymentStatus = 'Pending'
+    fulfillmentStatus = 'Unfulfilled'
+  } else if (rawStatus === 'CONFIRMED' || rawStatus === 'PROCESSING') {
+    mappedStatus = rawStatus as OrderStatus
+    paymentStatus = 'Paid'
+    fulfillmentStatus = 'Unfulfilled'
+  } else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERED') {
+    mappedStatus = rawStatus as OrderStatus
+    paymentStatus = 'Paid'
+    fulfillmentStatus = rawStatus === 'DELIVERED' ? 'Fulfilled' : 'Partially Fulfilled'
+  } else if (rawStatus === 'CANCELLED') {
+    mappedStatus = 'CANCELLED'
+    paymentStatus = 'Refunded'
+    fulfillmentStatus = 'Unfulfilled'
+  } else {
+    mappedStatus = 'PENDING'
   }
 
   const shippingAddress = item.shippingAddressSnapshot || {}
   const custRec = item.customerRecord
-  const fullName = custRec 
-    ? `${custRec.firstName || ''} ${custRec.lastName || ''}`.trim() || shippingAddress.fullName || "Valued Customer"
-    : shippingAddress.fullName || "Valued Customer"
-  const email = item.guestEmail || custRec?.email || shippingAddress.email || "guest@example.com"
-  const phone = custRec?.phone || shippingAddress.phone || (item.metadata?.altPhone as string) || null
+  const fullName = shippingAddress.name || shippingAddress.fullName || (custRec ? `${custRec.firstName || ''} ${custRec.lastName || ''}`.trim() : "") || item.customerName || "Valued Client"
+  const company = shippingAddress.company || custRec?.companyName || ""
+  const taxNumber = shippingAddress.taxNumber || custRec?.companyTaxId || custRec?.crNumber || ""
+  const email = shippingAddress.email || custRec?.email || item.guestEmail || "client@example.com"
+  const phone = shippingAddress.phone || custRec?.phone || (item.metadata?.altPhone as string) || null
+
+  // Cleanly parse delivery destination & timeline from notes/deliverySite
+  const rawNotes = shippingAddress.notes || shippingAddress.line1 || shippingAddress.address || ""
+  let parsedDeliverySite = shippingAddress.deliverySite || ""
+  let parsedSchedule = ""
+  let cleanAddress = ""
+
+  if (rawNotes) {
+    const rawLines = String(rawNotes).split('\n').map(l => l.trim()).filter(Boolean)
+    for (const line of rawLines) {
+      if (line.toLowerCase().startsWith('delivery destination / site:') || line.toLowerCase().startsWith('delivery site:')) {
+        parsedDeliverySite = line.substring(line.indexOf(':') + 1).trim()
+      } else if (line.toLowerCase().startsWith('required delivery schedule:') || line.toLowerCase().startsWith('required timeline:')) {
+        parsedSchedule = line.substring(line.indexOf(':') + 1).trim()
+      } else if (!line.includes('🎯') && !line.includes('•') && !line.toLowerCase().includes('target') && !line.toLowerCase().startsWith('delivery destination') && !line.toLowerCase().startsWith('delivery site')) {
+        cleanAddress = line
+      }
+    }
+  }
+
+  const destination = parsedDeliverySite || cleanAddress || (company ? `Company Facility: ${company}` : "Commercial Delivery Site")
 
   const items: LineItem[] = (item.items || []).map((li: any) => {
     const title = li.productTitle || li.name || li.productNameSnapshot?.en || li.productNameSnapshot?.title || li.sku || "Product Item"
@@ -176,9 +221,12 @@ const mapBackendOrderToFrontend = (item: BackendOrder): Order => {
     date: item.createdAt || new Date().toISOString(),
     customer: {
       name: fullName,
+      company: company || undefined,
+      taxNumber: taxNumber || undefined,
       email: email,
       phone: phone,
-      line1: shippingAddress.line1 || shippingAddress.address || "No address line provided",
+      line1: destination,
+      schedule: parsedSchedule || undefined,
       city: shippingAddress.city || "",
       state: shippingAddress.state || "",
       postalCode: shippingAddress.postalCode || shippingAddress.pincode || "",
@@ -194,7 +242,7 @@ const mapBackendOrderToFrontend = (item: BackendOrder): Order => {
     notes: item.notes || null,
     currency: item.currency || "AED",
     orderNumber: item.orderNumber || item.id,
-    status: status as OrderStatus,
+    status: mappedStatus,
     shippingMethodName: item.shippingMethodSnapshot?.name || item.shippingMethodSnapshot?.label || (meta.deliveryType as string) || "Standard Delivery",
     paymentMethodType: (item as any).paymentMethodType || "CARD",
     poDocumentUrl: (item as any).poDocumentUrl || null,
@@ -225,6 +273,8 @@ const deriveStatus = (paymentStatus: string, fulfillmentStatus: string): OrderSt
 
 const getProgressBarProps = (status: OrderStatus) => {
   switch (status) {
+    case 'PENDING_PAYMENT':
+      return { width: 'w-[15%]', color: 'bg-amber-500' }
     case 'PENDING':
       return { width: 'w-[20%]', color: 'bg-primary' }
     case 'CONFIRMED':
@@ -244,6 +294,8 @@ const getProgressBarProps = (status: OrderStatus) => {
 
 const getStatusCardText = (status: OrderStatus) => {
   switch (status) {
+    case 'PENDING_PAYMENT':
+      return { title: "Payment Pending", desc: "Awaiting wire transfer slip or invoice settlement" }
     case 'PENDING':
       return { title: "Order Placed", desc: "Awaiting confirmation" }
     case 'CONFIRMED':
@@ -257,7 +309,7 @@ const getStatusCardText = (status: OrderStatus) => {
     case 'CANCELLED':
       return { title: "Cancelled", desc: "This order was cancelled" }
     default:
-      return { title: "Status Unknown", desc: "No detail available" }
+      return { title: "Order Placed", desc: "Processing details" }
   }
 }
 
@@ -269,6 +321,11 @@ interface StatusAction {
 
 const getStatusActions = (status: OrderStatus): StatusAction[] => {
   switch (status) {
+    case 'PENDING_PAYMENT':
+      return [
+        { label: "Confirm Payment Received", nextStatus: "CONFIRMED", icon: "check_circle" },
+        { label: "Cancel Order", nextStatus: "CANCELLED", icon: "cancel" }
+      ]
     case 'PENDING':
       return [
         { label: "Confirm Order", nextStatus: "CONFIRMED", icon: "check_circle" },
@@ -472,8 +529,16 @@ export function OrderDetails({ id }: { id: string }) {
           <h2 className="text-xl font-bold font-heading text-foreground tracking-tight leading-none">
             Order {formatHeaderOrderNum(order.orderNumber)}
           </h2>
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full select-none bg-muted text-muted-foreground leading-none flex items-center justify-center">
-            {orderStatus.charAt(0) + orderStatus.slice(1).toLowerCase()} {mounted ? new Date(order.date).toLocaleString("en-US", { month: "short", day: "numeric" }) : "—"}
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full select-none leading-none flex items-center justify-center ${
+            orderStatus === 'PENDING_PAYMENT' 
+              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
+              : (orderStatus === 'CONFIRMED' || orderStatus === 'DELIVERED' 
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300' 
+                : (orderStatus === 'PROCESSING' 
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300'
+                  : 'bg-muted text-muted-foreground'))
+          }`}>
+            {orderStatus === 'PENDING_PAYMENT' ? 'Payment Pending' : (orderStatus.charAt(0) + orderStatus.slice(1).toLowerCase())} • {mounted ? new Date(order.date).toLocaleString("en-US", { month: "short", day: "numeric" }) : "—"}
           </span>
         </div>
       </div>
@@ -568,19 +633,28 @@ export function OrderDetails({ id }: { id: string }) {
           {/* Customer Info Card */}
           <Card>
             <CardHeader className="pb-3 border-b border-border/60">
-              <CardTitle className="text-base font-semibold font-heading text-foreground">Customer Details</CardTitle>
+              <CardTitle className="text-base font-semibold font-heading text-foreground">Customer & Delivery Details</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 text-sm">
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground font-normal">Contact information</span>
+                <span className="text-xs text-muted-foreground font-medium">Contact Person</span>
                 <span className="text-sm font-semibold text-foreground">{order.customer.name}</span>
                 <span className="text-sm font-medium text-foreground">{order.customer.email}</span>
                 {order.customer.phone && (
                   <span className="text-sm font-medium text-foreground font-mono">{order.customer.phone}</span>
                 )}
               </div>
+
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground font-normal">Payment Method & Terms</span>
+                <span className="text-xs text-muted-foreground font-medium">Company & Invoicing</span>
+                <span className="text-sm font-semibold text-foreground">{order.customer.company || "Individual / Retail"}</span>
+                {order.customer.taxNumber && (
+                  <span className="text-xs font-mono text-muted-foreground">TRN / Tax ID: {order.customer.taxNumber}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground font-medium">Payment Method & Terms</span>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase ${
                     order.paymentMethodType === 'CREDIT_TERMS' 
@@ -621,17 +695,23 @@ export function OrderDetails({ id }: { id: string }) {
                   <span className="text-[11px] text-muted-foreground mt-0.5">Origin: RFQ Quotation</span>
                 )}
               </div>
-              <div className="flex flex-col gap-1 md:col-span-2">
-                <span className="text-xs text-muted-foreground font-normal">Shipping address</span>
-                <span className="text-sm font-semibold text-foreground">{order.customer.name}</span>
-                <span className="text-sm font-medium text-foreground leading-relaxed">{order.customer.line1}</span>
-                <span className="text-sm font-medium text-foreground leading-relaxed">
-                  {order.customer.city}, {order.customer.state} {order.customer.postalCode}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1 md:col-span-2">
-                <span className="text-xs text-muted-foreground font-normal">Shipping method</span>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground font-medium">Shipping Method</span>
                 <span className="text-sm font-medium text-foreground leading-relaxed">{order.shippingMethodName}</span>
+                {order.customer.schedule && (
+                  <span className="text-xs text-muted-foreground mt-0.5">Schedule: {order.customer.schedule}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1 md:col-span-2 pt-3 border-t border-border/60">
+                <span className="text-xs text-muted-foreground font-medium">Delivery Destination / Site</span>
+                <span className="text-sm font-medium text-foreground leading-relaxed">{order.customer.line1}</span>
+                {(order.customer.city || order.customer.state || order.customer.country) && (
+                  <span className="text-xs text-muted-foreground leading-relaxed">
+                    {[order.customer.city, order.customer.state, order.customer.postalCode, order.customer.country].filter(Boolean).join(', ')}
+                  </span>
+                )}
               </div>
             </CardContent>
           </Card>

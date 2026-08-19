@@ -42,7 +42,7 @@ interface Order {
   orderNumber?: string
 }
 
-const TABS = ["All", "Unfulfilled", "Unpaid", "Open", "Closed", "Automations", "Return requests", "Local Delivery"]
+const TABS = ["All", "Standard Orders", "B2B Quotation Orders", "Unfulfilled", "Unpaid", "Open", "Closed"]
 
 const formatRelativeDate = (dateString: string) => {
   const date = new Date(dateString)
@@ -200,7 +200,11 @@ export function OrdersView() {
     }
 
     // Map active tab to status filter
-    if (activeTab === "Unfulfilled") {
+    if (activeTab === "B2B Quotation Orders") {
+      params.set("search", "ORD-Q-")
+    } else if (activeTab === "Standard Orders") {
+      params.set("search", "ORD-20")
+    } else if (activeTab === "Unfulfilled") {
       params.set("status", "PENDING,CONFIRMED,PROCESSING")
     } else if (activeTab === "Unpaid") {
       params.set("status", "PENDING")
@@ -208,12 +212,6 @@ export function OrdersView() {
       params.set("status", "PENDING,CONFIRMED,PROCESSING,SHIPPED")
     } else if (activeTab === "Closed") {
       params.set("status", "DELIVERED")
-    } else if (activeTab === "Automations") {
-      params.set("status", "automations")
-    } else if (activeTab === "Return requests") {
-      params.set("status", "CANCELLED")
-    } else if (activeTab === "Local Delivery") {
-      params.set("status", "local_delivery")
     }
 
     // Dropdown filters mapping
@@ -701,7 +699,14 @@ export function OrdersView() {
                         />
                       </td>
                       <td className="p-3 font-semibold text-foreground">
-                        {formatOrderId(order.orderNumber || order.id)}
+                        <div className="flex items-center gap-1.5">
+                          <span>{formatOrderId(order.orderNumber || order.id)}</span>
+                          {order.orderNumber?.startsWith('ORD-Q-') && (
+                            <span className="text-[10px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200/50">
+                              B2B Quote
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-3 text-muted-foreground whitespace-nowrap">
                         {mounted ? formatRelativeDate(order.date) : "—"}

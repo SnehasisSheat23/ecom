@@ -138,7 +138,17 @@ interface ShopContextType {
     guestSessionId: string;
     setUser: (user: UserProfile | null) => void;
     login: (email: string, password?: string, phone?: string) => Promise<any>;
-    register: (payload: { email: string; password?: string; firstName?: string; lastName?: string; phone?: string }) => Promise<any>;
+    register: (payload: { 
+        email: string; 
+        password?: string; 
+        firstName?: string; 
+        lastName?: string; 
+        phone?: string;
+        companyName?: string;
+        companyTaxId?: string;
+        crNumber?: string;
+        customerGroup?: 'retail' | 'corporate' | 'wholesale';
+    }) => Promise<any>;
     logout: () => void;
 
     // Preference state & Currency conversion
@@ -742,7 +752,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         return data;
     };
 
-    const register = async (payload: { email: string; password?: string; firstName?: string; lastName?: string; phone?: string }) => {
+    const register = async (payload: { 
+        email: string; 
+        password?: string; 
+        firstName?: string; 
+        lastName?: string; 
+        phone?: string; 
+        companyName?: string;
+        companyTaxId?: string;
+        crNumber?: string;
+        customerGroup?: 'retail' | 'corporate' | 'wholesale';
+    }) => {
         const data = await registerApi(payload);
         if (data?.accessToken) {
             setAccessToken(data.accessToken);

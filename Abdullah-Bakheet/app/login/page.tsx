@@ -7,6 +7,12 @@ import { ChevronLeft, Eye, EyeOff, ArrowUpRight } from 'lucide-react';
 import { useShop } from '@/context/ShopContext';
 
 function LoginForm() {
+    const searchParams = useSearchParams();
+    const redirectUrl = searchParams.get('redirect');
+    const action = searchParams.get('action');
+    const itemId = searchParams.get('item');
+    const isCorporate = searchParams.get('type') === 'corporate';
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -14,10 +20,6 @@ function LoginForm() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const redirectUrl = searchParams.get('redirect');
-    const action = searchParams.get('action');
-    const itemId = searchParams.get('item');
 
     const { login, language } = useShop();
     const isArabic = language.startsWith('Arabic');
@@ -58,19 +60,71 @@ function LoginForm() {
                     
                     <div className={`bg-[#fbdc3c] py-2 px-4 inline-block w-fit mb-6 ${isArabic ? 'self-end' : ''}`}>
                         <h1 className={`font-heading text-5xl md:text-6xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none pt-2 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
-                            {isArabic ? 'تسجيل الدخول' : 'SIGN IN'}
+                            {isCorporate ? (isArabic ? 'دخول الشركات' : 'BUSINESS SIGN IN') : (isArabic ? 'تسجيل الدخول' : 'SIGN IN')}
                         </h1>
                     </div>
                     
-                    <p className={`text-gray-500 mb-6 text-[15px] ${isArabic ? 'text-right' : 'text-left'}`}>
-                        {isArabic ? 'ليس لديك حساب بعد؟ ' : "Don't have an account yet? "}
-                        <Link 
-                            href={`/register${redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}${action ? `&action=${action}` : ''}${itemId ? `&item=${itemId}` : ''}` : ''}`} 
-                            className="text-black font-bold hover:underline"
-                        >
-                            {isArabic ? 'سجل هنا' : 'Register here'}
-                        </Link>
+                    <p className={`text-gray-500 mb-5 text-[15px] ${isArabic ? 'text-right' : 'text-left'}`}>
+                        {isCorporate ? (
+                            <>
+                                {isArabic ? 'ليس لديك حساب تجاري؟ ' : "Don't have a business account? "}
+                                <Link 
+                                    href={`/register?type=corporate${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}${action ? `&action=${action}` : ''}${itemId ? `&item=${itemId}` : ''}` : ''}`} 
+                                    className="text-black font-bold hover:underline"
+                                >
+                                    {isArabic ? 'سجل حساب شركة' : 'Register business account'}
+                                </Link>
+                            </>
+                        ) : (
+                            <>
+                                {isArabic ? 'ليس لديك حساب بعد؟ ' : "Don't have an account yet? "}
+                                <Link 
+                                    href={`/register${redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}${action ? `&action=${action}` : ''}${itemId ? `&item=${itemId}` : ''}` : ''}`} 
+                                    className="text-black font-bold hover:underline"
+                                >
+                                    {isArabic ? 'سجل هنا' : 'Register here'}
+                                </Link>
+                            </>
+                        )}
                     </p>
+
+                    <div className="border-t border-gray-100 pt-3 pb-1 flex items-center justify-between text-[12px] mb-6">
+                        {isCorporate ? (
+                            <>
+                                <div>
+                                    <p className="font-medium text-gray-700">
+                                        {isArabic ? 'تسجيل دخول الحساب الشخصي؟' : 'Looking for personal account?'}
+                                    </p>
+                                    <p className="text-gray-400 text-[11px]">
+                                        {isArabic ? 'تسجيل الدخول للأفراد والطلبات العادية' : 'Sign in for retail & consumer checkout'}
+                                    </p>
+                                </div>
+                                <Link 
+                                    href={`/login${redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : ''}`}
+                                    className="text-xs font-semibold text-gray-900 hover:underline whitespace-nowrap ml-3"
+                                >
+                                    {isArabic ? 'دخول أفراد ←' : 'Personal sign in →'}
+                                </Link>
+                            </>
+                        ) : (
+                            <>
+                                <div>
+                                    <p className="font-medium text-gray-700">
+                                        {isArabic ? 'تشتري لشركة أو جهة تجارية؟' : 'Purchasing for a company or business?'}
+                                    </p>
+                                    <p className="text-gray-400 text-[11px]">
+                                        {isArabic ? 'سجل للوصول لتسهيلات الدفع وأسعار الجملة' : 'Access wholesale pricing and corporate credit terms'}
+                                    </p>
+                                </div>
+                                <Link 
+                                    href={`/login?type=corporate${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}` : ''}`}
+                                    className="text-xs font-semibold text-gray-900 hover:underline whitespace-nowrap ml-3"
+                                >
+                                    {isArabic ? 'دخول شركات ←' : 'Business sign in →'}
+                                </Link>
+                            </>
+                        )}
+                    </div>
 
                     {errorMessage && (
                         <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-md">

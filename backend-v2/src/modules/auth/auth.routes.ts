@@ -23,6 +23,9 @@ const registerSchema = z.object({
   lastName: z.string().optional(),
   phone: z.string().optional(),
   companyName: z.string().optional(),
+  companyTaxId: z.string().optional(),
+  crNumber: z.string().optional(),
+  customerGroup: z.enum(['retail', 'wholesale', 'corporate', 'vip']).optional(),
 })
 
 // ==========================================
@@ -233,6 +236,9 @@ authRoutes.post('/register', async (c) => {
 
     const hashedPassword = await hashPassword(parsed.password)
 
+    const isCorporate = Boolean(parsed.companyName || parsed.companyTaxId || parsed.customerGroup === 'corporate' || parsed.customerGroup === 'wholesale')
+    const targetGroup = parsed.customerGroup || (isCorporate ? 'corporate' : 'retail')
+
     let customerRecord: any
 
     if (existing.length > 0) {
@@ -249,6 +255,9 @@ authRoutes.post('/register', async (c) => {
           lastName: parsed.lastName || cust.lastName,
           phone: parsed.phone || cust.phone,
           companyName: parsed.companyName || cust.companyName,
+          companyTaxId: parsed.companyTaxId || cust.companyTaxId,
+          crNumber: parsed.crNumber || cust.crNumber,
+          customerGroup: cust.customerGroup === 'retail' ? targetGroup : cust.customerGroup,
           updatedAt: new Date(),
         })
         .where(eq(customers.id, cust.id))
@@ -264,6 +273,9 @@ authRoutes.post('/register', async (c) => {
           lastName: parsed.lastName || '',
           phone: parsed.phone || '',
           companyName: parsed.companyName || '',
+          companyTaxId: parsed.companyTaxId || '',
+          crNumber: parsed.crNumber || '',
+          customerGroup: targetGroup,
           status: 'active',
         })
         .returning()

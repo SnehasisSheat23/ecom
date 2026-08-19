@@ -44,6 +44,7 @@ export default function Header() {
         currency,
         setCurrency,
         user,
+        isCorporateUser,
         logout,
     } = useShop();
 
@@ -226,20 +227,38 @@ export default function Header() {
                                             <UserIcon size={22} className="text-white" />
                                             <span className="absolute -top-1 -right-1 bg-green-500 w-2.5 h-2.5 rounded-full border-2 border-brand-dark" />
                                         </div>
-                                        <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
+                                        <span className="hidden sm:inline max-w-[110px] truncate">{user.name}</span>
+                                        {isCorporateUser && (
+                                            <span className="hidden md:inline-block text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                                                {isArabic ? 'شركات' : 'Corporate'}
+                                            </span>
+                                        )}
                                     </button>
                                     {accountDropdownOpen && (
-                                        <div className="absolute right-0 top-full mt-2 w-44 bg-white border border-gray-200 rounded-md shadow-xl py-2 z-50 text-gray-900">
-                                            <div className="px-4 py-2 border-b border-gray-100">
+                                        <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl py-2 z-50 text-gray-900">
+                                            <div className="px-4 py-2.5 border-b border-gray-100">
                                                 <p className="text-xs font-bold truncate">{user.name}</p>
                                                 <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                                                {isCorporateUser && (
+                                                    <span className="inline-block mt-1 text-[10px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                                                        {user.companyName || (isArabic ? 'حساب شركات معتمد' : 'Corporate Account')}
+                                                    </span>
+                                                )}
                                             </div>
+                                            <Link
+                                                href="/account"
+                                                onClick={() => setAccountDropdownOpen(false)}
+                                                className="block w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:text-black transition-colors"
+                                            >
+                                                {isArabic ? 'حسابي / الملف الشخصي' : 'My Profile'}
+                                            </Link>
+                                            <div className="border-t border-gray-100 my-1" />
                                             <button
                                                 onClick={() => {
                                                     logout();
                                                     setAccountDropdownOpen(false);
                                                 }}
-                                                className="w-full text-left px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                                                className="w-full text-left px-4 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
                                             >
                                                 {isArabic ? 'تسجيل الخروج' : 'Sign Out'}
                                             </button>

@@ -20,7 +20,7 @@ const ToggleSwitch = ({ label, isActive, onClick, isArabic }: { label: string; i
 
 export default function ProductListing() {
     const router = useRouter();
-    const { addToCart, currency, language, formatPrice } = useShop();
+    const { addToCart, currency, language, formatPrice, isCorporateUser } = useShop();
     const isArabic = language.startsWith('Arabic');
 
     const [isLoading, setIsLoading] = useState(true);
@@ -270,7 +270,19 @@ export default function ProductListing() {
 
                                             <div className="flex justify-between items-center border-t border-gray-100 pt-4 mt-2">
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-[15px] text-black">{formatPrice(product.price)}</span>
+                                                    {isCorporateUser && product.corporatePrice ? (
+                                                        <>
+                                                            <span className="text-[10px] font-medium text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded w-fit mb-1">
+                                                                {isArabic ? 'سعر شركات' : 'Corporate'}
+                                                            </span>
+                                                            <div className="flex items-baseline gap-1.5">
+                                                                <span className="font-bold text-[15px] text-emerald-800">{formatPrice(product.corporatePrice)}</span>
+                                                                <span className="text-[11px] text-gray-400 line-through">{formatPrice(product.price)}</span>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <span className="font-bold text-[15px] text-black">{formatPrice(product.price)}</span>
+                                                    )}
                                                     {product.moq && product.moq > 1 && (
                                                         <span className="text-[10px] font-bold text-amber-700">
                                                             {isArabic ? `الحد الأدنى: ${product.moq}` : `MOQ: ${product.moq}`}
