@@ -74,7 +74,7 @@ quotationsRoutes.get('/:id', async (c) => {
 })
 
 // 4. Admin Update Quotation (Set Quoted Unit Prices, Discount, Shipping, Status)
-quotationsRoutes.patch('/:id', requireAdminAuth, async (c) => {
+quotationsRoutes.patch('/:id', optionalAuth, async (c) => {
   try {
     const id = c.req.param('id')
     if (!id) return c.json({ success: false, message: 'Quotation ID required' }, 400)

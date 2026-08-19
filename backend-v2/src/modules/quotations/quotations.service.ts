@@ -7,6 +7,7 @@ export interface CreateQuotationItemInput {
   quantity?: number
   requestedQuantity?: number
   unitPrice?: number
+  targetUnitPrice?: number
   name?: string
   image?: string
 }
@@ -84,7 +85,8 @@ export class QuotationsService {
         product = await this.db.select().from(products).where(eq(products.sku, item.productId)).limit(1)
       }
 
-      let originalUnitPrice = 0
+      const qty = Math.max(1, Number(item.quantity || item.requestedQuantity) || 1)
+      let catalogUnitPrice = 0
       let sku = 'CUSTOM'
       let nameSnapshot: any = { en: item.name || 'Custom Product', image: item.image }
 
@@ -92,19 +94,42 @@ export class QuotationsService {
         const prod = product[0]
         sku = prod.sku || 'SKU'
         const prodPricing = (prod.pricing as any)?.[currency] || (prod.pricing as any)?.['AED'] || (prod.pricing as any)?.['SAR']
-        originalUnitPrice = Number(prodPricing?.price || item.unitPrice || 0)
+        let unitRate = Number(item.unitPrice || prodPricing?.price || 0)
+
+        // Check if bulk volume pricing applies to this qty
+        if (prodPricing && Array.isArray(prodPricing.tieredPricing) && prodPricing.tieredPricing.length > 0) {
+          const matchTier = prodPricing.tieredPricing.find((t: any) => {
+            const min = Number(t.minQty || 1)
+            const max = t.maxQty ? Number(t.maxQty) : Infinity
+            return qty >= min && qty <= max
+          })
+          if (matchTier && matchTier.price) {
+            unitRate = Math.min(unitRate, Number(matchTier.price))
+          }
+        }
+
+        catalogUnitPrice = unitRate
         nameSnapshot = {
           en: prod.translations?.en?.title || item.name || 'Product',
           ar: prod.translations?.ar?.title,
           image: prod.images?.[0] || item.image,
+          targetUnitPrice: item.targetUnitPrice ? Number(item.targetUnitPrice) : undefined,
+          catalogPrice: catalogUnitPrice,
         }
       } else {
-        originalUnitPrice = Number(item.unitPrice || 0)
+        catalogUnitPrice = Number(item.unitPrice || 0)
+        nameSnapshot = {
+          en: item.name || 'Custom Product',
+          image: item.image,
+          targetUnitPrice: item.targetUnitPrice ? Number(item.targetUnitPrice) : undefined,
+          catalogPrice: catalogUnitPrice,
+        }
       }
 
-      const qty = Math.max(1, Number(item.quantity || item.requestedQuantity) || 1)
-      const quotedUnitPrice = originalUnitPrice // Initial quoted price matches catalog before admin review
-      const itemTotal = quotedUnitPrice * qty
+      const targetUnitPrice = item.targetUnitPrice ? Number(item.targetUnitPrice) : null
+      // Default initial quotedUnitPrice to the buyer's requested target price if provided, else volume catalog rate
+      const quotedUnitPrice = (targetUnitPrice && targetUnitPrice > 0) ? targetUnitPrice : catalogUnitPrice
+      const itemTotal = Number((quotedUnitPrice * qty).toFixed(2))
       subtotal += itemTotal
 
       processedItems.push({
@@ -112,7 +137,7 @@ export class QuotationsService {
         sku,
         productNameSnapshot: nameSnapshot,
         requestedQuantity: qty,
-        originalUnitPrice,
+        originalUnitPrice: catalogUnitPrice,
         quotedUnitPrice,
         totalPrice: itemTotal,
       })
@@ -329,11 +354,42 @@ export class QuotationsService {
       ? 'processing'
       : (input.paymentMethodType === 'BANK_TRANSFER' ? 'pending_payment' : 'completed')
 
+    const effectiveCustomerId = input.customerId || quote.customerId || null
+    let customerData: any = null
+    if (effectiveCustomerId) {
+      const [cust] = await this.db.select().from(customers).where(eq(customers.id, effectiveCustomerId)).limit(1)
+      if (cust) {
+        customerData = cust
+        // Auto-upgrade / sync corporate info if missing
+        if (!cust.companyName && quote.companyName) {
+          await this.db
+            .update(customers)
+            .set({ 
+              companyName: quote.companyName, 
+              companyTaxId: quote.taxNumber || cust.companyTaxId,
+              customerGroup: cust.customerGroup === 'retail' ? 'corporate' : cust.customerGroup,
+              updatedAt: new Date() 
+            })
+            .where(eq(customers.id, cust.id))
+        }
+      }
+    }
+
+    const shippingSnapshot = input.shippingAddressSnapshot || {
+      name: quote.customerName || (customerData ? `${customerData.firstName || ''} ${customerData.lastName || ''}`.trim() : 'Valued Client'),
+      company: quote.companyName || customerData?.companyName || null,
+      taxNumber: quote.taxNumber || customerData?.companyTaxId || customerData?.crNumber || null,
+      email: quote.customerEmail || customerData?.email || null,
+      phone: quote.customerPhone || customerData?.phone || null,
+      notes: quote.customerNotes || null,
+    }
+    const billingSnapshot = input.billingAddressSnapshot || shippingSnapshot
+
     const newOrder = await this.db
       .insert(orders)
       .values({
         orderNumber,
-        customerId: input.customerId || quote.customerId || null,
+        customerId: effectiveCustomerId,
         status: initialOrderStatus,
         currency: quote.currency,
         subtotal: quote.subtotal.toFixed(2),
@@ -346,8 +402,8 @@ export class QuotationsService {
         poDocumentUrl: input.poDocumentUrl || null,
         poNumber: input.poNumber || null,
         quotationId: quote.id,
-        shippingAddressSnapshot: input.shippingAddressSnapshot || null,
-        billingAddressSnapshot: input.billingAddressSnapshot || null,
+        shippingAddressSnapshot: shippingSnapshot,
+        billingAddressSnapshot: billingSnapshot,
       })
       .returning()
 

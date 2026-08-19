@@ -10,7 +10,7 @@ function ProductDescriptionContent() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { addToCart, currency, formatPrice, toggleWishlist, isInWishlist, setIsWishlistOpen, language, accessToken } = useShop();
+    const { addToCart, currency, formatPrice, toggleWishlist, isInWishlist, setIsWishlistOpen, language, accessToken, isCorporateUser } = useShop();
     const productId = params.id as string;
 
     const isArabic = language.startsWith('Arabic') || language === 'ar' || language === 'العربية';
@@ -375,15 +375,34 @@ function ProductDescriptionContent() {
 
                     {/* Right Column - Sticky Sidebar */}
                     <div className="w-full lg:w-[400px]">
-                        <div className="bg-[#fafafa] p-8 rounded-xl sticky top-8 border border-gray-100">
+                        <div className="bg-[#fafafa] p-8 rounded-xl sticky top-8 border border-gray-100 shadow-sm">
                             
-                            <div className="mb-6 inline-block">
-                                <span className="bg-[#fbdc3c] px-3 pt-2 pb-1 inline-block text-3xl font-heading leading-none transform scale-y-110 origin-bottom">
-                                    {formatPrice(product.price)}
-                                </span>
+                            {/* Price display with Corporate badge if applicable */}
+                            <div className="mb-4">
+                                {isCorporateUser && product.corporatePrice ? (
+                                    <div className="flex flex-col gap-1.5">
+                                        <div className="flex items-center gap-2">
+                                            <span className="bg-[#fbdc3c] px-3 pt-2 pb-1 inline-block text-3xl font-heading leading-none text-[#1a2b25]">
+                                                {formatPrice(product.corporatePrice)}
+                                            </span>
+                                            <span className="text-gray-400 line-through text-lg font-medium">
+                                                {formatPrice(product.price)}
+                                            </span>
+                                        </div>
+                                        <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
+                                            <span>🏢 {isArabic ? 'سعر الشركاء المعتمد' : 'VIP Corporate Partner Rate'}</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="inline-block">
+                                        <span className="bg-[#fbdc3c] px-3 pt-2 pb-1 inline-block text-3xl font-heading leading-none transform scale-y-110 origin-bottom text-[#1a2b25]">
+                                            {formatPrice(product.price)}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                             
-                            <div className={`flex items-center gap-4 mb-8 ${isArabic ? 'flex-row-reverse' : ''}`}>
+                            <div className={`flex items-center gap-4 mb-6 ${isArabic ? 'flex-row-reverse' : ''}`}>
                                 <span className="text-sm font-bold border-r border-gray-300 pr-4">50 {isArabic ? 'تقييم' : 'reviews'}</span>
                                 <div className="flex text-[#fbdc3c]">
                                     {[...Array(5)].map((_, i) => (
@@ -391,6 +410,45 @@ function ProductDescriptionContent() {
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Volume Tiered Pricing */}
+                            {product.tieredPricing && product.tieredPricing.length > 0 && (
+                                <div className="mb-6">
+                                    <label className={`block text-xs font-medium text-gray-500 mb-2 ${isArabic ? 'text-right' : 'text-left'}`}>
+                                        {isArabic ? 'خصومات الكميات والطلبات' : 'Bulk Volume Pricing Tiers'}
+                                    </label>
+                                    <div className="space-y-1 text-xs">
+                                        {product.tieredPricing.map((tier, tIdx) => {
+                                            const isCurrentTier = quantity >= tier.minQty && (tier.maxQty ? quantity <= tier.maxQty : true);
+                                            const savingsPct = Math.round(((product.price - tier.price) / product.price) * 100);
+                                            return (
+                                                <div 
+                                                    key={tIdx} 
+                                                    className={`flex items-center justify-between py-1.5 px-2.5 rounded transition-colors ${
+                                                        isCurrentTier ? 'bg-gray-100 font-semibold text-gray-900' : 'text-gray-600'
+                                                    }`}
+                                                >
+                                                    <span>
+                                                        {tier.maxQty 
+                                                            ? `${tier.minQty} - ${tier.maxQty} ${isArabic ? 'وحدة' : 'units'}`
+                                                            : `${tier.minQty}+ ${isArabic ? 'وحدة فأكثر' : 'units +'}`}
+                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={isCurrentTier ? 'font-bold text-gray-900' : 'font-medium text-gray-800'}>
+                                                            {formatPrice(tier.price)}/ea
+                                                        </span>
+                                                        {savingsPct > 0 && (
+                                                            <span className="bg-gray-200/80 text-gray-700 text-[10px] font-medium px-1.5 py-0.5 rounded">
+                                                                -{savingsPct}%
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                             
                             <div className="space-y-6 mb-8">
                                 <div>
@@ -399,7 +457,7 @@ function ProductDescriptionContent() {
                                             {isArabic ? 'الكمية' : 'Quantity'}
                                         </label>
                                         {product.moq && product.moq > 1 && (
-                                            <span className="text-[11px] text-amber-800 bg-amber-50 font-bold px-2 py-0.5 rounded border border-amber-200">
+                                            <span className="text-[11px] text-gray-600 bg-gray-100 font-medium px-2 py-0.5 rounded">
                                                 {isArabic ? `الحد الأدنى: ${product.moq}` : `MOQ: ${product.moq}`}
                                             </span>
                                         )}
@@ -408,14 +466,29 @@ function ProductDescriptionContent() {
                                         <button 
                                             onClick={() => setQuantity(Math.max(product.moq || 1, quantity - 1))}
                                             disabled={quantity <= (product.moq || 1)}
-                                            className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-50 rounded disabled:opacity-40"
+                                            className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 rounded transition-colors disabled:opacity-30 cursor-pointer"
                                         >
                                             <Minus size={16} />
                                         </button>
-                                        <span className="font-bold text-sm">{quantity}</span>
+                                        <input
+                                            type="number"
+                                            min={product.moq || 1}
+                                            value={quantity}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value, 10);
+                                                if (!isNaN(val)) {
+                                                    setQuantity(Math.max(1, val));
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                const minMoq = Math.max(1, product.moq || 1);
+                                                if (quantity < minMoq) setQuantity(minMoq);
+                                            }}
+                                            className="w-24 text-center font-bold text-[15px] text-gray-900 bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
                                         <button 
                                             onClick={() => setQuantity(quantity + 1)}
-                                            className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-50 rounded"
+                                            className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 rounded transition-colors cursor-pointer"
                                         >
                                             <Plus size={16} />
                                         </button>
@@ -441,20 +514,28 @@ function ProductDescriptionContent() {
                                             name: isArabic ? (product.arabic || product.title) : product.title,
                                             category: product.category,
                                             price: product.price,
+                                            catalogPrice: product.price,
+                                            corporatePrice: product.corporatePrice,
+                                            tieredPricing: product.tieredPricing,
                                             image: product.img || '',
                                             moq: product.moq,
                                             quantity,
                                         });
-                                        router.push('/cart');
+                                        setWishlistNotification(
+                                            isArabic 
+                                                ? `تمت إضافة ${quantity} وحدة إلى السلة بنجاح!` 
+                                                : `Added ${quantity} units to your cart!`
+                                        );
+                                        setTimeout(() => setWishlistNotification(null), 3500);
                                     }}
-                                    className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-black transition-colors group"
+                                    className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-[#22322a] transition-colors group cursor-pointer shadow-md"
                                 >
-                                    {isArabic ? 'شراء الآن' : 'BUY NOW'}
+                                    {isArabic ? 'أضف إلى السلة' : 'ADD TO CART'}
                                     <ArrowUpRight size={16} className={`text-gray-400 group-hover:text-white transition-colors ${isArabic ? 'rotate-180' : ''}`} />
                                 </button>
                                 <button 
                                     onClick={handleWishlistAction}
-                                    className="w-full bg-white text-black border border-gray-200 py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:border-[#1a2b25] transition-colors group"
+                                    className="w-full bg-white text-black border border-gray-200 py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:border-[#1a2b25] transition-colors group cursor-pointer"
                                 >
                                     {isInWishlist(product.id) 
                                         ? (isArabic ? 'إزالة من المفضلة' : 'REMOVE FROM WISHLIST') 
@@ -469,6 +550,12 @@ function ProductDescriptionContent() {
                                         <Check size={16} className="text-emerald-600" />
                                         <span>{wishlistNotification}</span>
                                     </div>
+                                    <button 
+                                        onClick={() => router.push('/cart')}
+                                        className="underline font-bold text-emerald-900 hover:text-black text-[11px]"
+                                    >
+                                        {isArabic ? 'عرض السلة' : 'View Cart'}
+                                    </button>
                                 </div>
                             )}
                             

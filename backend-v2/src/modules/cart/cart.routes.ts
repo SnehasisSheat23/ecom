@@ -20,7 +20,8 @@ cartRoutes.use('*', requireCustomerAuth)
 cartRoutes.get('/', async (c) => {
   try {
     const customer = c.get('customer')
-    const cart = await cartService.getCart(customer.sub)
+    const currency = c.req.query('currency')
+    const cart = await cartService.getCart(customer.sub, { currency })
     return c.json({ success: true, data: cart })
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Failed to fetch cart' }, 500)

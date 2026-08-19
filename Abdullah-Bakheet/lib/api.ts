@@ -6,6 +6,12 @@ const RAW_API_BASE = rawBase
 const API_BASE = RAW_API_BASE.endsWith('/api/v1') ? RAW_API_BASE : `${RAW_API_BASE}/api/v1`
 const TENANT_HEADER = { 'X-Tenant-Id': process.env.NEXT_PUBLIC_TENANT_ID || 'abdullah-bakheet' }
 
+export interface PriceTier {
+  minQty: number
+  maxQty?: number
+  price: number
+}
+
 export interface StorefrontProduct {
   id: string
   variantId?: string
@@ -18,6 +24,9 @@ export interface StorefrontProduct {
   size: string
   price: number
   compareAtPrice?: number | null
+  corporatePrice?: number | null
+  tieredPricing?: PriceTier[]
+  pricing?: Record<string, any>
   moq?: number
   moqStep?: number
   inStock: boolean
@@ -85,6 +94,10 @@ export function parseStorefrontProducts(items: any[]): StorefrontProduct[] {
       imagesArray.push(primaryImg)
     }
 
+    const corporatePrice = typeof item.corporatePrice === 'number' ? item.corporatePrice : null
+    const tieredPricing = Array.isArray(item.tieredPricing) ? item.tieredPricing : []
+    const pricing = item.pricing || {}
+
     return {
       id: item.id,
       variantId: ensureUuid(item.id),
@@ -97,6 +110,9 @@ export function parseStorefrontProducts(items: any[]): StorefrontProduct[] {
       size: item.shortDescription || item.size || '',
       price,
       compareAtPrice,
+      corporatePrice,
+      tieredPricing,
+      pricing,
       moq: item.moq || 1,
       moqStep: item.moqStep || 1,
       inStock: item.stockQuantity !== undefined ? item.stockQuantity > 0 : true,
@@ -504,6 +520,93 @@ export async function calculateShippingApi(methodId?: string, currency?: string,
     console.error('calculateShippingApi error:', e)
     return null
   }
+}
+
+// ==========================================
+// B2B QUOTATIONS / RFQ API INTEGRATIONS
+// ==========================================
+export interface CreateQuotationItemPayload {
+  productId: string
+  quantity: number
+  unitPrice?: number
+  name?: string
+  image?: string
+}
+
+export interface CreateQuotationRequestPayload {
+  customerId?: string
+  customerName: string
+  customerEmail: string
+  customerPhone?: string
+  companyName?: string
+  taxNumber?: string
+  currency?: string
+  customerNotes?: string
+  items: CreateQuotationItemPayload[]
+}
+
+export interface AcceptQuotationPayload {
+  customerId?: string
+  paymentMethodType: 'CARD' | 'MADA' | 'APPLE_PAY' | 'BANK_TRANSFER' | 'PURCHASE_ORDER' | 'CREDIT_TERMS'
+  paymentReceiptUrl?: string
+  poDocumentUrl?: string
+  poNumber?: string
+  shippingAddressSnapshot?: Record<string, any>
+  billingAddressSnapshot?: Record<string, any>
+}
+
+export async function createQuotationRequestApi(payload: CreateQuotationRequestPayload, accessToken?: string) {
+  const res = await fetch(`${API_BASE}/quotations/request`, {
+    method: 'POST',
+    headers: buildHeaders(undefined, accessToken),
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || err.message || 'Failed to submit quotation request')
+  }
+  const json = await res.json()
+  return json.data
+}
+
+export async function fetchQuotationByIdApi(id: string, accessToken?: string) {
+  const res = await fetch(`${API_BASE}/quotations/${encodeURIComponent(id)}`, {
+    headers: buildHeaders(undefined, accessToken),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || err.message || 'Failed to fetch quotation details')
+  }
+  const json = await res.json()
+  return json.data
+}
+
+export async function acceptQuotationApi(id: string, payload: AcceptQuotationPayload, accessToken?: string) {
+  const res = await fetch(`${API_BASE}/quotations/${encodeURIComponent(id)}/accept`, {
+    method: 'POST',
+    headers: buildHeaders(undefined, accessToken),
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || err.message || 'Failed to accept quotation')
+  }
+  const json = await res.json()
+  return json.data
+}
+
+export async function fetchCustomerQuotationsApi(params?: { customerId?: string; email?: string; status?: string }, accessToken?: string) {
+  const query = new URLSearchParams()
+  if (params?.customerId) query.append('customerId', params.customerId)
+  if (params?.email) query.append('email', params.email)
+  if (params?.status) query.append('status', params.status)
+  
+  const res = await fetch(`${API_BASE}/quotations?${query.toString()}`, {
+    headers: buildHeaders(undefined, accessToken),
+  })
+  if (!res.ok) return []
+  const json = await res.json()
+  return json.data || []
 }
 
 // Storefront Helper Wrappers

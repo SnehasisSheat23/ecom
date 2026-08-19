@@ -25,6 +25,7 @@ export default function CheckoutPage() {
         selectedShippingMethodId,
         setSelectedShippingMethodId,
         shippingMethods,
+        isCorporateUser,
     } = useShop();
     const router = useRouter();
 
@@ -38,7 +39,10 @@ export default function CheckoutPage() {
     const [country, setCountry] = useState('UAE');
 
     // Payment Form state
-    const [paymentMethod, setPaymentMethod] = useState<'credit' | 'applepay' | 'cod'>('credit');
+    const [paymentMethod, setPaymentMethod] = useState<'credit' | 'applepay' | 'cod' | 'credit_terms' | 'purchase_order'>(
+        isCorporateUser ? 'credit_terms' : 'credit'
+    );
+    const [poReference, setPoReference] = useState('');
     const [cardNumber, setCardNumber] = useState('4242 4242 4242 4242');
     const [cardHolder, setCardHolder] = useState('Abdullah Bakheet');
     const [expiry, setExpiry] = useState('12/28');
@@ -77,7 +81,13 @@ export default function CheckoutPage() {
             setPaymentStepText('Connecting to DubaiPay Secure Gateway...');
             await new Promise(r => setTimeout(r, 600));
 
-            if (paymentMethod === 'credit') {
+            if (paymentMethod === 'credit_terms') {
+                setPaymentStepText(`Authorizing Corporate Net 30 Credit (${formatPrice(user?.availableCredit || 0)} available)...`);
+                await new Promise(r => setTimeout(r, 600));
+            } else if (paymentMethod === 'purchase_order') {
+                setPaymentStepText(`Validating Purchase Order Invoice (${poReference || 'PO-DIRECT'})...`);
+                await new Promise(r => setTimeout(r, 600));
+            } else if (paymentMethod === 'credit') {
                 setPaymentStepText(`Verifying Demo Card (${cardNumber.slice(-4) || '4242'})...`);
                 await new Promise(r => setTimeout(r, 600));
             } else if (paymentMethod === 'applepay') {
@@ -110,6 +120,10 @@ export default function CheckoutPage() {
                 };
             });
 
+            const resolvedPaymentType = paymentMethod === 'credit_terms' 
+                ? 'CREDIT_TERMS' 
+                : (paymentMethod === 'purchase_order' ? 'PURCHASE_ORDER' : paymentMethod.toUpperCase());
+
             const orderPayload: any = {
                 currency: (currency || 'AED').toUpperCase(),
                 shippingMethodId: selectedShippingMethodId || 'standard',
@@ -125,8 +139,12 @@ export default function CheckoutPage() {
                 },
                 guestEmail: email || user?.email || undefined,
                 customerId: user?.id || undefined,
-                paymentMethod: paymentMethod,
-                notes: `Fake Payment Provider Demo Gateway - Method: ${paymentMethod.toUpperCase()} (Txn Ref: TXN_DEMO_${Date.now().toString().slice(-6)})`,
+                paymentMethod: resolvedPaymentType,
+                paymentMethodType: resolvedPaymentType,
+                poNumber: poReference || undefined,
+                notes: paymentMethod === 'credit_terms' 
+                    ? `Billed to Corporate Net 30 Credit Line (${user?.companyName || 'Corporate Client'})`
+                    : (paymentMethod === 'purchase_order' ? `Purchase Order Invoice: ${poReference || 'PO-DEFAULT'}` : `Fake Payment Provider Demo Gateway - Method: ${paymentMethod.toUpperCase()}`),
                 items: validItems,
             };
 
@@ -183,14 +201,18 @@ export default function CheckoutPage() {
     }
 
     return (
-        <div className="w-full bg-brand-gray min-h-screen font-sans py-12 relative">
-            <div className="max-w-[1200px] mx-auto px-4 md:px-8">
+        <div className="w-full bg-[#f8f9fa] min-h-screen text-black pb-24 font-sans">
+            
+            {/* Header Section */}
+            <div className="pt-20 pb-12 flex justify-center items-center px-4">
+                <h1 className="font-heading text-4xl md:text-6xl lg:text-8xl uppercase text-[#1a2b25] tracking-wider flex flex-wrap justify-center items-center gap-3 md:gap-4 text-center">
+                    FINAL <span className="bg-[#fbdc3c] px-4 pt-2 pb-1 text-[#1a2b25]">CHECKOUT</span>
+                </h1>
+            </div>
+
+            {/* Main Checkout Area */}
+            <div className="max-w-[1200px] mx-auto px-4">
                 
-                {errorMessage && (
-                    <div className="mb-8 p-4 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold rounded-md">
-                        {errorMessage}
-                    </div>
-                )}
 
                 <form onSubmit={handleCheckout} className="flex flex-col lg:flex-row gap-10">
                     
@@ -259,10 +281,38 @@ export default function CheckoutPage() {
                             </p>
 
                             <div className="flex flex-wrap gap-3 mb-8">
+                                {isCorporateUser && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => setPaymentMethod('credit_terms')}
+                                        className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors cursor-pointer ${
+                                            paymentMethod === 'credit_terms' 
+                                                ? 'bg-emerald-800 text-white shadow-sm' 
+                                                : 'bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100'
+                                        }`}
+                                    >
+                                        🏢 Corporate Net 30 Credit
+                                    </button>
+                                )}
+
+                                {isCorporateUser && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => setPaymentMethod('purchase_order')}
+                                        className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors cursor-pointer ${
+                                            paymentMethod === 'purchase_order' 
+                                                ? 'bg-[#1a2b25] text-white shadow-sm' 
+                                                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        📑 Purchase Order (PO)
+                                    </button>
+                                )}
+
                                 <button 
                                     type="button"
                                     onClick={() => setPaymentMethod('credit')}
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors ${
+                                    className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors cursor-pointer ${
                                         paymentMethod === 'credit' 
                                             ? 'bg-[#fbdc3c] text-black shadow-sm' 
                                             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
@@ -274,7 +324,7 @@ export default function CheckoutPage() {
                                 <button 
                                     type="button"
                                     onClick={() => setPaymentMethod('applepay')}
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors ${
+                                    className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors cursor-pointer ${
                                         paymentMethod === 'applepay' 
                                             ? 'bg-[#fbdc3c] text-black shadow-sm' 
                                             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
@@ -286,7 +336,7 @@ export default function CheckoutPage() {
                                 <button 
                                     type="button"
                                     onClick={() => setPaymentMethod('cod')}
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors ${
+                                    className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors cursor-pointer ${
                                         paymentMethod === 'cod' 
                                             ? 'bg-[#fbdc3c] text-black shadow-sm' 
                                             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
@@ -295,6 +345,46 @@ export default function CheckoutPage() {
                                     <Banknote size={16} /> Cash on Delivery
                                 </button>
                             </div>
+
+                            {/* Corporate Net 30 Credit Panel */}
+                            {paymentMethod === 'credit_terms' && (
+                                <div className="space-y-4 bg-emerald-50/80 p-6 rounded-xl border border-emerald-200 shadow-xs text-xs text-emerald-950">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-base font-bold text-emerald-950">🏢 Net 30 Corporate Credit Line</h3>
+                                        <span className="bg-emerald-200 text-emerald-900 font-bold px-2 py-0.5 rounded text-[11px]">AUTHORIZED</span>
+                                    </div>
+                                    <p className="text-emerald-800 leading-relaxed">
+                                        This order will be automatically authorized against your corporate credit line with Net 30 settlement terms. An official commercial invoice will be generated upon fulfillment.
+                                    </p>
+                                    <div className="pt-3 border-t border-emerald-200/80 flex items-center justify-between font-bold text-emerald-900 text-sm">
+                                        <span>Available Credit Balance:</span>
+                                        <span>{formatPrice(user?.availableCredit || 0)}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Purchase Order Panel */}
+                            {paymentMethod === 'purchase_order' && (
+                                <div className="space-y-4 bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-xs text-xs">
+                                    <h3 className="text-base font-bold text-gray-900">📑 Purchase Order (PO) Reference</h3>
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                                            Internal PO Reference Number *
+                                        </label>
+                                        <input 
+                                            required
+                                            type="text"
+                                            value={poReference}
+                                            onChange={e => setPoReference(e.target.value)}
+                                            placeholder="e.g. PO-2026-ALM-4401"
+                                            className="w-full bg-white border border-gray-300 rounded-md p-3 text-xs focus:outline-none focus:border-[#1a2b25]"
+                                        />
+                                    </div>
+                                    <p className="text-gray-500 text-[11px]">
+                                        Your purchasing department will receive the commercial invoice linked to this PO number.
+                                    </p>
+                                </div>
+                            )}
 
                             {paymentMethod === 'credit' && (
                                 <div className="space-y-6 bg-white p-6 rounded-xl border border-gray-100 shadow-xs">

@@ -274,13 +274,13 @@ export default function Header() {
                         {/* Shopping Cart Icon Link */}
                         <Link 
                             href="/cart"
-                            className={cn('relative text-white hover:text-gray-300 transition-colors cursor-pointer')}
+                            className={cn('relative text-white hover:text-gray-300 transition-colors cursor-pointer inline-flex items-center')}
                             title="Shopping Cart"
                         >
                             <CartIcon size={22} className="text-white" />
                             {cartCount > 0 && (
-                                <span className="absolute -top-1.5 -right-2 bg-white text-brand-dark text-[9px] font-bold h-3.5 w-3.5 rounded-full flex items-center justify-center">
-                                    {cartCount}
+                                <span className="absolute -top-2 -right-2.5 bg-white text-brand-dark text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-sm leading-none">
+                                    {cartCount > 999 ? '999+' : cartCount}
                                 </span>
                             )}
                         </Link>

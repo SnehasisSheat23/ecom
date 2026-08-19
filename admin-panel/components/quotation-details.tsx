@@ -272,13 +272,38 @@ export function QuotationDetails({ id }: { id: string }) {
                 <CardTitle className="text-base font-semibold font-heading text-foreground">Requested Products & Pricing</CardTitle>
                 <p className="text-xs text-muted-foreground mt-0.5">Customize and override quoted unit prices for this client.</p>
               </div>
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted text-foreground border border-border/60 font-mono">
-                Currency: {quotation.currency}
-              </span>
+              <div className="flex items-center gap-2">
+                {quotation.items?.some((i) => (i.productNameSnapshot as any)?.targetUnitPrice) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditItems((prev) =>
+                        prev.map((editI) => {
+                          const originalItem = quotation.items?.find((i) => i.id === editI.id)
+                          const target = (originalItem?.productNameSnapshot as any)?.targetUnitPrice
+                          if (target && Number(target) > 0) {
+                            return { ...editI, quotedUnitPrice: Number(target) }
+                          }
+                          return editI
+                        })
+                      )
+                      toast.info("Applied all client target rates")
+                    }}
+                    className="text-xs font-medium"
+                  >
+                    Apply Target Rates
+                  </Button>
+                )}
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted text-foreground border border-border/60 font-mono">
+                  Currency: {quotation.currency}
+                </span>
+              </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-5 pt-4">
               {/* Product Items List */}
-              <div className="flex flex-col gap-5 divide-y divide-border/60">
+              <div className="flex flex-col divide-y divide-border/60">
                 {(!quotation.items || quotation.items.length === 0) ? (
                   <div className="py-8 text-center text-muted-foreground text-sm">
                     No product items attached to this quotation request.
@@ -296,7 +321,7 @@ export function QuotationDetails({ id }: { id: string }) {
                     const img = typeof snap === "object" ? snap?.imageUrl || snap?.image : (item as any).imageUrl || null
 
                     return (
-                      <div key={item.id || idx} className={`flex flex-col md:flex-row md:items-center justify-between gap-5 ${idx > 0 ? "pt-5" : ""}`}>
+                      <div key={item.id || idx} className="flex flex-col md:flex-row md:items-center justify-between gap-5 py-5 first:pt-1 last:pb-2">
                         {/* Left: Product Thumbnail & Details */}
                         <div className="flex items-start gap-4 flex-1 min-w-0">
                           <div className="size-16 bg-muted/40 border border-border/60 rounded-xl flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
@@ -312,8 +337,13 @@ export function QuotationDetails({ id }: { id: string }) {
                             <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
                               <span className="font-mono">SKU: {item.sku || "-"}</span>
                               <span>
-                                <strong className="text-foreground font-mono">{formatPrice(Number(item.originalUnitPrice || 0), { currency: quotation.currency })}</strong>
+                                Catalog Rate: <strong className="text-foreground font-mono">{formatPrice(Number(snap?.catalogPrice || item.originalUnitPrice || 0), { currency: quotation.currency })}</strong>
                               </span>
+                              {snap?.targetUnitPrice && Number(snap.targetUnitPrice) > 0 && (
+                                <span>
+                                  Client Target: <strong className="text-foreground font-mono">{formatPrice(Number(snap.targetUnitPrice), { currency: quotation.currency })}</strong>
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -349,6 +379,19 @@ export function QuotationDetails({ id }: { id: string }) {
                                 className="w-full h-9 px-3 py-2 text-sm font-medium bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                               />
                             </div>
+                            {snap?.targetUnitPrice && Number(snap.targetUnitPrice) > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditItems((prev) =>
+                                    prev.map((i) => (i.id === item.id ? { ...i, quotedUnitPrice: Number(snap.targetUnitPrice) } : i))
+                                  )
+                                }}
+                                className="text-[11px] text-muted-foreground hover:text-foreground text-left transition-colors cursor-pointer"
+                              >
+                                Use Target ({formatPrice(Number(snap.targetUnitPrice), { currency: quotation.currency })})
+                              </button>
+                            )}
                           </div>
 
                           <div className="flex flex-col items-end gap-1.5 min-w-[110px]">
@@ -437,22 +480,10 @@ export function QuotationDetails({ id }: { id: string }) {
             </CardContent>
           </Card>
 
-          {/* Customer Request Notes Card */}
-          {quotation.customerNotes && (
-            <Card>
-              <CardHeader className="pb-3 border-b border-border/60">
-                <CardTitle className="text-base font-semibold font-heading text-foreground">Customer Request Notes</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4 text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                {quotation.customerNotes}
-              </CardContent>
-            </Card>
-          )}
-
           {/* Sales Terms & Customer Notes */}
           <Card>
             <CardHeader className="pb-3 border-b border-border/60">
-              <CardTitle className="text-base font-semibold font-heading text-foreground">Sales Terms & Customer Notes</CardTitle>
+              <CardTitle className="text-base font-semibold font-heading text-foreground">Sales Terms & Notes to Customer</CardTitle>
             </CardHeader>
             <CardContent className="pt-4 flex flex-col gap-2">
               <textarea
@@ -462,13 +493,13 @@ export function QuotationDetails({ id }: { id: string }) {
                 onChange={(e) => setEditAdminNotes(e.target.value)}
                 className="w-full px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
-              <span className="text-xs text-muted-foreground">These terms and notes are sent directly on the quoted offer to the customer.</span>
+              <span className="text-xs text-muted-foreground">These terms and official notes are displayed directly on the quoted offer to the customer.</span>
             </CardContent>
           </Card>
 
         </div>
 
-        {/* Right Column (Customer & Company Details, Quotation Metadata) */}
+        {/* Right Column (Customer & Company Details, Procurement Logistics, Quotation Metadata) */}
         <div className="w-full lg:w-[380px] shrink-0 flex flex-col gap-6">
           
           {/* Customer & Company Details Card */}
@@ -492,17 +523,82 @@ export function QuotationDetails({ id }: { id: string }) {
               {quotation.customerPhone && (
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-muted-foreground font-medium">Phone Number</span>
-                  <span className="text-sm font-mono font-medium text-foreground">{quotation.customerPhone}</span>
+                  <span className="text-sm font-medium text-foreground font-mono">{quotation.customerPhone}</span>
                 </div>
               )}
               {quotation.taxNumber && (
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-muted-foreground font-medium">VAT / Tax ID</span>
-                  <span className="text-sm font-mono font-medium text-foreground">{quotation.taxNumber}</span>
+                  <span className="text-sm font-mono text-foreground">{quotation.taxNumber}</span>
                 </div>
               )}
             </CardContent>
           </Card>
+
+          {/* Procurement, Logistics & Budget Specifications Card */}
+          {quotation.customerNotes && (() => {
+            const lines = quotation.customerNotes.split('\n').map(l => l.trim()).filter(Boolean)
+            let deliverySite = ''
+            let schedule = ''
+            let targetBudget = ''
+            const projectNotes: string[] = []
+
+            for (const line of lines) {
+              if (line.toLowerCase().startsWith('delivery destination / site:') || line.toLowerCase().startsWith('delivery site:')) {
+                deliverySite = line.substring(line.indexOf(':') + 1).trim()
+              } else if (line.toLowerCase().startsWith('required delivery schedule:') || line.toLowerCase().startsWith('required timeline:')) {
+                schedule = line.substring(line.indexOf(':') + 1).trim()
+              } else if (line.toLowerCase().includes('target overall contract budget:') || line.toLowerCase().includes('target contract budget:')) {
+                targetBudget = line.substring(line.indexOf(':') + 1).trim()
+              } else if (!line.startsWith('•') && !line.includes('🎯 Buyer Target Line Pricing:')) {
+                if (line.toLowerCase().startsWith('client project specifications:') || line.toLowerCase().startsWith('client notes:') || line.toLowerCase().startsWith('client project notes:')) {
+                  const content = line.substring(line.indexOf(':') + 1).trim()
+                  if (content && content.toLowerCase() !== 'no' && content.toLowerCase() !== 'none') {
+                    projectNotes.push(content)
+                  }
+                } else if (line && !line.startsWith('🎯')) {
+                  projectNotes.push(line)
+                }
+              }
+            }
+
+            return (
+              <Card>
+                <CardHeader className="pb-3 border-b border-border/60">
+                  <CardTitle className="text-base font-semibold font-heading text-foreground">Procurement & Logistics</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 flex flex-col gap-3.5 text-sm">
+                  {targetBudget && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground font-medium">Target Contract Budget</span>
+                      <span className="text-sm font-semibold text-foreground">{targetBudget}</span>
+                    </div>
+                  )}
+
+                  {deliverySite && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground font-medium">Delivery Destination / Site</span>
+                      <span className="text-sm font-medium text-foreground">{deliverySite}</span>
+                    </div>
+                  )}
+
+                  {schedule && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground font-medium">Required Schedule</span>
+                      <span className="text-sm font-medium text-foreground">{schedule}</span>
+                    </div>
+                  )}
+
+                  {projectNotes.length > 0 && (
+                    <div className="flex flex-col gap-0.5 pt-1 border-t border-border/40">
+                      <span className="text-xs text-muted-foreground font-medium">Client Specifications / Notes</span>
+                      <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{projectNotes.join('\n')}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })()}
 
           {/* Quotation Metadata Card */}
           <Card>

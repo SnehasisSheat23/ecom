@@ -16,7 +16,14 @@ import {
     mergeWishlistApi,
     removeWishlistItemApi,
     fetchShippingMethodsApi,
+    fetchProductsApi,
 } from '@/lib/api';
+
+export interface PriceTier {
+    minQty: number;
+    maxQty?: number;
+    price: number;
+}
 
 export interface CartItem {
     id: string; // Product/Variant ID
@@ -26,7 +33,11 @@ export interface CartItem {
     sku?: string;
     name: string;
     category: string;
-    price: number; // Base price in AED
+    price: number; // Active unit price
+    catalogPrice?: number; // Standard retail base price
+    corporatePrice?: number | null;
+    tieredPricing?: PriceTier[];
+    savings?: number;
     quantity: number;
     image: string;
     moq?: number;
@@ -56,13 +67,21 @@ export interface ShippingMethodItem {
     currentCurrency?: string;
 }
 
-interface UserProfile {
+export interface UserProfile {
     id?: string;
     name: string;
     email: string;
     firstName?: string;
     lastName?: string;
     phone?: string;
+    companyName?: string;
+    companyTaxId?: string;
+    crNumber?: string;
+    customerGroup?: 'retail' | 'wholesale' | 'corporate';
+    creditLimit?: number;
+    availableCredit?: number;
+    paymentTerms?: string;
+    accountDiscountPercent?: number;
 }
 
 export const CURRENCY_RATES: Record<string, { rate: number; symbol: string; code: string }> = {
@@ -84,9 +103,12 @@ interface ShopContextType {
     addToCart: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
     removeFromCart: (id: string) => void;
     updateQuantity: (id: string, delta: number) => void;
+    setQuantity: (id: string, qty: number) => void;
     clearCart: () => void;
     cartTotal: number;
+    cartSavings: number;
     cartCount: number;
+    isCorporateUser: boolean;
 
     // Shipping State
     shippingMethods: ShippingMethodItem[];
@@ -145,6 +167,43 @@ function getOrCreateGuestSessionId(): string {
 const LOCAL_STORAGE_CART_KEY = 'abdullah_bakheet_cart_v2';
 const LOCAL_STORAGE_WISHLIST_KEY = 'abdullah_bakheet_wishlist_v2';
 
+const isMatchingCartItem = (a: any, b: any) => {
+    if (!a || !b) return false;
+    if (a.id && b.id && a.id === b.id) return true;
+    if (a.productId && b.productId && a.productId === b.productId) return true;
+    if (a.productId && b.id && a.productId === b.id) return true;
+    if (a.id && b.productId && a.id === b.productId) return true;
+    if (a.itemId && b.itemId && a.itemId === b.itemId) return true;
+    if (a.itemId && b.id && a.itemId === b.id) return true;
+    if (a.id && b.itemId && a.id === b.itemId) return true;
+    if (a.variantId && b.variantId && a.variantId === b.variantId) return true;
+    if (a.name && b.name && a.name.trim().toLowerCase() === b.name.trim().toLowerCase()) return true;
+    return false;
+};
+
+const consolidateCartList = (items: CartItem[]): CartItem[] => {
+    const result: CartItem[] = [];
+    for (const item of items) {
+        const idx = result.findIndex(c => isMatchingCartItem(c, item));
+        if (idx > -1) {
+            const combinedQty = (result[idx].quantity || 0) + (item.quantity || 1);
+            const catalogBase = Number(result[idx].catalogPrice ?? item.catalogPrice ?? result[idx].price ?? item.price ?? 0);
+            result[idx] = {
+                ...result[idx],
+                ...item,
+                catalogPrice: catalogBase,
+                quantity: combinedQty,
+            };
+        } else {
+            result.push({
+                ...item,
+                catalogPrice: Number(item.catalogPrice ?? item.price ?? 0),
+            });
+        }
+    }
+    return result;
+};
+
 export function ShopProvider({ children }: { children: React.ReactNode }) {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
@@ -182,14 +241,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
             if (localCartSnapshot.length > 0) {
                 const mergedCart = await mergeCartApi(localCartSnapshot, token);
                 if (mergedCart?.items) {
-                    setCart(mergedCart.items);
-                    localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(mergedCart.items));
+                    const consolidated = consolidateCartList(mergedCart.items);
+                    setCart(consolidated);
+                    localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(consolidated));
                 }
             } else {
                 const remoteCart = await fetchCartApi(token);
                 if (remoteCart?.items) {
-                    setCart(remoteCart.items);
-                    localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(remoteCart.items));
+                    const consolidated = consolidateCartList(remoteCart.items);
+                    setCart(consolidated);
+                    localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(consolidated));
                 }
             }
 
@@ -231,8 +292,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                         ...item,
                         price: Number(item.price || 0),
                     }));
-                    initialCart = normalized;
-                    setCart(normalized);
+                    const consolidated = consolidateCartList(normalized);
+                    initialCart = consolidated;
+                    setCart(consolidated);
                 }
             }
 
@@ -265,6 +327,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                         firstName: profile.firstName,
                         lastName: profile.lastName,
                         phone: profile.phone,
+                        companyName: profile.companyName,
+                        companyTaxId: profile.companyTaxId,
+                        crNumber: profile.crNumber,
+                        customerGroup: profile.customerGroup || 'retail',
+                        creditLimit: profile.creditLimit ? Number(profile.creditLimit) : 0,
+                        availableCredit: profile.availableCredit ? Number(profile.availableCredit) : 0,
+                        paymentTerms: profile.paymentTerms || 'prepaid',
+                        accountDiscountPercent: profile.accountDiscountPercent ? Number(profile.accountDiscountPercent) : 0,
                     });
                     // Trigger DB sync for authenticated user
                     syncWithBackendOnAuth(savedToken, initialCart, initialWishlist);
@@ -288,6 +358,61 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
             console.error('Failed to save cart to localStorage:', e);
         }
     }, [cart, isMounted]);
+
+    const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
+
+    // Fetch catalog products once on mount / currency change for robust pricing resolution
+    useEffect(() => {
+        let isMounted = true;
+        fetchProductsApi({ limit: 100, currency }).then(res => {
+            if (isMounted && res?.items) {
+                setCatalogProducts(res.items);
+            }
+        }).catch(err => console.warn('Failed to load catalog products in ShopContext:', err));
+        return () => { isMounted = false; };
+    }, [currency]);
+
+    // 2b. Auto-enrich cart items with live tiered pricing & corporate price from catalog
+    useEffect(() => {
+        if (!isMounted || cart.length === 0 || catalogProducts.length === 0) return;
+
+        setCart(prev => {
+            let hasChanges = false;
+            const updated = prev.map(cItem => {
+                const match = catalogProducts.find(p => 
+                    p.id === cItem.id || 
+                    p.id === cItem.productId || 
+                    p.slug === cItem.id ||
+                    p.title?.trim().toLowerCase() === cItem.name?.trim().toLowerCase() ||
+                    (p.title && cItem.name && cItem.name.toLowerCase().includes(p.title.toLowerCase()))
+                );
+                if (match) {
+                    const catalogPrice = Number(match.price || cItem.catalogPrice || cItem.price);
+                    const tieredPricing = match.tieredPricing || [];
+                    const corporatePrice = match.corporatePrice || null;
+                    const dynamicPrice = resolveItemPrice({
+                        ...cItem,
+                        catalogPrice,
+                        tieredPricing,
+                        corporatePrice,
+                    }, cItem.quantity);
+
+                    if (dynamicPrice !== cItem.price || cItem.catalogPrice !== catalogPrice || !cItem.tieredPricing || cItem.tieredPricing.length === 0) {
+                        hasChanges = true;
+                        return {
+                            ...cItem,
+                            catalogPrice,
+                            tieredPricing,
+                            corporatePrice,
+                            price: dynamicPrice,
+                        };
+                    }
+                }
+                return cItem;
+            });
+            return hasChanges ? updated : prev;
+        });
+    }, [isMounted, cart.length, catalogProducts, currency]);
 
     // 3. Persist wishlist to localStorage
     useEffect(() => {
@@ -325,27 +450,82 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         return `${symbol} ${converted.toFixed(2)}`;
     };
 
+    const isCorporateUser = Boolean(user && (user.customerGroup === 'corporate' || user.customerGroup === 'wholesale'));
+
+    // Dynamic resolution helper for an item given quantity and user tier
+    const resolveItemPrice = (item: CartItem, qty: number): number => {
+        let tiers = item.tieredPricing;
+        let corpPrice = item.corporatePrice;
+        let catalogBase = item.catalogPrice;
+
+        // Fallback to catalogProducts lookup if item missing tier data
+        if ((!tiers || tiers.length === 0) && catalogProducts.length > 0) {
+            const match = catalogProducts.find(p => 
+                p.id === item.id || 
+                p.id === item.productId || 
+                p.slug === item.id ||
+                p.title?.trim().toLowerCase() === item.name?.trim().toLowerCase()
+            );
+            if (match) {
+                tiers = match.tieredPricing;
+                corpPrice = match.corporatePrice;
+                catalogBase = Number(match.price || catalogBase);
+            }
+        }
+
+        const catalogPrice = Number(catalogBase ?? item.catalogPrice ?? item.price ?? 0);
+        let candidate = catalogPrice;
+
+        if (isCorporateUser && corpPrice && Number(corpPrice) > 0) {
+            candidate = Number(corpPrice);
+        }
+
+        if (Array.isArray(tiers) && tiers.length > 0) {
+            const matchTier = tiers.find(t => {
+                const min = Number(t.minQty || 1);
+                const max = t.maxQty !== undefined && t.maxQty !== null && !isNaN(Number(t.maxQty)) ? Number(t.maxQty) : Infinity;
+                return qty >= min && qty <= max;
+            });
+            if (matchTier && matchTier.price) {
+                candidate = Math.min(candidate, Number(matchTier.price));
+            }
+        }
+
+        if (user && Number(user.accountDiscountPercent) > 0) {
+            const frac = Number(user.accountDiscountPercent) / 100;
+            candidate = Number((candidate * (1 - frac)).toFixed(2));
+        }
+
+        return Number(candidate || catalogPrice);
+    };
+
     const addToCart = (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
         const minMoq = Math.max(1, item.moq || 1);
         const addQty = item.quantity && item.quantity >= minMoq ? item.quantity : minMoq;
-        const normalizedPrice = Number(item.price || 0);
+        const catalogBase = Number(item.catalogPrice || item.price || 0);
 
         setCart(prev => {
-            const existingIndex = prev.findIndex(i => i.id === item.id || (item.variantId && i.variantId === item.variantId));
+            const existingIndex = prev.findIndex(i => isMatchingCartItem(i, item));
             if (existingIndex > -1) {
                 const updated = [...prev];
                 const existing = updated[existingIndex];
+                const newQty = existing.quantity + addQty;
+                const newPrice = resolveItemPrice({ ...existing, ...item, catalogPrice: catalogBase }, newQty);
                 updated[existingIndex] = {
                     ...existing,
-                    price: normalizedPrice || existing.price,
-                    quantity: existing.quantity + addQty,
+                    ...item,
+                    catalogPrice: catalogBase,
+                    price: newPrice,
+                    quantity: newQty,
                     moq: item.moq || existing.moq || 1,
                 };
                 return updated;
             }
+            const unitPrice = resolveItemPrice({ ...item, catalogPrice: catalogBase, quantity: addQty } as CartItem, addQty);
             return [...prev, {
                 ...item,
-                price: normalizedPrice,
+                catalogPrice: catalogBase,
+                price: unitPrice,
                 quantity: addQty,
                 moq: minMoq,
                 moqStep: item.moqStep || 1,
@@ -361,7 +541,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 quantity: addQty,
                 name: item.name,
                 image: item.image,
-                price: normalizedPrice,
+                price: catalogBase,
                 moq: item.moq,
                 moqStep: item.moqStep,
                 category: item.category,
@@ -371,7 +551,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     };
 
     const removeFromCart = (id: string) => {
-        setCart(prev => prev.filter(i => i.id !== id && i.itemId !== id));
+        setCart(prev => prev.filter(i => !isMatchingCartItem(i, { id, itemId: id, productId: id })));
 
         if (accessToken) {
             removeCartItemApi(id, accessToken).catch(err => console.error('Background removeCartItemApi failed:', err));
@@ -382,13 +562,98 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         let finalQty = 0;
         setCart(prev =>
             prev.map(item => {
-                if (item.id === id || item.itemId === id) {
+                if (isMatchingCartItem(item, { id, itemId: id, productId: id })) {
                     const minMoq = Math.max(1, item.moq || 1);
                     const step = Math.max(1, item.moqStep || 1);
                     const proposedQty = item.quantity + (delta * step);
                     if (proposedQty < minMoq) return item; // Cannot drop below MOQ
                     finalQty = proposedQty;
-                    return { ...item, quantity: proposedQty };
+
+                    let catalogBase = Number(item.catalogPrice || 0);
+                    let tiers = item.tieredPricing;
+                    let corpPrice = item.corporatePrice;
+                    if ((!catalogBase || !tiers || tiers.length === 0) && catalogProducts.length > 0) {
+                        const match = catalogProducts.find(p => 
+                            p.id === item.id || 
+                            p.id === item.productId || 
+                            p.slug === item.id || 
+                            p.title?.trim().toLowerCase() === item.name?.trim().toLowerCase()
+                        );
+                        if (match) {
+                            catalogBase = Number(match.price || catalogBase);
+                            tiers = match.tieredPricing;
+                            corpPrice = match.corporatePrice;
+                        }
+                    }
+                    if (!catalogBase) catalogBase = Number(item.price || 0);
+
+                    const dynamicPrice = resolveItemPrice({ 
+                        ...item, 
+                        catalogPrice: catalogBase, 
+                        tieredPricing: tiers, 
+                        corporatePrice: corpPrice 
+                    }, proposedQty);
+
+                    return { 
+                        ...item, 
+                        catalogPrice: catalogBase,
+                        tieredPricing: tiers,
+                        corporatePrice: corpPrice,
+                        price: dynamicPrice, 
+                        quantity: proposedQty 
+                    };
+                }
+                return item;
+            })
+        );
+
+        if (accessToken && finalQty > 0) {
+            updateCartItemApi(id, finalQty, accessToken).catch(err => console.error('Background updateCartItemApi failed:', err));
+        }
+    };
+
+    const setQuantity = (id: string, newQty: number) => {
+        let finalQty = 0;
+        setCart(prev =>
+            prev.map(item => {
+                if (isMatchingCartItem(item, { id, itemId: id, productId: id })) {
+                    const minMoq = Math.max(1, item.moq || 1);
+                    const safeQty = isNaN(newQty) || newQty < minMoq ? minMoq : Math.floor(newQty);
+                    finalQty = safeQty;
+
+                    let catalogBase = Number(item.catalogPrice || 0);
+                    let tiers = item.tieredPricing;
+                    let corpPrice = item.corporatePrice;
+                    if ((!catalogBase || !tiers || tiers.length === 0) && catalogProducts.length > 0) {
+                        const match = catalogProducts.find(p => 
+                            p.id === item.id || 
+                            p.id === item.productId || 
+                            p.slug === item.id || 
+                            p.title?.trim().toLowerCase() === item.name?.trim().toLowerCase()
+                        );
+                        if (match) {
+                            catalogBase = Number(match.price || catalogBase);
+                            tiers = match.tieredPricing;
+                            corpPrice = match.corporatePrice;
+                        }
+                    }
+                    if (!catalogBase) catalogBase = Number(item.price || 0);
+
+                    const dynamicPrice = resolveItemPrice({ 
+                        ...item, 
+                        catalogPrice: catalogBase, 
+                        tieredPricing: tiers, 
+                        corporatePrice: corpPrice 
+                    }, safeQty);
+
+                    return { 
+                        ...item, 
+                        catalogPrice: catalogBase,
+                        tieredPricing: tiers,
+                        corporatePrice: corpPrice,
+                        price: dynamicPrice, 
+                        quantity: safeQty 
+                    };
                 }
                 return item;
             })
@@ -459,6 +724,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 firstName: c.firstName,
                 lastName: c.lastName,
                 phone: c.phone,
+                companyName: c.companyName,
+                companyTaxId: c.companyTaxId,
+                crNumber: c.crNumber,
+                customerGroup: c.customerGroup || 'retail',
+                creditLimit: c.creditLimit ? Number(c.creditLimit) : 0,
+                availableCredit: c.availableCredit ? Number(c.availableCredit) : 0,
+                paymentTerms: c.paymentTerms || 'prepaid',
+                accountDiscountPercent: c.accountDiscountPercent ? Number(c.accountDiscountPercent) : 0,
             });
 
             // Perform automatic Cart & Wishlist merge with backend upon login
@@ -485,6 +758,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 firstName: c.firstName,
                 lastName: c.lastName,
                 phone: c.phone,
+                companyName: c.companyName,
+                companyTaxId: c.companyTaxId,
+                crNumber: c.crNumber,
+                customerGroup: c.customerGroup || 'retail',
+                creditLimit: c.creditLimit ? Number(c.creditLimit) : 0,
+                availableCredit: c.availableCredit ? Number(c.availableCredit) : 0,
+                paymentTerms: c.paymentTerms || 'prepaid',
+                accountDiscountPercent: c.accountDiscountPercent ? Number(c.accountDiscountPercent) : 0,
             });
 
             if (data.accessToken) {
@@ -502,7 +783,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Calculate cart totals (Base AED)
-    const cartTotal = cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
+    const cartTotal = cart.reduce((sum, item) => {
+        const p = resolveItemPrice(item, item.quantity || 1);
+        return sum + (p * (item.quantity || 1));
+    }, 0);
+
+    const cartSavings = cart.reduce((sum, item) => {
+        const catalog = Number(item.catalogPrice || item.price || 0);
+        const resolved = resolveItemPrice(item, item.quantity || 1);
+        const diff = Math.max(0, catalog - resolved);
+        return sum + (diff * (item.quantity || 1));
+    }, 0);
+
     const cartCount = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
     const wishlistCount = wishlist.length;
 
@@ -531,9 +823,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 addToCart,
                 removeFromCart,
                 updateQuantity,
+                setQuantity,
                 clearCart,
                 cartTotal,
+                cartSavings,
                 cartCount,
+                isCorporateUser,
                 shippingMethods,
                 selectedShippingMethodId,
                 setSelectedShippingMethodId,

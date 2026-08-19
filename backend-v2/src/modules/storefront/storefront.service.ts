@@ -259,6 +259,9 @@ export class StorefrontService {
     const price = Number(rawPrice) || 0
     const rawCompare = priceData.compare_at
     const compareAtPrice = (rawCompare !== undefined && rawCompare !== null) ? Number(rawCompare) : undefined
+    const rawCorp = (priceData as any).corporatePrice
+    const corporatePrice = (rawCorp !== undefined && rawCorp !== null) ? Number(rawCorp) : undefined
+    const tieredPricing = Array.isArray((priceData as any).tieredPricing) ? (priceData as any).tieredPricing : []
 
     const arabicTitle = translations.ar?.title || translations.ar?.name || (product.specifications as any)?.arabicName || null
     const englishTitle = translations.en?.title || translations.en?.name || product.sku
@@ -279,6 +282,9 @@ export class StorefrontService {
       slug: langData.slug || product.sku.toLowerCase(),
       price,
       compareAtPrice,
+      corporatePrice,
+      tieredPricing,
+      pricing: product.pricing || {},
       currency,
       moq: product.moq,
       moqStep: product.moqStep,

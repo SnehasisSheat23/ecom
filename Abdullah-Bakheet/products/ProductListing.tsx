@@ -286,6 +286,9 @@ export default function ProductListing() {
                                                             name: isArabic ? (product.arabic || product.title) : product.title,
                                                             category: product.category,
                                                             price: product.price,
+                                                            catalogPrice: product.price,
+                                                            corporatePrice: product.corporatePrice,
+                                                            tieredPricing: product.tieredPricing,
                                                             image: product.img || '',
                                                             moq: product.moq,
                                                         });

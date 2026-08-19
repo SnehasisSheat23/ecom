@@ -363,6 +363,8 @@ export class OrdersService {
     const totalNum = parseFloat(order.totalAmount || '0')
     const subtotalNum = parseFloat(order.subtotal || '0')
     const shippingNum = parseFloat(order.shippingCost || '0')
+    const taxNum = parseFloat(order.taxAmount || '0')
+    const discountNum = parseFloat(order.discountAmount || '0')
 
     return {
       id: order.id,
@@ -372,6 +374,8 @@ export class OrdersService {
       subtotal: subtotalNum,
       shippingCost: shippingNum,
       shippingAmount: shippingNum,
+      taxAmount: taxNum,
+      discountAmount: discountNum,
       totalAmount: totalNum,
       total: totalNum,
       customer: customerDetails,

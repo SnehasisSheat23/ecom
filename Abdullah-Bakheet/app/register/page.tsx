@@ -7,10 +7,18 @@ import { ChevronLeft, Eye, EyeOff, ArrowUpRight } from 'lucide-react';
 import { useShop } from '@/context/ShopContext';
 
 function RegisterForm() {
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [email, setEmail] = useState('');
-    const [phone, setPhone] = useState('');
+    const searchParams = useSearchParams();
+    const redirectUrl = searchParams.get('redirect');
+    const action = searchParams.get('action');
+    const itemId = searchParams.get('item');
+    const initialEmail = searchParams.get('email') || '';
+    const initialName = searchParams.get('name') || searchParams.get('firstName') || '';
+    const initialPhone = searchParams.get('phone') || '';
+
+    const [firstName, setFirstName] = useState(initialName.split(' ')[0] || '');
+    const [lastName, setLastName] = useState(initialName.split(' ').slice(1).join(' ') || '');
+    const [email, setEmail] = useState(initialEmail);
+    const [phone, setPhone] = useState(initialPhone);
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -19,10 +27,6 @@ function RegisterForm() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const redirectUrl = searchParams.get('redirect');
-    const action = searchParams.get('action');
-    const itemId = searchParams.get('item');
 
     const { register } = useShop();
 

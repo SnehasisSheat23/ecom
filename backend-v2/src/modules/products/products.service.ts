@@ -366,6 +366,8 @@ export class ProductsService {
       slug: langData.slug || product.sku.toLowerCase(),
       price,
       compareAtPrice,
+      corporatePrice: decimalPricing[currency]?.corporatePrice,
+      tieredPricing: decimalPricing[currency]?.tieredPricing || [],
       currency,
       moq: product.moq,
       moqStep: product.moqStep,
