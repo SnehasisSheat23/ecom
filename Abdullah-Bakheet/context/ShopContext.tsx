@@ -134,6 +134,7 @@ interface ShopContextType {
     isAccountOpen: boolean;
     setIsAccountOpen: (open: boolean) => void;
     user: UserProfile | null;
+    isAuthLoading: boolean;
     accessToken: string | null;
     guestSessionId: string;
     setUser: (user: UserProfile | null) => void;
@@ -225,6 +226,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const [isAccountOpen, setIsAccountOpen] = useState(false);
 
     const [user, setUser] = useState<UserProfile | null>(null);
+    const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
     const [accessToken, setAccessToken] = useState<string | null>(null);
     const [guestSessionId, setGuestSessionId] = useState<string>(() => getOrCreateGuestSessionId());
 
@@ -351,11 +353,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 } else {
                     localStorage.removeItem('auth_access_token');
                     setAccessToken(null);
+                    setUser(null);
                 }
             }).catch(() => {
                 localStorage.removeItem('auth_access_token');
                 setAccessToken(null);
+                setUser(null);
+            }).finally(() => {
+                setIsAuthLoading(false);
             });
+        } else {
+            setIsAuthLoading(false);
         }
     }, [syncWithBackendOnAuth]);
 
@@ -866,6 +874,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 isAccountOpen,
                 setIsAccountOpen,
                 user,
+                isAuthLoading,
                 accessToken,
                 guestSessionId,
                 setUser,

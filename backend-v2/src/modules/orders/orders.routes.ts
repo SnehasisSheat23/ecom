@@ -8,14 +8,33 @@ export const ordersRoutes = new Hono()
 // GET /api/v1/orders or /api/v1/orders/list-summary - List orders
 const handleGetOrders = async (c: any) => {
   const status = c.req.query('status')
-  const customerId = c.req.query('customerId')
+  let customerId = c.req.query('customerId')
+  const email = c.req.query('email')
   const limit = c.req.query('perPage') ? parseInt(c.req.query('perPage')!) : (c.req.query('limit') ? parseInt(c.req.query('limit')!) : 20)
   const page = c.req.query('page') ? parseInt(c.req.query('page')!) : 1
   const sortBy = c.req.query('sortBy')
   const sortOrder = c.req.query('sortOrder')
   const search = c.req.query('search') || c.req.query('q')
 
-  const result = await ordersService.getOrders({ status, customerId, limit, page, sortBy, sortOrder, search })
+  // Check Bearer token auth if customerId not explicitly provided in query
+  if (!customerId) {
+    const authHeader = c.req.header('Authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7).trim()
+      try {
+        const { verifyJwt } = await import('../../lib/auth-crypto.js')
+        const JWT_SECRET = process.env.APP_SECRET || process.env.JWT_SECRET || 'dubai-ecom-secure-jwt-secret-key-2026'
+        const payload = verifyJwt<any>(token, JWT_SECRET)
+        if (payload && payload.type === 'customer' && payload.sub) {
+          customerId = payload.sub
+        }
+      } catch (e) {
+        // invalid token
+      }
+    }
+  }
+
+  const result = await ordersService.getOrders({ status, customerId, email, limit, page, sortBy, sortOrder, search })
   return c.json({ success: true, data: result })
 }
 

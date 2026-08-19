@@ -16,6 +16,7 @@ export default function CheckoutPage() {
         getConvertedPrice,
         guestSessionId,
         accessToken,
+        isAuthLoading,
         clearCart,
         user,
         currency,
@@ -175,12 +176,12 @@ export default function CheckoutPage() {
     }, [user]);
 
     React.useEffect(() => {
-        if (!accessToken && !isOrderComplete) {
+        if (!isAuthLoading && !accessToken && !isOrderComplete) {
             router.replace('/login?redirect=/checkout');
         }
-    }, [accessToken, isOrderComplete, router]);
+    }, [isAuthLoading, accessToken, isOrderComplete, router]);
 
-    if (!accessToken && !isOrderComplete) {
+    if ((isAuthLoading || !accessToken) && !isOrderComplete) {
         return (
             <div className="w-full bg-brand-gray min-h-screen flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a2b25]"></div>

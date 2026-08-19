@@ -619,6 +619,47 @@ export async function fetchCustomerQuotationsApi(params?: { customerId?: string;
   return json.data || []
 }
 
+// ==========================================
+// STOREFRONT ORDERS & TRACKING API
+// ==========================================
+export async function fetchOrdersApi(params?: { customerId?: string; email?: string; search?: string; status?: string; page?: number; limit?: number }, accessToken?: string) {
+  try {
+    const query = new URLSearchParams()
+    if (params?.customerId) query.append('customerId', params.customerId)
+    if (params?.email) query.append('email', params.email)
+    if (params?.search) query.append('search', params.search)
+    if (params?.status) query.append('status', params.status)
+    if (params?.page) query.append('page', String(params.page))
+    if (params?.limit) query.append('limit', String(params.limit))
+
+    const res = await fetch(`${API_BASE}/orders?${query.toString()}`, {
+      headers: buildHeaders(undefined, accessToken),
+      cache: 'no-store',
+    })
+    if (!res.ok) return { items: [], total: 0 }
+    const json = await res.json()
+    return json.data || { items: [], total: 0 }
+  } catch (e) {
+    console.error('fetchOrdersApi error:', e)
+    return { items: [], total: 0 }
+  }
+}
+
+export async function fetchOrderByIdApi(idOrNumber: string, accessToken?: string) {
+  try {
+    const res = await fetch(`${API_BASE}/orders/${encodeURIComponent(idOrNumber)}`, {
+      headers: buildHeaders(undefined, accessToken),
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    return json.data || null
+  } catch (e) {
+    console.error('fetchOrderByIdApi error:', e)
+    return null
+  }
+}
+
 // Storefront Helper Wrappers
 export async function fetchProducts(options?: FetchProductsOptions | number): Promise<StorefrontProduct[]> {
   const res = await fetchProductsApi(options)
@@ -627,4 +668,5 @@ export async function fetchProducts(options?: FetchProductsOptions | number): Pr
 
 export const fetchProductBySlug = fetchProductBySlugApi;
 export const fetchCategories = fetchCategoriesApi;
+
 

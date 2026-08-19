@@ -4,18 +4,61 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useShop } from '@/context/ShopContext';
-import { User, Building2, ShoppingBag, FileText, LogOut, ChevronLeft, ShieldCheck } from 'lucide-react';
+import { User, Building2, ShoppingBag, FileText, LogOut, ChevronLeft, ShieldCheck, Loader2, Truck } from 'lucide-react';
 
 export default function AccountPage() {
-    const { user, isCorporateUser, logout, formatPrice, language } = useShop();
+    const { user, isAuthLoading, isCorporateUser, logout, formatPrice, language } = useShop();
     const router = useRouter();
     const isArabic = language.startsWith('Arabic');
 
     React.useEffect(() => {
-        if (!user) {
+        if (!isAuthLoading && !user) {
             router.push('/login');
         }
-    }, [user, router]);
+    }, [user, isAuthLoading, router]);
+
+    if (isAuthLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50/60 py-12 px-4 sm:px-6 lg:px-8 animate-pulse">
+                <div className="max-w-4xl mx-auto space-y-6">
+                    {/* Back Button Skeleton */}
+                    <div className="h-4 w-28 bg-gray-200 rounded-md"></div>
+
+                    {/* Header Skeleton */}
+                    <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-full bg-gray-200 shrink-0"></div>
+                            <div className="space-y-2">
+                                <div className="h-6 w-48 bg-gray-200 rounded"></div>
+                                <div className="h-4 w-32 bg-gray-200 rounded"></div>
+                            </div>
+                        </div>
+                        <div className="h-8 w-24 bg-gray-200 rounded-lg"></div>
+                    </div>
+
+                    {/* Grid Cards Skeleton */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+                            <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                            <div className="space-y-3">
+                                <div className="h-4 w-full bg-gray-100 rounded"></div>
+                                <div className="h-4 w-full bg-gray-100 rounded"></div>
+                                <div className="h-4 w-full bg-gray-100 rounded"></div>
+                            </div>
+                        </div>
+                        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+                            <div className="h-4 w-32 bg-gray-200 rounded"></div>
+                            <div className="space-y-3">
+                                <div className="h-4 w-full bg-gray-100 rounded"></div>
+                                <div className="h-4 w-full bg-gray-100 rounded"></div>
+                                <div className="h-4 w-full bg-gray-100 rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (!user) {
         return null;
@@ -44,7 +87,6 @@ export default function AccountPage() {
                                 <h1 className="text-2xl font-bold text-gray-900">{user.name || `${user.firstName || ''} ${user.lastName || ''}`}</h1>
                                 {isCorporateUser ? (
                                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                                        <ShieldCheck size={12} />
                                         {isArabic ? 'شريك تجاري معتمد' : 'Corporate Partner'}
                                     </span>
                                 ) : (
@@ -58,24 +100,26 @@ export default function AccountPage() {
                         </div>
                     </div>
 
-                    <button
-                        onClick={() => {
-                            logout();
-                            router.push('/');
-                        }}
-                        className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors self-start sm:self-center"
-                    >
-                        <LogOut size={14} />
-                        <span>{isArabic ? 'تسجيل الخروج' : 'Sign Out'}</span>
-                    </button>
+                    <div className="flex items-center gap-3">
+                        
+                        <button
+                            onClick={() => {
+                                logout();
+                                router.push('/');
+                            }}
+                            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors self-start sm:self-center"
+                        >
+                            <LogOut size={14} />
+                            <span>{isArabic ? 'تسجيل الخروج' : 'Sign Out'}</span>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Profile Details Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     {/* Card 1: Account Information */}
                     <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-xs">
                         <div className="flex items-center gap-2 pb-4 border-b border-gray-100 mb-4">
-                            <User size={18} className="text-gray-700" />
                             <h2 className="font-bold text-sm text-gray-900">
                                 {isArabic ? 'بيانات الحساب' : 'Account Details'}
                             </h2>
@@ -105,7 +149,6 @@ export default function AccountPage() {
                     {isCorporateUser ? (
                         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-xs">
                             <div className="flex items-center gap-2 pb-4 border-b border-gray-100 mb-4">
-                                <Building2 size={18} className="text-emerald-700" />
                                 <h2 className="font-bold text-sm text-gray-900">
                                     {isArabic ? 'بيانات المنشأة والتسهيلات' : 'Corporate & Credit Details'}
                                 </h2>
@@ -134,7 +177,7 @@ export default function AccountPage() {
                         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-xs flex flex-col justify-between">
                             <div>
                                 <div className="flex items-center gap-2 pb-4 border-b border-gray-100 mb-4">
-                                    <Building2 size={18} className="text-gray-700" />
+                                    <Building2 size={16} className="text-amber-600" />
                                     <h2 className="font-bold text-sm text-gray-900">
                                         {isArabic ? 'الترقية لحساب شركات' : 'Upgrade to Corporate Account'}
                                     </h2>
@@ -156,32 +199,28 @@ export default function AccountPage() {
                     )}
                 </div>
 
-                {/* Quick Actions Bar */}
-                <div className="mt-6 bg-white border border-gray-200 rounded-xl p-6 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Quick Orders & Tracking Card */}
+                <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
                     <div>
-                        <h3 className="text-sm font-bold text-gray-900">
-                            {isArabic ? 'الطلبات وعروض الأسعار' : 'Orders & Quotation Requests'}
+                        <div className="flex items-center gap-2 mb-1">
+                            
+                        </div>
+                        <h3 className="text-sm sm:text-base font-bold text-gray-900">
+                            {isArabic ? 'تتبع شحناتك وطلبياتك مباشرة' : 'Track Your Active Shipments & Orders'}
                         </h3>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                            {isArabic ? 'استعرض مشترياتك وسجلات عروض الأسعار السابقة' : 'Review your active purchases and official quotation requests'}
+                        <p className="text-xs text-gray-500 mt-0.5 max-w-xl">
+                            {isArabic 
+                                ? 'استعرض مسار التوصيل، تفاصيل المنتجات، والفواتير الضريبية لكل طلبية.'
+                                : 'View step-by-step dispatch status, itemized invoice breakdown, and delivery notes in real-time.'}
                         </p>
                     </div>
-                    <div className="flex items-center gap-3 w-full sm:w-auto">
-                        <Link 
-                            href="/cart"
-                            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-lg text-xs font-semibold transition-colors"
-                        >
-                            <ShoppingBag size={14} />
-                            <span>{isArabic ? 'السلة' : 'My Cart'}</span>
-                        </Link>
-                        <Link 
-                            href="/cart/rfq"
-                            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-lg text-xs font-semibold transition-colors"
-                        >
-                            <FileText size={14} />
-                            <span>{isArabic ? 'طلب تسعيرة' : 'Request RFQ'}</span>
-                        </Link>
-                    </div>
+                    <Link
+                        href="/track-order"
+                        className="inline-flex items-center gap-1.5 bg-[#1a2b25] hover:bg-black text-white hover:text-[#fbdc3c] font-semibold text-xs px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap shrink-0 shadow-xs"
+                    >
+                        <ShoppingBag size={13} />
+                        <span>{isArabic ? 'عرض كل الطلبات' : 'View Orders & Tracking'}</span>
+                    </Link>
                 </div>
             </div>
         </div>

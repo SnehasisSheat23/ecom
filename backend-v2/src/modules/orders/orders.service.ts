@@ -247,6 +247,7 @@ export class OrdersService {
   async getOrders(options: {
     status?: string
     customerId?: string
+    email?: string
     limit?: number
     page?: number
     sortBy?: string
@@ -268,12 +269,18 @@ export class OrdersService {
         conditions.push(sql`${orders.status} IN (${sql.join(statuses.map((s) => sql`${s}`), sql`, `)})`)
       }
     }
-    if (options.customerId) {
+    if (options.customerId && options.email) {
+      const em = options.email.trim().toLowerCase()
+      conditions.push(sql`(${orders.customerId} = ${options.customerId} OR (${orders.shippingAddressSnapshot}->>'email') ILIKE ${em})`)
+    } else if (options.customerId) {
       conditions.push(eq(orders.customerId, options.customerId))
+    } else if (options.email) {
+      const em = options.email.trim().toLowerCase()
+      conditions.push(sql`(${orders.shippingAddressSnapshot}->>'email') ILIKE ${em}`)
     }
     if (options.search && options.search.trim()) {
       const q = `%${options.search.trim()}%`
-      conditions.push(sql`(${orders.orderNumber} ILIKE ${q} OR (${orders.shippingAddressSnapshot}->>'fullName') ILIKE ${q} OR (${orders.shippingAddressSnapshot}->>'email') ILIKE ${q})`)
+      conditions.push(sql`(${orders.orderNumber} ILIKE ${q} OR (${orders.shippingAddressSnapshot}->>'fullName') ILIKE ${q} OR (${orders.shippingAddressSnapshot}->>'email') ILIKE ${q} OR ${orders.poNumber} ILIKE ${q})`)
     }
 
     const whereClause = conditions.length ? sql.join(conditions, sql` AND `) : undefined
@@ -302,6 +309,7 @@ export class OrdersService {
       items.map(async (order) => {
         const itemRecords = await this.db.select().from(orderItems).where(eq(orderItems.orderId, order.id))
         
+        let customerDetails: any = null
         let customerName = 'Guest Customer'
         let customerEmail = 'guest@example.com'
         let customerCity = 'Dubai'
@@ -309,6 +317,7 @@ export class OrdersService {
         if (order.customerId) {
           const [cust] = await this.db.select().from(customers).where(eq(customers.id, order.customerId)).limit(1)
           if (cust) {
+            customerDetails = cust
             customerName = `${cust.firstName || ''} ${cust.lastName || ''}`.trim() || cust.email
             customerEmail = cust.email
           }
@@ -316,11 +325,32 @@ export class OrdersService {
           const addr = order.shippingAddressSnapshot as any
           if (addr.fullName || addr.recipientName) customerName = addr.fullName || addr.recipientName
           if (addr.city) customerCity = addr.city
+          if (addr.email) customerEmail = addr.email
         }
 
         const totalNum = parseFloat(order.totalAmount || '0')
         const subtotalNum = parseFloat(order.subtotal || '0')
         const shippingNum = parseFloat(order.shippingCost || '0')
+
+        const parsedItems = itemRecords.map((i) => {
+          const snap = (i.productNameSnapshot || {}) as any
+          const title = typeof snap === 'string' ? snap : (snap.en || snap.title || snap.name || i.sku || 'Product')
+          const image = typeof snap === 'object' && snap !== null ? (snap.imageUrl || snap.image || snap.img || null) : null
+          const unitP = parseFloat(i.unitPrice || '0')
+          const totP = parseFloat(i.totalPrice || '0')
+
+          return {
+            id: i.id,
+            productId: i.productId,
+            name: title,
+            image: image,
+            sku: i.sku,
+            quantity: i.quantity,
+            unitPrice: unitP,
+            totalPrice: totP,
+            price: unitP,
+          }
+        })
 
         return {
           id: order.id,
@@ -335,7 +365,15 @@ export class OrdersService {
           customerName,
           customerEmail,
           customerCity,
-          itemCount: itemRecords.length || 1,
+          customer: customerDetails,
+          itemCount: parsedItems.length || 1,
+          items: parsedItems,
+          paymentMethodType: order.paymentMethodType,
+          paymentMethod: order.paymentMethodType,
+          poNumber: order.poNumber,
+          poDocumentUrl: order.poDocumentUrl,
+          paymentReceiptUrl: order.paymentReceiptUrl,
+          quotationId: order.quotationId,
           shippingAddressSnapshot: order.shippingAddressSnapshot,
           billingAddressSnapshot: order.billingAddressSnapshot,
           createdAt: order.createdAt,
@@ -348,11 +386,16 @@ export class OrdersService {
     return { items: enriched, page, limit, total }
   }
 
-  async getOrderById(id: string) {
-    const [order] = await this.db.select().from(orders).where(eq(orders.id, id)).limit(1)
+  async getOrderById(idOrNumber: string) {
+    const isUuid = /^[0-9a-fA-F-]{36}$/.test(idOrNumber)
+    const [order] = await this.db
+      .select()
+      .from(orders)
+      .where(isUuid ? or(eq(orders.id, idOrNumber), eq(orders.orderNumber, idOrNumber)) : eq(orders.orderNumber, idOrNumber))
+      .limit(1)
     if (!order) return null
 
-    const items = await this.db.select().from(orderItems).where(eq(orderItems.orderId, id))
+    const items = await this.db.select().from(orderItems).where(eq(orderItems.orderId, order.id))
 
     let customerDetails = null
     if (order.customerId) {
