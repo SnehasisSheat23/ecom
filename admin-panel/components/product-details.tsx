@@ -386,15 +386,15 @@ export function ProductDetails({ id }: { id: string }) {
                   isDefault: true,
                 }
               ],
-              seo: p.metaTitle || p.metaDescription ? {
-                title: p.metaTitle || p.title,
-                description: p.metaDescription || "",
+              seo: (p.seo?.title || p.seo?.description || p.metaTitle || p.metaDescription) ? {
+                title: p.seo?.title || p.metaTitle || p.title || "",
+                description: p.seo?.description || p.metaDescription || "",
               } : undefined,
               currency: activeCurr,
               translations: p.translations || {},
               specifications: p.specifications || {},
-              arabicTitle: p.translations?.ar?.name || p.specifications?.arabicName || "",
-              arabicDescription: p.translations?.ar?.description || p.specifications?.descriptionArabic || "",
+              arabicTitle: p.arabicTitle || p.translations?.ar?.title || p.translations?.ar?.name || p.specifications?.arabicName || "",
+              arabicDescription: p.arabicDescription || p.translations?.ar?.description || p.specifications?.descriptionArabic || "",
             }
             setProduct(mapped)
             setInitialProduct(JSON.parse(JSON.stringify(mapped)))
@@ -520,12 +520,18 @@ export function ProductDetails({ id }: { id: string }) {
         moqStep: (product.moqStep !== undefined && product.moqStep !== "") ? Math.max(1, Number(product.moqStep) || 1) : 1,
         images: (product.images || []).map((img) => typeof img === 'string' ? img : (img as any).url).filter(Boolean),
         categoryIds: (product.categoryIds || []).filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)),
+        categoryId: ((product.categoryIds || []).filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))[0]) || null,
+        seo: {
+          title: product.seo?.title || null,
+          description: product.seo?.description || null,
+        },
         metaTitle: product.seo?.title || null,
         metaDescription: product.seo?.description || null,
         translations: {
           ...(product.translations || {}),
           ar: {
             ...((product.translations?.ar as Record<string, any>) || {}),
+            title: product.arabicTitle || "",
             name: product.arabicTitle || "",
             description: product.arabicDescription || "",
           },
@@ -669,15 +675,15 @@ export function ProductDetails({ id }: { id: string }) {
                 isDefault: true,
               }
             ],
-            seo: p.metaTitle || p.metaDescription ? {
-              title: p.metaTitle || p.title,
-              description: p.metaDescription || "",
+            seo: (p.seo?.title || p.seo?.description || p.metaTitle || p.metaDescription) ? {
+              title: p.seo?.title || p.metaTitle || p.title || "",
+              description: p.seo?.description || p.metaDescription || "",
             } : undefined,
             currency: activeSavedCurr,
             translations: p.translations || {},
             specifications: p.specifications || {},
-            arabicTitle: p.translations?.ar?.name || p.specifications?.arabicName || "",
-            arabicDescription: p.translations?.ar?.description || p.specifications?.descriptionArabic || "",
+            arabicTitle: p.arabicTitle || p.translations?.ar?.title || p.translations?.ar?.name || p.specifications?.arabicName || "",
+            arabicDescription: p.arabicDescription || p.translations?.ar?.description || p.specifications?.descriptionArabic || "",
           }
           setProduct(mapped)
           setInitialProduct(JSON.parse(JSON.stringify(mapped)))
@@ -1086,7 +1092,7 @@ export function ProductDetails({ id }: { id: string }) {
               const res = await apiRequest(`/admin/products/${id}/images`, {
                 method: "POST",
                 headers: { "content-type": "application/json" },
-                body: JSON.stringify({ mediaId: asset.id, position: nextPosition }),
+                body: JSON.stringify({ mediaId: asset.id, url: asset.url, position: nextPosition }),
               })
 
               if (res.ok) {

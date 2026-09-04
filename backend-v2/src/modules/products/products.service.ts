@@ -31,28 +31,31 @@ export class ProductsService {
   private db = getDatabase()
 
   private formatPricingMap(
-    pricing?: Record<string, { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }>,
+    pricing?: Record<string, { price: number; compare_at?: number; cost_per_item?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }>,
     defaultPrice?: number,
     defaultCompareAt?: number,
     defaultCurrency: string = 'AED'
   ) {
-    const result: Record<string, { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }> = {}
+    const result: Record<string, { price: number; compare_at?: number; cost_per_item?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }> = {}
 
     if (pricing && Object.keys(pricing).length > 0) {
       for (const [code, data] of Object.entries(pricing)) {
         if (!data) continue
         let p = typeof data === 'object' ? data.price : (data as any)
         let c = typeof data === 'object' ? data.compare_at : undefined
+        let cost = typeof data === 'object' ? (data.cost_per_item ?? (data as any).costPerItem) : undefined
         let corp = typeof data === 'object' ? data.corporatePrice : undefined
         let tiers = typeof data === 'object' && Array.isArray(data.tieredPricing) ? data.tieredPricing : undefined
 
         p = typeof p === 'number' && !isNaN(p) ? p : Number(p || 0)
         c = (c !== undefined && c !== null && !isNaN(Number(c))) ? Number(c) : undefined
+        cost = (cost !== undefined && cost !== null && !isNaN(Number(cost))) ? Number(cost) : undefined
         corp = (corp !== undefined && corp !== null && !isNaN(Number(corp))) ? Number(corp) : undefined
 
         result[code] = {
           price: p || 0,
           ...(c !== undefined ? { compare_at: c } : {}),
+          ...(cost !== undefined ? { cost_per_item: cost } : {}),
           ...(corp !== undefined ? { corporatePrice: corp } : {}),
           ...(tiers && tiers.length > 0 ? { tieredPricing: tiers } : {}),
         }
@@ -183,7 +186,7 @@ export class ProductsService {
     return this.formatProduct(item[0], lang, currency)
   }
 
-  async updateProduct(id: string, input: Partial<CreateProductInput> & { variants?: any[] }) {
+  async updateProduct(id: string, input: Partial<CreateProductInput> & { variants?: any[]; metaTitle?: string; metaDescription?: string }) {
     const [existing] = await this.db.select().from(products).where(eq(products.id, id)).limit(1)
     if (!existing) return null
 
@@ -197,6 +200,18 @@ export class ProductsService {
     }
     if (input.translations) {
       Object.assign(updatedTranslations, input.translations)
+      if (input.translations.ar) {
+        const arData = input.translations.ar as any
+        const existingAr = (updatedTranslations.ar || {}) as any
+        updatedTranslations.ar = {
+          ...existingAr,
+          ...arData,
+          title: arData.title || arData.name || existingAr.title || '',
+          name: arData.name || arData.title || existingAr.name || '',
+          description: arData.description !== undefined ? arData.description : (existingAr.description || ''),
+          slug: arData.slug || existingAr.slug || existing.sku.toLowerCase(),
+        }
+      }
     }
 
     const updatedPricing = { ...(existing.pricing || {}) }
@@ -212,11 +227,13 @@ export class ProductsService {
         const code = pr.currencyCode.toUpperCase()
         let p = Number(pr.price) || 0
         let c = pr.compareAtPrice !== undefined && pr.compareAtPrice !== null && pr.compareAtPrice !== "" ? Number(pr.compareAtPrice) : undefined
+        let cost = pr.costPerItem !== undefined && pr.costPerItem !== null && pr.costPerItem !== "" ? Number(pr.costPerItem) : undefined
         let corp = pr.corporatePrice !== undefined && pr.corporatePrice !== null && pr.corporatePrice !== "" ? Number(pr.corporatePrice) : undefined
         let tiers = Array.isArray(pr.tieredPricing) ? pr.tieredPricing : undefined
         updatedPricing[code] = {
           price: p,
           ...(c !== undefined ? { compare_at: c } : {}),
+          ...(cost !== undefined ? { cost_per_item: cost } : {}),
           ...(corp !== undefined ? { corporatePrice: corp } : {}),
           ...(tiers && tiers.length > 0 ? { tieredPricing: tiers } : {}),
         }
@@ -239,10 +256,26 @@ export class ProductsService {
       updatedImages = input.images.map((img: any) => typeof img === 'string' ? img : (img.url || img.src || ''))
     }
 
+    const targetCategoryId = input.categoryId !== undefined
+      ? input.categoryId
+      : (input.categoryIds !== undefined ? (input.categoryIds[0] || null) : existing.categoryId)
+
+    let updatedSeo = existing.seo || {}
+    if (input.seo) {
+      updatedSeo = { ...updatedSeo, ...input.seo }
+    }
+    if (input.metaTitle !== undefined || input.metaDescription !== undefined) {
+      updatedSeo = {
+        ...updatedSeo,
+        ...(input.metaTitle !== undefined ? { title: input.metaTitle || undefined } : {}),
+        ...(input.metaDescription !== undefined ? { description: input.metaDescription || undefined } : {}),
+      }
+    }
+
     const [updated] = await this.db
       .update(products)
       .set({
-        categoryId: input.categoryId !== undefined ? input.categoryId : existing.categoryId,
+        categoryId: targetCategoryId,
         translations: updatedTranslations,
         pricing: updatedPricing,
         moq: input.moq !== undefined ? input.moq : existing.moq,
@@ -252,6 +285,7 @@ export class ProductsService {
         images: updatedImages,
         specifications: input.specifications !== undefined ? input.specifications : existing.specifications,
         attributes: input.attributes !== undefined ? input.attributes : existing.attributes,
+        seo: updatedSeo,
         updatedAt: new Date(),
       })
       .where(eq(products.id, id))
@@ -308,6 +342,8 @@ export class ProductsService {
       const pVal = Number(rawP) || 0
       const rawC = pData?.compare_at
       const cVal = (rawC !== undefined && rawC !== null) ? Number(rawC) : undefined
+      const rawCost = pData?.cost_per_item ?? pData?.costPerItem
+      const costVal = (rawCost !== undefined && rawCost !== null) ? Number(rawCost) : undefined
       const rawCorp = pData?.corporatePrice
       const corpVal = (rawCorp !== undefined && rawCorp !== null) ? Number(rawCorp) : undefined
       const tiers = Array.isArray(pData?.tieredPricing) ? pData.tieredPricing : undefined
@@ -315,16 +351,18 @@ export class ProductsService {
         currencyCode: cCode,
         price: pVal,
         compareAtPrice: cVal !== undefined ? cVal : undefined,
+        costPerItem: costVal !== undefined ? costVal : undefined,
         corporatePrice: corpVal !== undefined ? corpVal : undefined,
         tieredPricing: tiers,
       }
     })
 
-    const decimalPricing: Record<string, { price: number; compare_at?: number; corporatePrice?: number; tieredPricing?: any[] }> = {}
+    const decimalPricing: Record<string, { price: number; compare_at?: number; cost_per_item?: number; corporatePrice?: number; tieredPricing?: any[] }> = {}
     for (const vp of variantPrices) {
       decimalPricing[vp.currencyCode] = {
         price: vp.price,
         ...(vp.compareAtPrice !== undefined ? { compare_at: vp.compareAtPrice } : {}),
+        ...(vp.costPerItem !== undefined ? { cost_per_item: vp.costPerItem } : {}),
         ...(vp.corporatePrice !== undefined ? { corporatePrice: vp.corporatePrice } : {}),
         ...(vp.tieredPricing ? { tieredPricing: vp.tieredPricing } : {}),
       }
@@ -338,6 +376,7 @@ export class ProductsService {
         sku: product.sku,
         price,
         compareAtPrice,
+        costPerItem: decimalPricing[currency]?.cost_per_item,
         prices: variantPrices,
         trackInventory: false,
         availableQuantity: product.stockQuantity,
@@ -366,12 +405,15 @@ export class ProductsService {
       slug: langData.slug || product.sku.toLowerCase(),
       price,
       compareAtPrice,
+      costPerItem: decimalPricing[currency]?.cost_per_item,
       corporatePrice: decimalPricing[currency]?.corporatePrice,
       tieredPricing: decimalPricing[currency]?.tieredPricing || [],
       currency,
       moq: product.moq,
       moqStep: product.moqStep,
       seo: product.seo || {},
+      metaTitle: (product.seo as any)?.title || langData.title || product.sku,
+      metaDescription: (product.seo as any)?.description || '',
       attributes: product.attributes || {},
       specifications: product.specifications || {},
       stockQuantity: product.stockQuantity,

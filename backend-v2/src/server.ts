@@ -96,6 +96,10 @@ app.delete('/api/v1/images/:id', requireAdminAuth, async (c) => {
   return c.json({ success: true, message: 'Image deleted' })
 })
 
+app.patch('/api/v1/images/:id', requireAdminAuth, async (c) => {
+  return c.json({ success: true, message: 'Image updated' })
+})
+
 app.get('/api/v1/product-types', (c) => {
   return c.json({ success: true, data: { items: [{ id: 'pt-1', name: 'Physical Product', slug: 'physical' }] } })
 })
