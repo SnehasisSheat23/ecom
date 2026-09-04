@@ -172,7 +172,7 @@ async function createTables() {
     CREATE TABLE IF NOT EXISTS v2_order_items (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       order_id UUID NOT NULL REFERENCES v2_orders(id) ON DELETE CASCADE,
-      product_id UUID REFERENCES v2_products(id),
+      product_id UUID REFERENCES v2_products(id) ON DELETE SET NULL,
       sku VARCHAR(100),
       product_name_snapshot JSONB,
       unit_price NUMERIC(12, 2) NOT NULL,

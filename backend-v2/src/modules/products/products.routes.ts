@@ -92,10 +92,15 @@ productsRoutes.post('/:id/images', async (c) => {
 
 // DELETE /api/v1/products/:id - Delete product
 productsRoutes.delete('/:id', async (c) => {
-  const id = c.req.param('id')
-  const deleted = await productsService.deleteProduct(id)
-  if (!deleted) {
-    return c.json({ success: false, error: 'Product not found' }, 404)
+  try {
+    const id = c.req.param('id')
+    const deleted = await productsService.deleteProduct(id)
+    if (!deleted) {
+      return c.json({ success: false, error: 'Product not found' }, 404)
+    }
+    return c.json({ success: true, message: 'Product deleted successfully', data: deleted })
+  } catch (err: any) {
+    console.error('Error deleting product:', err)
+    return c.json({ success: false, error: err.message || 'Failed to delete product' }, 400)
   }
-  return c.json({ success: true, message: 'Product deleted successfully', data: deleted })
 })

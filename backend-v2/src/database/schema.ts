@@ -150,7 +150,7 @@ export const orders = pgTable('v2_orders', {
 export const orderItems = pgTable('v2_order_items', {
   id: uuid('id').primaryKey().defaultRandom(),
   orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
-  productId: uuid('product_id').references(() => products.id),
+  productId: uuid('product_id').references(() => products.id, { onDelete: 'set null' }),
   sku: varchar('sku', { length: 100 }),
   productNameSnapshot: jsonb('product_name_snapshot').$type<{ en?: string; ar?: string; title?: string; image?: string; imageUrl?: string } | string>(),
   unitPrice: numeric('unit_price', { precision: 12, scale: 2 }).notNull(),

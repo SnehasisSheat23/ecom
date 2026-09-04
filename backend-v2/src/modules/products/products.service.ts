@@ -1,6 +1,6 @@
 import { eq, or, ilike, sql } from 'drizzle-orm'
 import { getDatabase } from '../../lib/db.js'
-import { products, categories, type PriceTier } from '../../database/schema.js'
+import { products, categories, orderItems, quotationItems, cartItems, wishlistItems, type PriceTier } from '../../database/schema.js'
 
 export interface CreateProductInput {
   sku?: string
@@ -295,6 +295,15 @@ export class ProductsService {
   }
 
   async deleteProduct(id: string) {
+    // 1. Clear cart items and wishlist items referencing this product
+    await this.db.delete(cartItems).where(eq(cartItems.productId, id)).catch(() => {})
+    await this.db.delete(wishlistItems).where(eq(wishlistItems.productId, id)).catch(() => {})
+
+    // 2. Safely detach historical order items and quotation items so snapshots remain intact
+    await this.db.update(orderItems).set({ productId: null }).where(eq(orderItems.productId, id)).catch(() => {})
+    await this.db.update(quotationItems).set({ productId: null }).where(eq(quotationItems.productId, id)).catch(() => {})
+
+    // 3. Delete product
     const [deleted] = await this.db.delete(products).where(eq(products.id, id)).returning()
     return deleted
   }
