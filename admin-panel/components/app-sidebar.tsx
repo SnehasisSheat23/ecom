@@ -73,13 +73,6 @@ const data = {
       ),
     },
     {
-      title: "Blog posts",
-      url: "/dashboard/blogs",
-      icon: (
-        <Icon name="article" />
-      ),
-    },
-    {
       title: "Shipping",
       url: "/dashboard/shipping",
       icon: (
