@@ -25,16 +25,16 @@ export default function WhyChooseUs() {
     ];
 
     return (
-        <section className="w-full bg-brand-gray py-16 md:py-24 font-sans">
+        <section className="w-full bg-brand-gray py-0 md:py-6 font-sans">
             <div className="max-w-[1300px] mx-auto px-4 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12">
 
                 {/* Left Column: Title, Text, Stats, and Button */}
                 <div className="lg:col-span-4 flex flex-col pt-0">
 
                     {/* Yellow Title Box */}
-                    <div className="font-heading bg-[#fbdc3c] self-start px-6 py-4 md:px-8 md:py-6 mb-4 inline-block">
-                        <h2 className={`text-6xl md:text-[90px] uppercase text-[#1a2b25] leading-[1] tracking-normal transform scale-y-110 origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
-                            {t.titleLine1}<br />{t.titleLine2}
+                    <div className="font-heading bg-[#fbdc3c] self-center md:self-start px-6 py-4 md:px-8 md:py-6 mb-4 inline-block ">
+                        <h2 className={`text-6xl md:text-[90px] uppercase text-[#1a2b25] leading-[1]  tracking-normal transform scale-y-110 origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
+                            {t.titleLine1} {t.titleLine2}
                         </h2>
                     </div>
 
@@ -50,21 +50,21 @@ export default function WhyChooseUs() {
                         )}
                     </p>
 
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 gap-6 mb-8">
-                        <div className="flex flex-col">
-                            <span className="font-heading text-5xl md:text-6xl text-black tracking-wide mb-2 transform scale-y-110 origin-bottom">{t.yearsExpVal}</span>
-                            <span className="text-[15px] font-bold text-[#1a2b25] leading-snug">{t.yearsExpLabelLine1}<br/>{t.yearsExpLabelLine2}</span>
+                    {/* Stats Grid - hidden on sm/md, shown at bottom */}
+                    <div className="hidden lg:flex flex-row gap-4 mb-8">
+                        <div className="flex flex-col flex-1">
+                            <span className="font-heading text-4xl xl:text-5xl text-black tracking-wide mb-2 transform scale-y-110 origin-bottom">{t.yearsExpVal}</span>
+                            <span className="text-[13px] xl:text-[15px] font-bold text-[#1a2b25] leading-snug">{t.yearsExpLabelLine1}<br/>{t.yearsExpLabelLine2}</span>
                         </div>
-                        <div className="flex flex-col">
-                            <span className="font-heading text-5xl md:text-6xl text-black tracking-wide mb-2 transform scale-y-110 origin-bottom">{t.productsVal}</span>
-                            <span className="text-[15px] font-bold text-[#1a2b25] leading-snug">{t.productsLabelLine1}<br/>{t.productsLabelLine2}</span>
+                        <div className="flex flex-col flex-1">
+                            <span className="font-heading text-4xl xl:text-5xl text-black tracking-wide mb-2 transform scale-y-110 origin-bottom">{t.productsVal}</span>
+                            <span className="text-[13px] xl:text-[15px] font-bold text-[#1a2b25] leading-snug">{t.productsLabelLine1}<br/>{t.productsLabelLine2}</span>
                         </div>
                     </div>
 
                     <Link
                         href="/about"
-                        className="bg-[#1a2b25] text-white px-8 py-4 flex items-center justify-center w-fit hover:bg-black transition-colors group mt-auto"
+                        className="hidden lg:flex bg-[#1a2b25] text-white px-8 py-4 items-center justify-center w-fit hover:bg-black transition-colors group mt-auto"
                     >
                         <span className="text-sm md:text-base font-semibold mr-3 uppercase tracking-wide">{t.knowMore}</span>
                         <ArrowUpRightIcon
@@ -114,6 +114,31 @@ export default function WhyChooseUs() {
                             </p>
                         </div>
                     ))}
+                </div>
+
+                {/* Stats Grid & Button at bottom for sm/md only */}
+                <div className="lg:hidden flex flex-col gap-8 mt-8 ">
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="flex flex-col">
+                            <span className="font-heading text-5xl md:text-6xl text-black tracking-wide mb-2 transform scale-y-110 origin-bottom">{t.yearsExpVal}</span>
+                            <span className="text-[15px] font-bold text-[#1a2b25] leading-snug">{t.yearsExpLabelLine1}<br/>{t.yearsExpLabelLine2}</span>
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="font-heading text-5xl md:text-6xl text-black tracking-wide mb-2 transform scale-y-110 origin-bottom">{t.productsVal}</span>
+                            <span className="text-[15px] font-bold text-[#1a2b25] leading-snug">{t.productsLabelLine1}<br/>{t.productsLabelLine2}</span>
+                        </div>
+                    </div>
+
+                    <Link
+                        href="/about"
+                        className="bg-[#1a2b25] text-white px-8 py-4 flex items-center justify-center w-fit hover:bg-black transition-colors group"
+                    >
+                        <span className="text-sm md:text-base font-semibold mr-3 uppercase tracking-wide">{t.knowMore}</span>
+                        <ArrowUpRightIcon
+                            size={20}
+                            className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
+                        />
+                    </Link>
                 </div>
 
             </div>
