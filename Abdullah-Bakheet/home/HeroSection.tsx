@@ -23,11 +23,11 @@ export default function HeroSection() {
 
                     {/* Main Title */}
                     <div className="font-heading flex flex-col relative z-20 mb-8 md:mb-12">
-                        <h1 className={`text-[16vw] md:text-[110px] lg:text-[120px] xl:text-[190px] font-lg uppercase text-[#1a2b25] leading-[1] tracking-normal scale-y-110 transform origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
+                        <h1 className={`text-[30vw] md:text-[110px] lg:text-[120px] xl:text-[190px] font-lg uppercase text-[#1a2b25] leading-[1] tracking-normal scale-y-110 transform origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                             {t.firstName}
                         </h1>
                         <div className="flex items-center">
-                            <h1 className={`text-[16vw] md:text-[110px] lg:text-[120px] xl:text-[190px] font-lg uppercase text-[#1a2b25] leading-[1] tracking-normal scale-y-110 transform origin-bottom relative ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
+                            <h1 className={`text-[30vw] md:text-[110px] lg:text-[120px] xl:text-[190px] font-lg uppercase text-[#1a2b25] leading-[1] tracking-normal scale-y-110 transform origin-bottom relative ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                                 {t.lastName}
                                 {/* Right Decorative accent */}
                                 <div className="absolute -top-6 right-0 text-[#1a2b25] hidden md:block">
@@ -35,8 +35,8 @@ export default function HeroSection() {
                                 </div>
                             </h1>
                             {/* Starburst Graphic */}
-                            <div className="ml-4 md:ml-8 mt-4 md:mt-8 text-[#1a2b25]">
-                                <svg width="119" height="122" viewBox="0 0 119 122" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <div className="ml-2 md:ml-8 mt-2 md:mt-8 text-[#1a2b25]">
+                                <svg className="w-[90px] h-[90px] md:w-[119px] md:h-[122px]" viewBox="0 0 119 122" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M61 0L62.9615 56.2662L104.133 17.8667L65.7349 59.0396L122 61L65.7338 62.9615L104.133 104.133L62.9615 65.7349L61 122L59.0396 65.7338L17.8667 104.133L56.2651 62.9615L0 61L56.2662 59.0396L17.8667 17.8667L59.0396 56.2651L61 0Z" fill="#1F312E"/>
                                 </svg>
                             </div>
@@ -48,12 +48,9 @@ export default function HeroSection() {
 
                         {/* Social Icons & Line Column */}
                         <div className="w-[60px] md:w-[80px] flex flex-col items-center flex-shrink-0 relative">
-                            {/* Dark Circle with Scribble Arrow */}
+                            {/* Dark Circle with Arrow */}
                             <div className="w-12 h-12 md:w-16 md:h-16 bg-[#1a2b25] rounded-full flex items-center justify-center text-white mb-6 md:mb-8 relative z-20">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="md:w-8 md:h-8 rotate-45">
-                                    <path d="M3 12c0-4 4-8 9-8s9 4 9 8-4 8-9 8c-3 0-6-1-7.5-3"/>
-                                    <path d="M18 12l3 3-3 3"/>
-                                </svg>
+                                <img src="/images/homearrow.png" alt="arrow" className="w-10 h-10 md:w-13 md:h-13 rotate-0" />
                             </div>
 
                             {/* Social Icons Container */}
@@ -76,7 +73,7 @@ export default function HeroSection() {
                             </div>
 
                             {/* Connecting Vertical Line */}
-                            <div className="w-[2px] bg-black absolute top-16 md:top-50 -bottom-10 left-1/2 -translate-x-1/2 z-0"></div>
+                            <div className="w-[2px] bg-black absolute top-16 md:top-50 -bottom-4 left-1/2 -translate-x-1/2 z-0"></div>
                         </div>
 
                         {/* Text Content */}
