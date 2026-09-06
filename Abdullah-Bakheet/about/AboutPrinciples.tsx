@@ -91,13 +91,13 @@ export default function AboutPrinciples() {
                         {/* 3 Small Images Grid */}
                         <div className="grid grid-cols-3 gap-3 md:gap-5 h-[150px] md:h-[220px]">
                             <div className="bg-gray-100 overflow-hidden">
-                                <img src="/images/5ddbedaa1b096f1ed11999fed1b33a77c55c981f.jpg" alt="Tech Abstract" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                                <img src="/images/29037d4b274f867b0d5063ca5e57964ca55c5043.webp" alt="Tech Abstract" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
                             </div>
                             <div className="bg-gray-100 overflow-hidden">
-                                <img src="/images/ce44d23a6808866cb7252fd4ec93e027d262ed96.jpg" alt="Team Hands Stacked" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                                <img src="/images/483c905dd6aa754cf5be5656b97241cbd75ac4f0.webp" alt="Team Hands Stacked" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
                             </div>
                             <div className="bg-gray-100 overflow-hidden">
-                                <img src="/images/131977cd0b2d6ff8b75cd2dae706a110c11b183b.jpg" alt="Team Hands Circle" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                                <img src="/images/2898467ae139f4dc507f86d7c184878ca9d89aa9.webp" alt="Team Hands Circle" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
                             </div>
                         </div>
 

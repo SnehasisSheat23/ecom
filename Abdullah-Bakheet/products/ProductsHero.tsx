@@ -18,16 +18,16 @@ export default function ProductsHero() {
                         {/* Top Image: Frozen Beef */}
                         <div className="w-full h-[300px] md:h-[400px] bg-gray-100 overflow-hidden relative">
                             <img
-                                src="/images\a2693c72ac8332cb5a5d4319c8c8b887edb71e21.png"
+                                src="/images/7289bb800eb8ae78b79756c3b120e66692fef105.webp"
                                 alt={isArabic ? 'لحم بقر مجمد' : 'Frozen Beef Topside'}
-                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                                className="w-full h-full object-cover object-[center_20%] hover:scale-105 transition-transform duration-700"
                             />
                         </div>
 
                         {/* Bottom Image: Creamy Sauce */}
                         <div className="w-full h-[250px] md:h-[300px] bg-gray-100 overflow-hidden relative">
                             <img
-                                src="/images/b25eb083f82f05ac9fb32dc643d429a29362152d.png"
+                                src="/images/c6821ef967f37eef68a776c9d99a037c0570bd38.webp"
                                 alt={isArabic ? 'صلصة كريمة' : 'Creamy Sauce'}
                                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
                             />
@@ -40,7 +40,7 @@ export default function ProductsHero() {
                         {/* Top Image: Mayo Packets */}
                         <div className="w-full h-[250px] md:h-[350px] bg-gray-100 overflow-hidden relative">
                             <img
-                                src="/images/53140adbcf2e27d7332f768e35de12328b2adba3.jpg"
+                                src="/images/8fe29fa82b8944360bb2fc515f9114a7427cff26.webp"
                                 alt={isArabic ? 'أظرف مايونيز' : "Duke's Mayonnaise Packets"}
                                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
                             />

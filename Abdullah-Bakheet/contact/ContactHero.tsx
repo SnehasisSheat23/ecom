@@ -81,7 +81,7 @@ export default function ContactHero() {
             {/* Building Image */}
             <div className="w-full h-[320px] md:h-[400px] bg-gray-100 overflow-hidden relative shadow-sm">
               <img
-                src="/images/939a574cbba7559a1c3bd7d055026bc77d8899d5.png"
+                src="/images/939a574cbba7559a1c3bd7d055026bc77d8899d5.webp"
                 alt={isArabic ? "مقر الشركة" : "Modern Architecture Building"}
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 object-bottom"
               />
@@ -119,11 +119,11 @@ export default function ContactHero() {
           </div>
 
           {/* Sun Dried Tomatoes Image */}
-          <div className="w-full h-[400px] md:h-auto flex-grow bg-gray-100 overflow-hidden relative shadow-sm min-h-[350px]">
+          <div className="w-full h-[320px] md:h-[515px] bg-gray-100 overflow-hidden relative shadow-sm">
             <img
-              src="/images/60c191d3da71d6d25e508bb753e355df4b36ddd6.png"
+              src="/images/48185c2a9f861e7f00dd0c68911c1a875f43c45b.webp"
               alt={isArabic ? "طماطم مجففة بالشمس" : "Sun Dried Tomatoes Packaging"}
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+              className="w-full h-full object-cover object-bottom hover:scale-105 transition-transform duration-700"
             />
           </div>
         </div>

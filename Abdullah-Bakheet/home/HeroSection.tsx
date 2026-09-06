@@ -105,27 +105,27 @@ export default function HeroSection() {
                     {/* Top Left Image */}
                     <div className="col-span-1 h-full w-full bg-gray-100 overflow-hidden relative shadow-xs">
                         <img
-                            src="/images/riyadh_hero_3.png"
+                            src="/images/riyadh_hero_3.webp"
                             alt={t.imgAlt1}
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                            className="w-full h-full object-cover object-[center_15%] hover:scale-105 transition-transform duration-700"
                         />
                     </div>
 
                     {/* Top Right Image */}
                     <div className="col-span-1 h-full w-full bg-gray-100 overflow-hidden relative shadow-xs">
                         <img
-                            src="/images/riyadh_hero_2.png"
+                            src="/images/riyadh_hero_2.webp"
                             alt={t.imgAlt2}
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                            className="w-full h-full object-cover object-[center_20%] hover:scale-105 transition-transform duration-700"
                         />
                     </div>
 
                     {/* Bottom Full-width Image */}
                     <div className="col-span-2 h-full w-full bg-gray-100 overflow-hidden relative shadow-xs">
                         <img
-                            src="/images/riyadh_hero_1.png"
+                            src="/images/riyadh_hero_1.webp"
                             alt={t.imgAlt3}
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 object-center"
+                            className="w-full h-full object-cover object-[center_20%] hover:scale-105 transition-transform duration-700"
                         />
                     </div>
 

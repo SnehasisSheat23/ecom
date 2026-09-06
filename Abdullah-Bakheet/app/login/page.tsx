@@ -190,7 +190,7 @@ function LoginForm() {
             {/* Right Column - Hero Graphic Image matching Admin Panel */}
             <div className="hidden lg:relative lg:flex w-1/2 items-end justify-start p-12 overflow-hidden bg-zinc-950">
                 <img 
-                    src="/images/riyadh_hero_3.png" 
+                    src="/images/riyadh_hero_3.webp" 
                     alt="Abdullah Bakheet Riyadh Operations" 
                     className="absolute inset-0 w-full h-full object-cover object-center opacity-85"
                 />

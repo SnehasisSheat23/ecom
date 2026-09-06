@@ -38,11 +38,11 @@ export default function WantToKnowMore() {
                     <div className="w-full lg:w-[55%] bg-none flex items-center justify-center p-4">
                         <div className="relative w-120 max-w-2xl h-[240px] md:h-[300px] lg:h-[360px]">
                             <Image
-                                src="/images/18979ac4b4007afd40906c7aa8534f73c603224e.jpg"
-                                alt="Frozen Beef Topside Box"
+                                src="/images/map.webp"
+                                alt={isArabic ? "خريطة المملكة" : "Map of Saudi Arabia"}
                                 fill
                                 sizes="(min-width: 1024px) 55vw, 100vw"
-                                className="object-fit shadow-none hover:scale-[1.02] transition-transform duration-500"
+                                className="object-cover object-center shadow-none hover:scale-[1.02] transition-transform duration-500"
                             />
                         </div>
                     </div>

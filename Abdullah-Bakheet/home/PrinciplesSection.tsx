@@ -48,7 +48,7 @@ export default function PrinciplesSection() {
                             <img
                                 src="/images/de981b3923467ebc746f398311365d9cdfa229db.png"
                                 alt="Kingdom Centre Riyadh"
-                                className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+                                className="w-full h-full object-cover object-top hover:scale-110 transition-transform duration-500"
                             />
                         </div>
 
