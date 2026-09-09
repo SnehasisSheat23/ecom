@@ -34,7 +34,7 @@ export default function WishlistPage() {
             <div className="pt-20 pb-12 flex justify-center items-center px-4">
                 <h1 className={`font-heading text-4xl md:text-6xl lg:text-8xl uppercase text-[#1a2b25] tracking-wider flex flex-wrap justify-center items-center gap-3 md:gap-4 text-center ${isArabic ? 'font-sans font-black tracking-tight' : ''}`}>
                     {isArabic ? 'المنتجات الأقرب' : 'MY MOST LIKED'}
-                    <span className="bg-[#fbdc3c] px-4 pt-2 pb-1 text-[#1a2b25]">{isArabic ? 'لقلبي' : 'PRODUCTS'}</span>
+                    <span className="px-4 pt-2 pb-1 text-[#1a2b25]">{isArabic ? 'لقلبي' : 'PRODUCTS'}</span>
                 </h1>
             </div>
 

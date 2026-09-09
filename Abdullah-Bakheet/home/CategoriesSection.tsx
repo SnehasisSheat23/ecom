@@ -92,12 +92,11 @@ export default function CategoriesSection() {
                     <div className="w-full lg:w-1/2 bg-white p-8 lg:p-12 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] flex flex-col justify-center">
 
                         {/* Header */}
-                        <div className="bg-[#fbdc3c] self-start px-6 py-4 mb-0">
+                        <div className="self-start px-6 py-4 mb-0">
                             <h2 className={`translate-y-2 font-heading text-5xl md:text-8xl font-normal uppercase text-[#1a2b25] tracking-normal leading-none transform scale-y-110 origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                                 {t.title}
                             </h2>
                         </div>
-
                         {/* List */}
                         <ul className="flex flex-col w-full">
                             {listCategories.map((category, index) => (

@@ -68,7 +68,7 @@ export default function AboutStory() {
                             {isArabic ? 'قصتنا' : 'Our Real'}
                         </h3>
 
-                        <div className="bg-[#fbdc3c] px-6 py-2 md:px-8 md:py-3 -rotate-[6deg] mb-12 shadow-sm">
+                        <div className="px-6 py-2 md:px-8 md:py-3 -rotate-[6deg] mb-12 shadow-sm">
                             <h3 className={`text-6xl pt-4 md:text-[75px] lg:text-[110px] uppercase text-[#1a2b25] leading-[0.85] tracking-wider scale-y-110 transform origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                                 {isArabic ? 'الحقيقية' : 'Story'}
                             </h3>

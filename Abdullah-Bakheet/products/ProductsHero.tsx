@@ -49,7 +49,7 @@ export default function ProductsHero() {
                         {/* Middle Banner: BUY ONE */}
                         <div className="w-full flex h-[100px] md:h-[170px] items-stretch gap-4 md:gap-6 overflow-hidden">
                             {/* Yellow Box */}
-                            <div className="flex-1 bg-[#fbdc3c] flex items-center px-6 md:p-10 ">
+                            <div className="flex-1 flex items-center px-6 md:p-10 ">
                                 <h2 className={`font-heading text-6xl md:text-[143px] pt-6 uppercase text-[#1a2b25] leading-none tracking-wider transform scale-y-110 origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                                     {isArabic ? 'اشترِ الآن' : 'Buy One'}
                                 </h2>
@@ -63,7 +63,7 @@ export default function ProductsHero() {
                             </div>
 
                             {/* Right Yellow Block */}
-                            <div className="w-[30px] md:w-[50px] flex-shrink-0 bg-[#fbdc3c]"></div>
+                            <div className="w-[30px] md:w-[50px] flex-shrink-0"></div>
                         </div>
 
                         {/* Bottom Text Area */}

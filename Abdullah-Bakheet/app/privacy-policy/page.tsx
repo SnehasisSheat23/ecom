@@ -8,7 +8,7 @@ export default function PrivacyPolicyPage() {
             <div className="max-w-[900px] mx-auto px-6 md:px-12 bg-white p-8 md:p-12 shadow-sm border border-gray-100 rounded-md">
                 
                 <div className="text-center mb-12">
-                    <div className="bg-[#fbdc3c] py-3 px-8 inline-block">
+                    <div className="py-3 px-8 inline-block">
                         <h1 className="font-heading text-4xl md:text-5xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none pt-2">
                             OUR PRIVACY POLICY
                         </h1>

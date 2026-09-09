@@ -179,7 +179,7 @@ export default function ProductListing() {
                     <div className="w-full lg:w-[55%]">
                         <h2 className={`font-heading text-[12vw] md:text-[70px] lg:text-[92px] uppercase text-black leading-[1] tracking-normal scale-y-110 transform origin-bottom flex flex-wrap items-center gap-x-4 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                             {isArabic ? 'منتجاتنا' : 'OUR'}
-                            <span className="bg-[#fbdc3c] px-4 pt-1">{isArabic ? 'المميزة' : 'PRODUCTS'}</span>
+                            <span className="px-4 pt-1">{isArabic ? 'المميزة' : 'PRODUCTS'}</span>
                             {isArabic ? 'التي تجعلنا نختلف دائمًا' : 'THAT MAKES US DIFFERENT'}
                         </h2>
                     </div>
@@ -202,7 +202,7 @@ export default function ProductListing() {
                     <aside className="w-full lg:w-[320px] flex-shrink-0 h-fit bg-[#fefefe] shadow-[0_0_20px_-10px_rgba(0,0,0,0.05)] border border-gray-100/50 p-6 md:p-8 rounded-sm lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
 
                         {/* Filter Header */}
-                        <div className="bg-[#fbdc3c] py-3 px-5 mb-10 inline-block w-full">
+                        <div className="py-3 px-5 mb-10 inline-block w-full">
                             <h3 className={`font-heading text-5xl uppercase text-center text-[#1a2b25] tracking-normal transform scale-y-110 origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                                 {isArabic ? 'تصفية المنتجات' : 'Product Filter'}
                             </h3>

@@ -207,7 +207,7 @@ export default function CheckoutPage() {
             {/* Header Section */}
             <div className="pt-20 pb-12 flex justify-center items-center px-4">
                 <h1 className="font-heading text-4xl md:text-6xl lg:text-8xl uppercase text-[#1a2b25] tracking-wider flex flex-wrap justify-center items-center gap-3 md:gap-4 text-center">
-                    FINAL <span className="bg-[#fbdc3c] px-4 pt-2 pb-1 text-[#1a2b25]">CHECKOUT</span>
+                    FINAL <span className="px-4 pt-2 pb-1 text-[#1a2b25]">CHECKOUT</span>
                 </h1>
             </div>
 
@@ -222,7 +222,7 @@ export default function CheckoutPage() {
                         
                         {/* SHIPPING INFORMATION */}
                         <section>
-                            <div className="bg-[#fbdc3c] py-3 px-6 mb-8 inline-block">
+                            <div className="py-3 px-6 mb-8 inline-block">
                                 <h2 className="font-heading text-3xl md:text-5xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none pt-2">
                                     SHIPPING INFORMATION
                                 </h2>
@@ -270,7 +270,7 @@ export default function CheckoutPage() {
 
                         {/* CHECKOUT INFORMATION (Fake Payment Provider Demo) */}
                         <section>
-                            <div className="bg-[#fbdc3c] py-3 px-6 mb-4 inline-block">
+                            <div className="py-3 px-6 mb-4 inline-block">
                                 <h2 className="font-heading text-3xl md:text-5xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none pt-2">
                                     PAYMENT PROVIDER
                                 </h2>
@@ -487,7 +487,7 @@ export default function CheckoutPage() {
                     <div className="w-full lg:w-[400px] shrink-0">
                         <div className="bg-white p-6 md:p-8 rounded-md shadow-sm border border-gray-100 sticky top-8">
                             
-                            <div className="bg-[#fbdc3c] py-3 px-5 mb-8 -mx-2">
+                            <div className="py-3 px-5 mb-8 -mx-2">
                                 <h3 className="font-heading text-2xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none pt-1">
                                     YOUR ORDERS
                                 </h3>

@@ -16,7 +16,7 @@ export default function ContactForm() {
                     <h2 className={`text-5xl md:text-6xl lg:text-[110px] uppercase text-[#1a2b25] leading-none tracking-wide scale-y-110 transform origin-bottom text-center ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                         {isArabic ? 'يرجى تعبئة' : 'Please Fill The'}
                     </h2>
-                    <div className="bg-[#fbdc3c] px-4 md:px-6 pt-2 pb-1">
+                    <div className="px-4 md:px-6 pt-2 pb-1">
                         <h2 className={`text-5xl md:text-6xl lg:text-[110px] uppercase text-[#1a2b25] leading-none tracking-wide scale-y-110 transform origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                             {isArabic ? 'النموذج' : 'Form'}
                         </h2>

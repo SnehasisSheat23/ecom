@@ -42,7 +42,7 @@ export default function AboutWhyWeAreBest() {
                     <h2 className={`text-5xl md:text-6xl lg:text-[75px] uppercase text-[#1a2b25] leading-none tracking-wider scale-y-110 transform origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                         {isArabic ? 'لماذا نحن' : 'Why We Are The'}
                     </h2>
-                    <div className="bg-[#fbdc3c] px-4 md:px-6 pt-2 pb-1">
+                    <div className="px-4 md:px-6 pt-2 pb-1">
                         <h2 className={`text-5xl md:text-6xl lg:text-[75px] uppercase text-[#1a2b25] leading-none tracking-wider scale-y-110 transform origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                             {isArabic ? 'الأفضل' : 'Best'}
                         </h2>

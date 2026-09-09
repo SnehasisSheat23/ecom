@@ -58,7 +58,7 @@ function LoginForm() {
 
                 <div className="max-w-md w-full mx-auto flex-1 flex flex-col justify-center">
                     
-                    <div className={`bg-[#fbdc3c] py-2 px-4 inline-block w-fit mb-6 ${isArabic ? 'self-end' : ''}`}>
+                    <div className={`py-2 px-4 inline-block w-fit mb-6 ${isArabic ? 'self-end' : ''}`}>
                         <h1 className={`font-heading text-5xl md:text-6xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none pt-2 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                             {isCorporate ? (isArabic ? 'دخول الشركات' : 'BUSINESS SIGN IN') : (isArabic ? 'تسجيل الدخول' : 'SIGN IN')}
                         </h1>

@@ -75,7 +75,7 @@ export default function PrinciplesSection() {
                     <div className="lg:col-span-4 flex flex-col items-start order-3 lg:order-3">
 
                         {/* Yellow Mission Title */}
-                        <div className="font-heading bg-[#fbdc3c] w-full px-6 py-4 mb-6">
+                        <div className="font-heading w-full px-6 py-4 mb-6">
                             <h3 className={`text-5xl md:text-[70px] mt-3 uppercase text-[#1a2b25] leading-none tracking-wider scale-y-110 transform origin-bottom text-center ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                                 {t.ourMission}
                             </h3>

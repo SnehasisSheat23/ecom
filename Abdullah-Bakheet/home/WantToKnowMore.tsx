@@ -20,7 +20,7 @@ export default function WantToKnowMore() {
                         {t.wantTo}
                     </h2>
 
-                    <div className="bg-[#fbdc3c] px-3 md:px-6 pt-5 pb-1 flex items-center justify-center">
+                    <div className="px-3 md:px-6 pt-5 pb-1 flex items-center justify-center">
                         <h2 className={`text-[12vw] md:text-[90px] lg:text-[110px] font-normal uppercase text-[#1a2b25] leading-[1] tracking-wide scale-y-110 transform origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                             {t.know}
                         </h2>
