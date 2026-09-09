@@ -19,7 +19,7 @@ export default function AboutPrinciples() {
                     {/* Left: Titles */}
                     <div className="font-heading w-full lg:w-[60%] flex flex-col">
                         <h2 className={`text-[13vw] md:text-[85px] lg:text-[91.5px] uppercase text-black leading-[0.85] tracking-wider scale-y-110 transform origin-bottom flex flex-wrap gap-x-4 items-center ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
-                            {isArabic ? 'مبادئنا' : 'OUR'} <span className="bg-[#fbdc3c] px-4 pt-1">{isArabic ? 'التي تجعلنا' : 'PRINCIPLES'}</span>
+                            {isArabic ? 'مبادئنا' : 'OUR'} <span className="px-4 pt-1">{isArabic ? 'التي تجعلنا' : 'PRINCIPLES'}</span>
                         </h2>
                         <h2 className={`text-[13vw] md:text-[85px] lg:text-[91.5px] uppercase text-black leading-[0.85] tracking-wider scale-y-110 transform origin-bottom mt-3 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                             {isArabic ? 'متميزين دائمًا' : 'THAT MAKE US DIFFERENT'}
@@ -49,7 +49,7 @@ export default function AboutPrinciples() {
                     <div className="lg:col-span-2 flex flex-col gap-6">
 
                         {/* Vertical Yellow Banner */}
-                        <div className="bg-[#fbdc3c] w-[70%] h-[120px] lg:h-[450px] flex items-center justify-center overflow-hidden lg:translate-x-7">
+                        <div className="w-[70%] h-[120px] lg:h-[450px] flex items-center justify-center overflow-hidden lg:translate-x-7">
                             <h3 className={`font-heading text-6xl md:text-[100px] uppercase text-black tracking-wider scale-y-110 transform lg:-rotate-90 whitespace-nowrap origin-center ${isArabic ? 'font-sans font-black tracking-tight scale-y-100 lg:rotate-0' : ''}`}>
                                 {isArabic ? 'مهمتنا' : 'OUR MISSION'}
                             </h3>
