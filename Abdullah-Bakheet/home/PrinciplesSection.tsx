@@ -42,7 +42,7 @@ export default function PrinciplesSection() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 
                     {/* Left Column: Small Image & Dark Arrow Box */}
-                    <div className="lg:col-span-2 flex flex-row lg:flex-col gap-6 items-center lg:items-start order-2 lg:order-1 ">
+                    <div className="lg:col-span-2 flex flex-row lg:flex-col gap-6 items-center lg:items-start justify-between sm:justify-between md:justify-between order-2 lg:order-1 px-7 ">
                         {/* Small Tower Image */}
                         <div className="w-[120px] h-[160px] bg-gray-200 overflow-hidden shadow-sm lg:-translate-y-15">
                             <img
