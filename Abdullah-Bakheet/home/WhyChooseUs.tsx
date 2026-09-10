@@ -32,9 +32,9 @@ export default function WhyChooseUs() {
                 <div className="lg:col-span-4 flex flex-col pt-0">
 
                     {/* Yellow Title Box */}
-                    <div className="font-heading self-center md:self-start px-6 py-4 md:px-0 md:py-6 mb-4 inline-block ">
+                    <div className="font-heading self-center lg:self-start px-6 py-4 md:px-0 md:py-6 mb-4 inline-block ">
                         <h2 className={`text-6xl md:text-[100px] uppercase text-[#1a2b25] leading-[1]  tracking-normal transform scale-y-110 origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
-                            {t.titleLine1} <br/>{t.titleLine2}
+                            {t.titleLine1} <span className="lg:hidden"> </span><span className="hidden lg:inline"><br/></span>{t.titleLine2}
                         </h2>
                     </div>
 

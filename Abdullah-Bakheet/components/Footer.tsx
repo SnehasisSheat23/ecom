@@ -25,10 +25,10 @@ export default function Footer() {
             <div className="max-w-[1400px] mx-auto px-4 md:px-8 lg:px-10 ">
 
                 {/* Top Grid Section */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-20 pb-8 relative z-10">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-20 pb-8 relative z-10">
 
                     {/* Column 1: Brand & Newsletter (Span 5 cols on large screens) */}
-                    <div className={`lg:col-span-5 flex flex-col gap-6 ${isArabic ? 'text-right' : 'text-justify'}`}>
+                    <div className={`sm:col-span-2 lg:col-span-5 flex flex-col gap-6 ${isArabic ? 'text-right' : 'text-justify'}`}>
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 bg-white rounded-full p-1.5 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
                                 <Image
@@ -70,34 +70,35 @@ export default function Footer() {
                         </div>
                     </div>
 
-                    {/* Column 2: Pages (Span 2 cols) */}
-                    <div className={`lg:col-span-2 ${isArabic ? 'text-right' : 'text-left'}`}>
-                        <h4 className="font-medium text-lg mb-6">{t.pagesTitle}</h4>
-                        <ul className="flex flex-col gap-4 text-[15px] text-gray-400">
-                            <li><Link href="/" className="hover:text-white transition-colors">{t.home}</Link></li>
-                            <li><Link href="/about" className="hover:text-white transition-colors">{t.about}</Link></li>
-                            <li><Link href="/products" className="hover:text-white transition-colors">{t.products}</Link></li>
-                            <li><Link href="/contact" className="hover:text-white transition-colors">{t.contact}</Link></li>
-                        </ul>
+                    {/* Column 2 & 3: Pages & Categories - stacked on sm, side by side on lg */}
+                    <div className="sm:col-span-1 lg:col-span-4 sm:flex-col lg:flex-row flex gap-8">
+                        <div className={`flex-1 ${isArabic ? 'text-right' : 'text-left'}`}>
+                            <h4 className="font-medium text-lg mb-6">{t.pagesTitle}</h4>
+                            <ul className="flex flex-col gap-4 text-[15px] text-gray-400">
+                                <li><Link href="/" className="hover:text-white transition-colors">{t.home}</Link></li>
+                                <li><Link href="/about" className="hover:text-white transition-colors">{t.about}</Link></li>
+                                <li><Link href="/products" className="hover:text-white transition-colors">{t.products}</Link></li>
+                                <li><Link href="/contact" className="hover:text-white transition-colors">{t.contact}</Link></li>
+                            </ul>
+                        </div>
+
+                        <div className={`flex-1 ${isArabic ? 'text-right' : 'text-left'}`}>
+                            <h4 className="font-medium text-lg mb-6">{t.categoriesTitle}</h4>
+                            <ul className="flex flex-col gap-4 text-[15px] text-gray-400">
+                                <li><Link href="/products?category=KETCHUP" className="hover:text-white transition-colors">{tCat.ketchup}</Link></li>
+                                <li><Link href="/products?category=FRENCH+FRIES" className="hover:text-white transition-colors">{tCards.frenchFriesTitle}</Link></li>
+                                <li><Link href="/products?category=VINEGAR" className="hover:text-white transition-colors">{tCat.vinegar}</Link></li>
+                                <li><Link href="/products?category=PICKLES" className="hover:text-white transition-colors">{tCards.frozenItemsTitle}</Link></li>
+                                <li><Link href="/products?category=PICKLES" className="hover:text-white transition-colors">{tCat.pickles}</Link></li>
+                                <li><Link href="/products?category=SAUCES+%26+DRESSING" className="hover:text-white transition-colors">{tCards.seasoningsTitle}</Link></li>
+                                <li><Link href="/products?category=SAUCES+%26+DRESSING" className="hover:text-white transition-colors">{tCat.sauces}</Link></li>
+                                <li><Link href="/products?category=OILS" className="hover:text-white transition-colors">{tCat.oils}</Link></li>
+                            </ul>
+                        </div>
                     </div>
 
-                    {/* Column 3: Categories (Span 2 cols) */}
-                    <div className={`lg:col-span-2 ${isArabic ? 'text-right' : 'text-left'}`}>
-                        <h4 className="font-medium text-lg mb-6">{t.categoriesTitle}</h4>
-                        <ul className="grid grid-cols-1 sm:grid-cols-1 gap-y-4 gap-x-4 text-[15px] text-gray-400">
-                            <li><Link href="/products?category=KETCHUP" className="hover:text-white transition-colors">{tCat.ketchup}</Link></li>
-                            <li><Link href="/products?category=FRENCH+FRIES" className="hover:text-white transition-colors">{tCards.frenchFriesTitle}</Link></li>
-                            <li><Link href="/products?category=VINEGAR" className="hover:text-white transition-colors">{tCat.vinegar}</Link></li>
-                            <li><Link href="/products?category=PICKLES" className="hover:text-white transition-colors">{tCards.frozenItemsTitle}</Link></li>
-                            <li><Link href="/products?category=PICKLES" className="hover:text-white transition-colors">{tCat.pickles}</Link></li>
-                            <li><Link href="/products?category=SAUCES+%26+DRESSING" className="hover:text-white transition-colors">{tCards.seasoningsTitle}</Link></li>
-                            <li><Link href="/products?category=SAUCES+%26+DRESSING" className="hover:text-white transition-colors">{tCat.sauces}</Link></li>
-                            <li><Link href="/products?category=OILS" className="hover:text-white transition-colors">{tCat.oils}</Link></li>
-                        </ul>
-                    </div>
-
-                    {/* Column 4: Our Contacts (Span 3 cols) */}
-                    <div className={`lg:col-span-2 ${isArabic ? 'text-right' : 'text-left'}`}>
+                    {/* Column 4: Our Contacts */}
+                    <div className={`sm:col-span-1 lg:col-span-2 sm:text-right sm:-translate-y-50 ${isArabic ? 'text-right' : 'text-left'}`}>
                         <h4 className="font-medium text-lg mb-6">{t.contactsTitle}</h4>
                         <ul className="flex flex-col gap-4 text-[15px] text-gray-400 mb-6">
                             <li>
@@ -115,7 +116,7 @@ export default function Footer() {
                         </ul>
 
                         {/* Social Icons */}
-                        <div className={`flex gap-4 mb-6 ${isArabic ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`flex gap-4 mb-6 sm:justify-end ${isArabic ? 'justify-end' : 'justify-start'}`}>
                             <Link href="#" className={cn('bg-white text-black p-1.5 rounded-sm hover:opacity-80 transition-opacity')}>
                                 <TwitterIcon size={16} />
                             </Link>
@@ -164,7 +165,7 @@ export default function Footer() {
                     </div>
 
                     {/* Gradient Text */}
-                    <h1 className={`font-heading text-[16vw] font-lg uppercase tracking-normal leading-none select-none text-transparent bg-clip-text bg-linear-to-b from-white via-white/25 to-black w-full text-center scale-y-100 transform origin-bottom pb-4 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
+                    <h1 className={`font-heading text-[15vw] font-lg uppercase tracking-normal leading-none select-none text-transparent bg-clip-text bg-linear-to-b from-white via-white/25 to-black w-full text-center scale-y-100 transform origin-bottom pb-4 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                         {isArabic ? translations.ar.hero.firstName + ' ' + translations.ar.hero.lastName : 'Abdullah Bakheet'}
                     </h1>
                 </div>
