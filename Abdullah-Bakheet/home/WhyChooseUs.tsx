@@ -63,10 +63,11 @@ export default function WhyChooseUs() {
                     </div>
 
                     <Link
-                        href="/about"
+                        href="/Abdullah%20Bakheet%20Revised%20Catalog.pdf"
+                        target="_blank"
                         className="hidden lg:flex bg-[#1a2b25] text-white px-8 py-4 items-center justify-center w-fit hover:bg-black transition-colors group mt-auto"
                     >
-                        <span className="text-sm md:text-base font-semibold mr-3 uppercase tracking-wide">{t.knowMore}</span>
+                        <span className="text-sm md:text-base font-semibold mr-3 uppercase tracking-wide">VIEW CATALOG</span>
                         <ArrowUpRightIcon
                             size={20}
                             className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
@@ -130,10 +131,11 @@ export default function WhyChooseUs() {
                     </div>
 
                     <Link
-                        href="/about"
+                        href="/Abdullah%20Bakheet%20Revised%20Catalog.pdf"
+                        target="_blank"
                         className="bg-[#1a2b25] text-white px-8 py-4 flex items-center justify-center w-fit hover:bg-black transition-colors group"
                     >
-                        <span className="text-sm md:text-base font-semibold mr-3 uppercase tracking-wide">{t.knowMore}</span>
+                        <span className="text-sm md:text-base font-semibold mr-3 uppercase tracking-wide">VIEW CATALOG</span>
                         <ArrowUpRightIcon
                             size={20}
                             className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"

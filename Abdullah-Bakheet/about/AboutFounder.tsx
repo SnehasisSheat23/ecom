@@ -22,7 +22,7 @@ export default function AboutFounder() {
                 </div>
 
                 {/* Content Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 w-full items-stretch">
+                <div className="grid grid-cols-1 lg:grid-cols-1 gap-10 lg:gap-16 w-full items-stretch">
 
                     {/* Left Column: Quote Box */}
                     <div className="relative bg-white p-8 md:p-12 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] flex flex-col justify-center">
@@ -34,7 +34,7 @@ export default function AboutFounder() {
                             </svg>
                         </div>
 
-                        <p className={`text-[14px] md:text-[16px] text-gray-700 leading-relaxed font-medium relative z-10 mt-4 mb-4 ${isArabic ? 'text-right' : 'text-justify'}`}>
+                        <p className={`text-[16px] md:text-[20px] text-gray-700 leading-relaxed font-medium relative z-10 mt-4 mb-4 ${isArabic ? 'text-right' : 'text-justify'}`}>
                             {isArabic ? (
                                 <>في شركة <strong className="text-black font-bold uppercase">عبدالله بخيت للتجارة</strong>، تتجاوز مهمتنا مجرد توفير المنتجات الغذائية الفاخرة—نحن هنا لبناء شراكات مستدامة والارتقاء بقطاع الضيافة والتجزئة بالمملكة. بدأت رؤيتنا لسد الفجوة بين المصنعين العالميين والسوق المحلي، وتقديم منتجات عالية الجودة مدعومة بسلسلة توريد مبردة ولوجستيات موثوقة. نحن نؤمن بأن الثقة والالتزام بالجودة هما أساس كل نجاح، ونعمل باستمرار على تطوير خدماتنا لضمان تقديم التميز والدعم الكامل لجميع شركائنا في مختلف أنحاء المملكة.</>
                             ) : (
@@ -51,13 +51,13 @@ export default function AboutFounder() {
                     </div>
 
                     {/* Right Column: Founder Image */}
-                    <div className="w-full h-[400px] md:h-[400px] lg:h-[450px] bg-gray-100 overflow-hidden relative shadow-sm">
-                        <img
-                            src="/images/b22054ac3fcf29a0776a645093bbda2fc2666665.jpg"
-                            alt={isArabic ? 'مؤسسنا' : 'Our Founder'}
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 object-top"
-                        />
-                    </div>
+                    {/*<div className="w-full h-[400px] md:h-[400px] lg:h-[450px] bg-gray-100 overflow-hidden relative shadow-sm">*/}
+                    {/*    <img*/}
+                    {/*        src="/images/b22054ac3fcf29a0776a645093bbda2fc2666665.jpg"*/}
+                    {/*        alt={isArabic ? 'مؤسسنا' : 'Our Founder'}*/}
+                    {/*        className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 object-top"*/}
+                    {/*    />*/}
+                    {/*</div>*/}
 
                 </div>
             </div>

@@ -86,8 +86,8 @@ export default function AboutHero() {
                         {/* Middle Banner: ABOUT US */}
                         <div className="w-full flex h-[100px] md:h-[170px] items-stretch gap-4 md:gap-6 overflow-hidden">
                             {/* Yellow BUY ONE Box */}
-                            <div className="flex-1 flex items-center px-6 md:p-10 ">
-                                <h2 className={`font-heading text-6xl md:text-[129px] pt-6 uppercase text-[#1a2b25] leading-none tracking-normal transform scale-y-110 origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
+                            <div className="flex-1 flex items-center px-6 md:p-0 ">
+                                <h2 className={`font-heading text-6xl md:text-[150px] pt-6 uppercase text-[#1a2b25] leading-none tracking-normal transform scale-y-110 origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                                     {isArabic ? 'من نحن :' : 'ABOUT US :'}
                                 </h2>
                             </div>
