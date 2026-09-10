@@ -96,7 +96,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
                 style={contentReady ? undefined : { opacity: 0, pointerEvents: 'none' }}
             >
                 <Header />
-                <main className="flex-1 w-full max-w-7xl mx-auto flex flex-col bg-brand-gray">
+                <main className="flex-1 w-full flex flex-col bg-brand-gray">
                     {children}
                 </main>
                 <Footer />

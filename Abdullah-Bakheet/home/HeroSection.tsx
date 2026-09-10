@@ -1,6 +1,8 @@
-"use client"
+"use client";
+
+import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpRightIcon, FacebookIcon, InstagramIcon, TwitterIcon } from 'lucide-animated';
+import { ArrowUpRightIcon } from 'lucide-animated';
 import { useShop } from '@/context/ShopContext';
 import { translations } from '@/lib/translations';
 
@@ -9,126 +11,190 @@ export default function HeroSection() {
     const isArabic = language.startsWith('Arabic');
     const t = isArabic ? translations.ar.hero : translations.en.hero;
 
+    const mediaWrapperRef = useRef<HTMLDivElement>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const starburstRef = useRef<HTMLDivElement>(null);
+
+    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
+    // 1. Smooth Autoplay across all browsers & devices, starting at 16 seconds
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const startAt16 = () => {
+            if (video.currentTime < 16) {
+                video.currentTime = 16;
+            }
+            video.play().catch(() => {
+                video.muted = true;
+                video.play().catch(() => {});
+            });
+        };
+
+        const handlePlaying = () => {
+            setIsVideoPlaying(true);
+        };
+
+        video.addEventListener('playing', handlePlaying);
+
+        if (video.readyState >= 1) {
+            startAt16();
+        } else {
+            video.addEventListener('loadedmetadata', startAt16, { once: true });
+        }
+
+        return () => {
+            video.removeEventListener('playing', handlePlaying);
+        };
+    }, []);
+
+    // 2. High-performance, 60fps/120fps hardware-accelerated smooth parallax effect
+    useEffect(() => {
+        let ticking = false;
+
+        const onScroll = () => {
+            if (!ticking) {
+                window.requestAnimationFrame(() => {
+                    const scrollY = window.scrollY;
+                    const vh = window.innerHeight || 800;
+
+                    // Only compute while hero is partially or fully visible
+                    if (scrollY <= vh * 1.4) {
+                        // Background media parallax: subtle vertical translation without artificial zoom
+                        if (mediaWrapperRef.current) {
+                            mediaWrapperRef.current.style.transform = `translate3d(0, ${scrollY * 0.22}px, 0)`;
+                        }
+
+                        // Brand Title parallax & fade: moves smoothly at 0.42x speed and fades out
+                        if (contentRef.current) {
+                            const fadeProgress = Math.min(scrollY / (vh * 0.75), 1);
+                            contentRef.current.style.transform = `translate3d(0, ${scrollY * 0.42}px, 0)`;
+                            contentRef.current.style.opacity = `${Math.max(0, 1 - fadeProgress * 1.2)}`;
+                        }
+
+                        // Signature gold starburst rotates gently with scroll motion
+                        if (starburstRef.current) {
+                            starburstRef.current.style.transform = `rotate(${scrollY * 0.12}deg)`;
+                        }
+                    }
+
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        };
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, []);
+
     return (
-        <section className="w-full bg-brand-gray text-black py-16 md:py-15 font-sans overflow-hidden">
-            <div className="max-w-[1300px] mx-auto px-4 md:px-8 flex flex-col lg:flex-row items-stretch gap-12 lg:gap-16">
+        <section className="relative w-full h-screen min-h-[100dvh] flex flex-col justify-end overflow-hidden select-none font-sans text-white px-5 sm:px-10 md:px-14 lg:px-16 pb-8 sm:pb-14 md:pb-20 bg-[#050807]">
 
-                {/* Left Column: Typography & Content */}
-                <div className="w-full lg:w-1/2 flex flex-col relative pt-0">
+            {/* 1. SEAMLESS FULL-VIEWPORT 4K DRONE VIDEO BACKGROUND (NATURAL SCALE / NO ARTIFICIAL ZOOM) */}
+            <div
+                ref={mediaWrapperRef}
+                className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 bg-[#050807] will-change-transform"
+            >
+                {/* Instant High-Res Poster Layer to eliminate any layout pop or perspective jump */}
+                <img
+                    src="/images/hero_poster.jpg"
+                    alt=""
+                    aria-hidden="true"
+                    className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-700 ease-out will-change-transform ${
+                        isVideoPlaying ? 'opacity-0' : 'opacity-100'
+                    }`}
+                />
 
-                    {/* Top Decorative accents */}
-                    <div className="absolute -top-2 left-6 text-[#1a2b25] z-10 hidden md:block">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 7l-2-4"/><path d="M11 8V3"/></svg>
-                    </div>
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="auto"
+                    controls={false}
+                    controlsList="nodownload nofullscreen noremoteplayback"
+                    disablePictureInPicture
+                    className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-700 ease-in will-change-transform ${
+                        isVideoPlaying ? 'opacity-100' : 'opacity-0'
+                    }`}
+                >
+                    <source src="/videos/riyadh_drone_hero.mp4#t=16" type="video/mp4" />
+                </video>
 
-                    {/* Main Title */}
-                    <div className="font-heading flex flex-col relative z-20 mb-8 md:mb-12">
-                        <h1 className={`text-[30vw] md:text-[110px] lg:text-[120px] xl:text-[190px] font-lg uppercase text-[#1a2b25] leading-[1] tracking-normal scale-y-110 transform origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
+                {/* Subtle uniform tint for readability without harsh dark bars or vignettes */}
+                <div className="absolute inset-0 bg-black/25" />
+            </div>
+
+            {/* 2. BOTTOM HERO BAR: LEFT BRAND TEXT & RIGHT EXPLORE PRODUCTS BUTTON */}
+            <div
+                ref={contentRef}
+                className="relative z-10 w-full flex flex-col md:flex-row items-start md:items-end justify-between gap-5 sm:gap-6 will-change-transform"
+            >
+                {/* Left Bottom: Brand Title & Subtle One-Liner */}
+                <div className="flex flex-col items-start text-left">
+                    <div className="font-heading flex flex-col items-start justify-center">
+                        <h1
+                            className={`text-[23vw] sm:text-[90px] md:text-[110px] lg:text-[130px] font-normal uppercase text-white leading-[0.82] tracking-tight scale-y-110 transform origin-bottom drop-shadow-[0_12px_40px_rgba(0,0,0,0.95)] ${
+                                isArabic ? 'font-sans font-black tracking-tight scale-y-100 text-[18vw] sm:text-[80px] lg:text-[100px]' : ''
+                            }`}
+                        >
                             {t.firstName}
                         </h1>
-                        <div className="flex items-center">
-                            <h1 className={`text-[30vw] md:text-[110px] lg:text-[120px] xl:text-[190px] font-lg uppercase text-[#1a2b25] leading-[1] tracking-normal scale-y-110 transform origin-bottom relative ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
+
+                        <div className="flex items-center justify-start gap-2.5 sm:gap-6">
+                            <h1
+                                className={`text-[23vw] sm:text-[90px] md:text-[110px] lg:text-[130px] font-normal uppercase text-white leading-[0.82] tracking-tight scale-y-110 transform origin-bottom relative drop-shadow-[0_12px_40px_rgba(0,0,0,0.95)] ${
+                                    isArabic ? 'font-sans font-black tracking-tight scale-y-100 text-[18vw] sm:text-[80px] lg:text-[100px]' : ''
+                                }`}
+                            >
                                 {t.lastName}
-                                {/* Right Decorative accent */}
-                                <div className="absolute -top-6 right-0 text-[#1a2b25] hidden md:block">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 7l2-4"/><path d="M13 8V3"/></svg>
-                                </div>
                             </h1>
-                            {/* Starburst Graphic */}
-                            <div className="ml-2 md:ml-8 mt-2 md:mt-8 text-[#1a2b25]">
-                                <svg className="w-[90px] h-[90px] md:w-[119px] md:h-[122px]" viewBox="0 0 119 122" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M61 0L62.9615 56.2662L104.133 17.8667L65.7349 59.0396L122 61L65.7338 62.9615L104.133 104.133L62.9615 65.7349L61 122L59.0396 65.7338L17.8667 104.133L56.2651 62.9615L0 61L56.2662 59.0396L17.8667 17.8667L59.0396 56.2651L61 0Z" fill="#1F312E"/>
+
+                            {/* Signature Polished Gold Starburst */}
+                            <div
+                                ref={starburstRef}
+                                className="text-amber-400 filter drop-shadow-[0_0_25px_rgba(251,191,36,0.7)] shrink-0 transition-transform duration-100 will-change-transform"
+                            >
+                                <svg
+                                    className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16"
+                                    viewBox="0 0 119 122"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                >
+                                    <path
+                                        d="M61 0L62.9615 56.2662L104.133 17.8667L65.7349 59.0396L122 61L65.7338 62.9615L104.133 104.133L62.9615 65.7349L61 122L59.0396 65.7338L17.8667 104.133L56.2651 62.9615L0 61L56.2662 59.0396L17.8667 17.8667L59.0396 56.2651L61 0Z"
+                                        fill="currentColor"
+                                    />
                                 </svg>
                             </div>
                         </div>
                     </div>
 
-                    {/* Bottom Left Content (Icons + Text) */}
-                    <div className="flex mt-4 flex-1">
-
-                        {/* Social Icons & Line Column */}
-                        <div className="w-[60px] md:w-[80px] flex flex-col items-center flex-shrink-0 relative">
-                            {/* Dark Circle with Arrow */}
-                            <div className="w-12 h-12 md:w-16 md:h-16 bg-[#1a2b25] rounded-full flex items-center justify-center text-white mb-6 md:mb-8 relative z-20">
-                                <img src="/images/homearrow.png" alt="arrow" className="w-10 h-10 md:w-13 md:h-13 rotate-0" />
-                            </div>
-
-                            {/* Social Icons Container */}
-                            <div className="flex flex-col gap-4 md:gap-5 items-center bg-brand-gray z-10 pb-4 pt-2">
-                                <Link href="#" className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-70 transition-opacity">
-                                    <div className="bg-[#1a2b25] text-white p-1 md:p-1.5 rounded-sm">
-                                        <TwitterIcon size={14}  />
-                                    </div>
-                                </Link>
-                                <Link href="#" className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-70 transition-opacity text-[#1a2b25]">
-                                    <div className="border-[1.5px] border-[#1a2b25] p-1 rounded-md">
-                                        <InstagramIcon size={14}  />
-                                    </div>
-                                </Link>
-                                <Link href="#" className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-70 transition-opacity text-[#1a2b25]">
-                                    <div className="bg-[#1a2b25] text-white p-1.5 rounded-full flex items-center justify-center">
-                                        <FacebookIcon size={15}  />
-                                    </div>
-                                </Link>
-                            </div>
-
-                            {/* Connecting Vertical Line */}
-                            <div className="w-[2px] bg-black absolute top-16 md:top-50 -bottom-4 left-1/2 -translate-x-1/2 z-0"></div>
-                        </div>
-
-                        {/* Text Content */}
-                        <div className="flex-1 pl-4 md:pl-8 flex flex-col pt-2 pb-8">
-                            <h2 className={`text-lg md:text-[22px] lg:text-[26px] font-bold text-black uppercase leading-snug tracking-wide mb-4 max-w-md ${isArabic ? 'text-right' : 'text-left'}`}>
-                                {t.tagline}
-                            </h2>
-                            <p className={`text-[13px] md:text-[15px] text-gray-600 leading-relaxed mb-8 max-w-md font-medium ${isArabic ? 'text-right' : 'text-justify'}`}>
-                                {t.description}
-                            </p>
-
-                            <Link
-                                href="/about"
-                                className="inline-flex items-center gap-2 border-b-2 border-black pb-1 text-sm md:text-base font-semibold hover:opacity-60 transition-opacity self-start tracking-wide group"
-                            >
-                                {t.knowMore} <ArrowUpRightIcon size={18} className="text-black group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                            </Link>
-                        </div>
-
-                    </div>
+                    {/* Subtle One-Liner (Left-aligned, No Uppercase, Soft & Understated) */}
+                    <p className="text-sm sm:text-base font-light tracking-wide text-white/80 drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] mt-2.5 sm:mt-4 text-left max-w-lg">
+                        {t.tagline}
+                    </p>
                 </div>
 
-                {/* Right Column: Image Collage */}
-                <div className="w-full lg:w-1/2 grid grid-cols-2 gap-3 h-[400px] md:h-[500px] lg:h-[700px]">
-
-                    {/* Top Left Image */}
-                    <div className="col-span-1 h-full w-full bg-gray-100 overflow-hidden relative shadow-xs">
-                        <img
-                            src="/images/riyadh_hero_3.webp"
-                            alt={t.imgAlt1}
-                            className="w-full h-full object-cover object-[center_15%] hover:scale-105 transition-transform duration-700"
+                {/* Right Bottom: Explore Products Button */}
+                <div className="shrink-0 pt-2 sm:pt-0 pb-1 sm:pb-2">
+                    <Link
+                        href="/products"
+                        className="group inline-flex items-center gap-2.5 bg-white text-[#0a1713] px-6 sm:px-8 py-3 sm:py-3.5 rounded-full text-xs sm:text-sm font-semibold hover:bg-emerald-400 hover:text-black transition-all shadow-[0_4px_24px_rgba(0,0,0,0.4)] hover:shadow-[0_0_35px_rgba(16,185,129,0.5)] transform hover:-translate-y-0.5 backdrop-blur-xs"
+                    >
+                        <span>{isArabic ? 'استكشف المنتجات' : 'Explore Products'}</span>
+                        <ArrowUpRightIcon
+                            size={16}
+                            className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
                         />
-                    </div>
-
-                    {/* Top Right Image */}
-                    <div className="col-span-1 h-full w-full bg-gray-100 overflow-hidden relative shadow-xs">
-                        <img
-                            src="/images/riyadh_hero_2.webp"
-                            alt={t.imgAlt2}
-                            className="w-full h-full object-cover object-[center_20%] hover:scale-105 transition-transform duration-700"
-                        />
-                    </div>
-
-                    {/* Bottom Full-width Image */}
-                    <div className="col-span-2 h-full w-full bg-gray-100 overflow-hidden relative shadow-xs">
-                        <img
-                            src="/images/riyadh_hero_1.webp"
-                            alt={t.imgAlt3}
-                            className="w-full h-full object-cover object-[center_20%] hover:scale-105 transition-transform duration-700"
-                        />
-                    </div>
-
+                    </Link>
                 </div>
-
             </div>
+
         </section>
     );
 }

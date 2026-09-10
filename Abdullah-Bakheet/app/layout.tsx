@@ -29,6 +29,9 @@ export default function RootLayout({
 }>) {
   return (
       <html lang="en" suppressHydrationWarning={true}>
+      <head>
+        <link rel="preload" as="image" href="/images/hero_poster.jpg" fetchPriority="high" />
+      </head>
       <body className={cn(outfit.variable, fiorello.variable, 'font-sans bg-brand-gray min-h-screen flex flex-col')}>
       <ShopProvider>
         <LayoutWrapper>

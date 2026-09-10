@@ -39,3 +39,35 @@ body {
 .font-heading {
   font-family: var(--font-heading);
 }
+
+@keyframes cinematicZoom {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-cinematic-zoom {
+  animation: cinematicZoom 25s ease-in-out infinite alternate;
+}
+
+/* Hide native browser play buttons, overlays, and status indicators on hero background videos */
+video::-webkit-media-controls {
+  display: none !important;
+}
+video::-webkit-media-controls-enclosure {
+  display: none !important;
+}
+video::-webkit-media-controls-play-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
+video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none;
+}

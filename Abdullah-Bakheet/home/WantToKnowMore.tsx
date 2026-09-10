@@ -35,14 +35,14 @@ export default function WantToKnowMore() {
                 <div className="flex flex-col lg:flex-row items-center lg:items-start gap-10 lg:gap-16">
 
                     {/* Left: Product Image */}
-                    <div className="w-full lg:w-[55%] bg-none flex items-center justify-center p-4">
-                        <div className="relative w-120 max-w-2xl h-[240px] md:h-[300px] lg:h-[360px]">
+                    <div className="w-full lg:w-[55%] bg-none flex items-center justify-center p-0 md:p-2">
+                        <div className="relative w-full max-w-2xl h-[280px] md:h-[360px] lg:h-[420px] overflow-hidden rounded-none">
                             <Image
-                                src="/images/map.webp"
-                                alt={isArabic ? "خريطة المملكة" : "Map of Saudi Arabia"}
+                                src="/images/food_supply_warehouse_logistics.jpg"
+                                alt={isArabic ? "مركز التوزيع اللوجستي للأغذية" : "Food supply and logistics distribution center"}
                                 fill
                                 sizes="(min-width: 1024px) 55vw, 100vw"
-                                className="object-cover object-center shadow-none hover:scale-[1.02] transition-transform duration-500"
+                                className="object-cover object-center hover:scale-[1.02] transition-transform duration-700"
                             />
                         </div>
                     </div>

@@ -171,28 +171,14 @@ export default function ProductListing() {
     }, [products, activeCategory, priceRange, onSaleOnly, inStockOnly]);
 
     return (
-        <section className="w-full bg-brand-gray py-16 font-sans">
+        <section className="w-full bg-brand-gray pt-6 md:pt-10 pb-16 font-sans">
             <div className="max-w-[1300px] mx-auto px-4 md:px-8">
 
                 {/* Header Section */}
-                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-16">
-                    <div className="w-full lg:w-[55%]">
-                        <h2 className={`font-heading text-[12vw] md:text-[70px] lg:text-[92px] uppercase text-black leading-[1] tracking-normal scale-y-110 transform origin-bottom flex flex-wrap items-center gap-x-4 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
-                            {isArabic ? 'منتجاتنا' : 'OUR'}
-                            <span className="px-4 pt-1">{isArabic ? 'المميزة' : 'PRODUCTS'}</span>
-                            {isArabic ? 'التي تجعلنا نختلف دائمًا' : 'THAT MAKES US DIFFERENT'}
-                        </h2>
-                    </div>
-
-                    <div className="w-full lg:w-[40%]">
-                        <p className={`text-[13px] md:text-[14px] text-gray-600 leading-relaxed font-medium ${isArabic ? 'text-right' : 'text-justify'}`}>
-                            {isArabic ? (
-                                <>الشراكات القوية هي جوهر كل ما نقوم به. لقد كسبنا ثقة أرقى المطاعم والفنادق وشركات الإعاشة والموزعين في المملكة العربية السعودية من خلال توريد منتجات غذائية فاخرة مدعومة بخدمة مخصصة وموثوقة. التزامنا بالتميز لا يعرف حدودًا.</>
-                            ) : (
-                                <>Strong partnerships are at the heart of everything we do. We&#39;ve earned the lasting trust of Saudi Arabia&#39;s finest restaurants, hotels, caterers, and distributors by providing premium food supplies paired with dedicated, reliable service. Our commitment to excellence knows no borders. By partnering exclusively with world-class international brands, Abdullah Bakheet brings the globe&#39;s finest ingredients directly to Saudi Arabia.</>
-                            )}
-                        </p>
-                    </div>
+                <div className="mb-6 md:mb-8">
+                    <h2 className={`font-heading text-[10vw] md:text-[60px] lg:text-[76px] uppercase text-black leading-[1] tracking-normal scale-y-110 transform origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100 text-right' : 'text-left'}`}>
+                        {isArabic ? 'منتجاتنا' : 'OUR PRODUCTS'}
+                    </h2>
                 </div>
 
                 {/* Main Content Layout */}
@@ -200,13 +186,6 @@ export default function ProductListing() {
 
                     {/* Left Sidebar Filters */}
                     <aside className="w-full lg:w-[320px] flex-shrink-0 h-fit bg-[#fefefe] shadow-[0_0_20px_-10px_rgba(0,0,0,0.05)] border border-gray-100/50 p-6 md:p-8 rounded-sm lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
-
-                        {/* Filter Header */}
-                        <div className="py-3 px-5 mb-10 inline-block w-full">
-                            <h3 className={`font-heading text-5xl uppercase text-center text-[#1a2b25] tracking-normal transform scale-y-110 origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
-                                {isArabic ? 'تصفية المنتجات' : 'Product Filter'}
-                            </h3>
-                        </div>
 
                         {/* Pricing Filter */}
                         <div className="mb-10">
