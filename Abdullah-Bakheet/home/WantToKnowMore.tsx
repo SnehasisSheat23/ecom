@@ -15,12 +15,12 @@ export default function WantToKnowMore() {
             <div className="max-w-[1300px] mx-auto px-4 md:px-8 flex flex-col">
 
                 {/* Top Header Row */}
-                <div className="font-heading flex flex-wrap items-center justify-center lg:justify-start gap-x-3 md:gap-x-6 gap-y-2 mb-12 md:mb-16">
+                <div className="font-heading flex flex-wrap items-center justify-center gap-x-3 md:gap-x-6 gap-y-2 mb-12 md:mb-16">
                     <h2 className={`text-[12vw] md:text-[90px] lg:text-[110px] font-normal uppercase text-[#1a2b25] leading-[1] tracking-wide scale-y-110 transform origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                         {t.wantTo}
                     </h2>
 
-                    <div className="px-3 md:px-6 pt-5 pb-1 flex items-center justify-center">
+                    <div className="px-3 md:px-6 pt-0 pb-1 flex items-center justify-center">
                         <h2 className={`text-[12vw] md:text-[90px] lg:text-[110px] font-normal uppercase text-[#1a2b25] leading-[1] tracking-wide scale-y-110 transform origin-bottom ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                             {t.know}
                         </h2>
