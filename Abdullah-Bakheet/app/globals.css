@@ -55,3 +55,19 @@ body {
 .animate-cinematic-zoom {
   animation: cinematicZoom 25s ease-in-out infinite alternate;
 }
+
+/* Hide native browser play buttons, overlays, and status indicators on hero background videos */
+video::-webkit-media-controls {
+  display: none !important;
+}
+video::-webkit-media-controls-enclosure {
+  display: none !important;
+}
+video::-webkit-media-controls-play-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
+video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none;
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpRightIcon } from 'lucide-animated';
 import { useShop } from '@/context/ShopContext';
@@ -11,9 +11,12 @@ export default function HeroSection() {
     const isArabic = language.startsWith('Arabic');
     const t = isArabic ? translations.ar.hero : translations.en.hero;
 
+    const mediaWrapperRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const starburstRef = useRef<HTMLDivElement>(null);
+
+    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
     // 1. Smooth Autoplay across all browsers & devices, starting at 16 seconds
     useEffect(() => {
@@ -30,11 +33,21 @@ export default function HeroSection() {
             });
         };
 
+        const handlePlaying = () => {
+            setIsVideoPlaying(true);
+        };
+
+        video.addEventListener('playing', handlePlaying);
+
         if (video.readyState >= 1) {
             startAt16();
         } else {
             video.addEventListener('loadedmetadata', startAt16, { once: true });
         }
+
+        return () => {
+            video.removeEventListener('playing', handlePlaying);
+        };
     }, []);
 
     // 2. High-performance, 60fps/120fps hardware-accelerated smooth parallax effect
@@ -49,9 +62,9 @@ export default function HeroSection() {
 
                     // Only compute while hero is partially or fully visible
                     if (scrollY <= vh * 1.4) {
-                        // Background video parallax: subtle vertical translation without artificial zoom
-                        if (videoRef.current) {
-                            videoRef.current.style.transform = `translate3d(0, ${scrollY * 0.22}px, 0)`;
+                        // Background media parallax: subtle vertical translation without artificial zoom
+                        if (mediaWrapperRef.current) {
+                            mediaWrapperRef.current.style.transform = `translate3d(0, ${scrollY * 0.22}px, 0)`;
                         }
 
                         // Brand Title parallax & fade: moves smoothly at 0.42x speed and fades out
@@ -78,10 +91,23 @@ export default function HeroSection() {
     }, []);
 
     return (
-        <section className="relative w-full h-screen min-h-[100dvh] flex flex-col justify-end overflow-hidden select-none font-sans text-white px-5 sm:px-10 md:px-14 lg:px-16 pb-8 sm:pb-14 md:pb-20">
+        <section className="relative w-full h-screen min-h-[100dvh] flex flex-col justify-end overflow-hidden select-none font-sans text-white px-5 sm:px-10 md:px-14 lg:px-16 pb-8 sm:pb-14 md:pb-20 bg-[#050807]">
 
             {/* 1. SEAMLESS FULL-VIEWPORT 4K DRONE VIDEO BACKGROUND (NATURAL SCALE / NO ARTIFICIAL ZOOM) */}
-            <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
+            <div
+                ref={mediaWrapperRef}
+                className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 bg-[#050807] will-change-transform"
+            >
+                {/* Instant High-Res Poster Layer to eliminate any layout pop or perspective jump */}
+                <img
+                    src="/images/hero_poster.jpg"
+                    alt=""
+                    aria-hidden="true"
+                    className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-700 ease-out will-change-transform ${
+                        isVideoPlaying ? 'opacity-0' : 'opacity-100'
+                    }`}
+                />
+
                 <video
                     ref={videoRef}
                     autoPlay
@@ -89,8 +115,12 @@ export default function HeroSection() {
                     loop
                     playsInline
                     preload="auto"
-                    poster="/images/hero_poster.jpg"
-                    className="absolute inset-0 w-full h-full object-cover object-center will-change-transform"
+                    controls={false}
+                    controlsList="nodownload nofullscreen noremoteplayback"
+                    disablePictureInPicture
+                    className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-700 ease-in will-change-transform ${
+                        isVideoPlaying ? 'opacity-100' : 'opacity-0'
+                    }`}
                 >
                     <source src="/videos/riyadh_drone_hero.mp4#t=16" type="video/mp4" />
                 </video>
