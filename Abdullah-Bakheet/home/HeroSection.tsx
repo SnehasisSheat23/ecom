@@ -15,15 +15,25 @@ export default function HeroSection() {
     const contentRef = useRef<HTMLDivElement>(null);
     const starburstRef = useRef<HTMLDivElement>(null);
 
-    // 1. Smooth Autoplay across all browsers & devices
+    // 1. Smooth Autoplay across all browsers & devices, starting at 16 seconds
     useEffect(() => {
-        if (videoRef.current) {
-            videoRef.current.play().catch(() => {
-                if (videoRef.current) {
-                    videoRef.current.muted = true;
-                    videoRef.current.play().catch(() => {});
-                }
+        const video = videoRef.current;
+        if (!video) return;
+
+        const startAt16 = () => {
+            if (video.currentTime < 16) {
+                video.currentTime = 16;
+            }
+            video.play().catch(() => {
+                video.muted = true;
+                video.play().catch(() => {});
             });
+        };
+
+        if (video.readyState >= 1) {
+            startAt16();
+        } else {
+            video.addEventListener('loadedmetadata', startAt16, { once: true });
         }
     }, []);
 
@@ -79,9 +89,10 @@ export default function HeroSection() {
                     loop
                     playsInline
                     preload="auto"
+                    poster="/images/hero_poster.jpg"
                     className="absolute inset-0 w-full h-full object-cover object-center will-change-transform"
                 >
-                    <source src="/videos/riyadh_drone_hero.mp4" type="video/mp4" />
+                    <source src="/videos/riyadh_drone_hero.mp4#t=16" type="video/mp4" />
                 </video>
 
                 {/* Subtle uniform tint for readability without harsh dark bars or vignettes */}
