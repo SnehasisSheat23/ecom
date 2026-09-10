@@ -112,7 +112,7 @@ export const translations: Record<'en' | 'ar', HomeTranslation> = {
         hero: {
             firstName: "Abdullah",
             lastName: "Bakheet",
-            tagline: "Best Trading Company In Saudi Arabia, Riyadh",
+            tagline: "Best trading company in Saudi Arabia, Riyadh",
             description: "Established in 2004, we have built a strong reputation for providing food essentials to restaurants, hotels, caterers, and wholesalers across the Kingdom. With over two decades of industry expertise, we have cultivated long-term relationships with top international brands.",
             knowMore: "Know More",
             imgAlt1: "Riyadh Street View",

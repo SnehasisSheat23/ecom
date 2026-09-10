@@ -54,11 +54,11 @@ export default function CategoriesSection() {
 
                     {/* Left: Featured Organic Mushrooms Graphic */}
                     <div className="w-full lg:w-1/2 relative bg-gray-200 overflow-hidden h-[400px] lg:h-full group">
-                        {/* Background Image Placeholder */}
+                        {/* Background Image */}
                         <img
-                            src="/images/5a06489b13674891cd076609885d8e9807791780.png"
-                            alt="Organic Mushrooms Banner"
-                            className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
+                            src="/images/our_categories_banner.jpg"
+                            alt="Food Products Banner"
+                            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
                         />
 
                         {/* Top Left Badge */}

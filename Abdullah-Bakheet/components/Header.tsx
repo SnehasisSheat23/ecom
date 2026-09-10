@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -73,138 +73,72 @@ export default function Header() {
         return pathname.startsWith(href);
     };
 
+    const [isScrolled, setIsScrolled] = useState(false);
+    const isHome = pathname === '/';
+
+    useEffect(() => {
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 30);
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
     return (
-        <header className={cn('w-full flex flex-col font-sans sticky top-0 z-50 bg-white')}>
-            {/* Top Utility Bar - Hidden on Mobile */}
-            <div className="hidden md:block w-full bg-white border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex justify-between items-center">
-
-                    {/* Left Side: Language & Currency */}
-                    <div className="flex items-center gap-6 text-sm text-gray-800">
-                        {/* Language Selector Dropdown */}
-                        <div className="flex items-center gap-2 relative">
-                            <span className="text-gray-600">{isArabic ? 'اللغة' : 'Language'}</span>
-                            <button 
-                                onClick={() => {
-                                    setLangDropdownOpen(!langDropdownOpen);
-                                    setCurrDropdownOpen(false);
-                                }}
-                                className={cn('flex items-center gap-2 border border-gray-200 rounded-md px-3 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer')}
-                            >
-                                <EarthIcon size={16} className="text-gray-600" />
-                                <span className="font-medium">{language}</span>
-                                <ChevronDownIcon size={14} className={cn("text-gray-400 transition-transform", langDropdownOpen && "rotate-180")} />
-                            </button>
-
-                            {langDropdownOpen && (
-                                <div className="absolute top-full left-16 mt-1 w-36 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50">
-                                    {languages.map((lang) => (
-                                        <button
-                                            key={lang}
-                                            onClick={() => {
-                                                setLanguage(lang);
-                                                setLangDropdownOpen(false);
-                                            }}
-                                            className={cn(
-                                                "w-full text-left px-3 py-1.5 text-xs font-medium hover:bg-gray-50 transition-colors",
-                                                language === lang ? "text-brand-dark font-bold bg-gray-50" : "text-gray-700"
-                                            )}
-                                        >
-                                            {lang}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Currency Selector Dropdown */}
-                        <div className="flex items-center gap-2 relative">
-                            <span className="text-gray-600">{isArabic ? 'العملة' : 'Currency'}</span>
-                            <button 
-                                onClick={() => {
-                                    setCurrDropdownOpen(!currDropdownOpen);
-                                    setLangDropdownOpen(false);
-                                }}
-                                className={cn('flex items-center gap-2 border border-gray-200 rounded-md px-3 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer')}
-                            >
-                                <div className="bg-[#85b821] text-white rounded-full w-4 h-4 flex items-center justify-center">
-                                    <DollarSignIcon size={12} />
-                                </div>
-                                <span className="font-medium">{getCurrencyLabel(currency)}</span>
-                                <ChevronDownIcon size={14} className={cn("text-gray-400 transition-transform", currDropdownOpen && "rotate-180")} />
-                            </button>
-
-                            {currDropdownOpen && (
-                                <div className="absolute top-full left-16 mt-1 w-28 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50">
-                                    {currencies.map((curr) => (
-                                        <button
-                                            key={curr}
-                                            onClick={() => {
-                                                setCurrency(curr);
-                                                setCurrDropdownOpen(false);
-                                            }}
-                                            className={cn(
-                                                "w-full text-left px-3 py-1.5 text-xs font-medium hover:bg-gray-50 transition-colors",
-                                                currency === curr ? "text-brand-dark font-bold bg-gray-50" : "text-gray-700"
-                                            )}
-                                        >
-                                            {getCurrencyLabel(curr)}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Right Side: Support & Track Order */}
-                    <div className="flex items-center gap-4 text-sm">
-                        <Link
-                            href="/support"
-                            className={cn('flex items-center gap-2 border border-gray-200 rounded-md px-4 py-1.5 hover:bg-gray-50 transition-colors')}
-                        >
-                            <PhoneCallIcon size={16} className="text-gray-700" />
-                            <span className="font-medium text-gray-800">{isArabic ? 'الدعم' : 'Support'}</span>
-                        </Link>
-                        <Link
-                            href="/track-order"
-                            className={cn('flex items-center gap-2 border border-gray-200 rounded-md px-4 py-1.5 hover:bg-gray-50 transition-colors')}
-                        >
-                            <TruckIcon size={16} className="text-gray-700" />
-                            <span className="font-medium text-gray-800">{isArabic ? 'تتبع الطلب' : 'Track Order'}</span>
-                        </Link>
-                    </div>
-
-                </div>
-            </div>
-
+        <header
+            className={cn(
+                'w-full flex flex-col font-sans z-50 transition-all duration-300',
+                isHome
+                    ? 'fixed top-0 left-0'
+                    : 'sticky top-0 bg-brand-dark shadow-md',
+                isHome && isScrolled
+                    ? 'bg-brand-dark/95 backdrop-blur-md border-b border-white/10 shadow-lg'
+                    : isHome
+                    ? 'bg-transparent'
+                    : ''
+            )}
+        >
             {/* Main Navigation Bar */}
-            <nav className="w-full bg-brand-dark text-white">
-                <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex justify-between items-center">
-
-                    {/* Left Side: Navigation Links - Desktop Only */}
-                    <div className="hidden lg:flex items-center gap-1">
-                        {navLinks.map((link) => {
-                            const active = isActive(link.href);
-                            return (
-                                <Link
-                                    key={link.href}
-                                    href={link.href}
-                                    className={cn(
-                                        'flex items-center gap-2 px-4 py-2 transition-all border-b-2',
-                                        active
-                                            ? 'text-white border-b-2 border-white'
-                                            : 'text-gray-300 border-b-2 border-transparent hover:text-white hover:border-white'
-                                    )}
-                                >
-                                    <link.icon size={18} />
-                                    <span className="font-medium">{link.label}</span>
-                                </Link>
-                            );
-                        })}
+            <nav className={cn('w-full text-white', !isHome && 'bg-brand-dark')}>
+                <div className="max-w-7xl mx-auto px-4 lg:px-8 flex justify-between items-center h-14 sm:h-16">
+                    {/* Left: Navigation Links */}
+                    <div className="flex items-center gap-8 h-full">
+                        {/* Navigation Links - Desktop Only */}
+                        <div className="hidden lg:flex items-center gap-1 h-full">
+                            {navLinks.map((link) => {
+                                const active = isActive(link.href);
+                                return (
+                                    <Link
+                                        key={link.href}
+                                        href={link.href}
+                                        className={cn(
+                                            'flex items-center gap-2 px-4 h-full transition-all border-b-2 font-medium',
+                                            active
+                                                ? 'text-white border-white'
+                                                : 'text-gray-300 border-transparent hover:text-white hover:border-white/50'
+                                        )}
+                                    >
+                                        <link.icon size={18} />
+                                        <span>{link.label}</span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* Right Side: Account & Cart Icons + Mobile Menu Button */}
-                    <div className="flex items-center gap-6 ml-auto lg:ml-0">
+                    <div className="flex items-center gap-5 ml-auto lg:ml-0">
+                        {/* Quick Language Toggle */}
+                        <button
+                            onClick={() => setLanguage(isArabic ? 'English' : 'Arabic (العربية)')}
+                            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border border-white/20 hover:bg-white/10 transition-colors text-white cursor-pointer"
+                            title="Switch Language"
+                        >
+                            <EarthIcon size={14} className="text-gray-300" />
+                            <span>{isArabic ? 'EN' : 'عربي'}</span>
+                        </button>
+
                         {/* Search Icon Trigger */}
                         <button 
                             onClick={() => setIsSearchOpen(true)}
