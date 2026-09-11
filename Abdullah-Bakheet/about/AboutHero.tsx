@@ -1,5 +1,6 @@
 "use client"
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowUpRightIcon } from 'lucide-animated';
 import { useShop } from '@/context/ShopContext';
 import { translations } from '@/lib/translations';
@@ -20,10 +21,13 @@ export default function AboutHero() {
 
                         {/* Promotional Image */}
                         <div className="w-full h-[450px] md:h-[550px] bg-gray-100 overflow-hidden relative shadow-sm">
-                            <img
-                                src="/images/73619c94e697886e3611ce60e02c12ae5892e2f7.webp"
-                                alt="Global Taste You Can Trust"
-                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                            <Image
+                                src="/images/about_hero_01.webp"
+                                alt={isArabic ? "حلول غذائية وشراكات موثوقة" : "Food Solutions & Trusted Partnerships"}
+                                fill
+                                sizes="(max-width: 1024px) 100vw, 40vw"
+                                priority
+                                className="object-cover hover:scale-105 transition-transform duration-700"
                             />
                         </div>
 
@@ -59,12 +63,14 @@ export default function AboutHero() {
                         {/* Top Split Row */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                            {/* Building Image */}
+                            {/* Logistics & Delivery Image */}
                             <div className="w-full h-[300px] md:h-[350px] bg-gray-100 overflow-hidden relative shadow-sm">
-                                <img
-                                    src="/images/02565a6cbe8740f009a5ac4b027632f4d44c19d1.webp"
-                                    alt="Riyadh Centre"
-                                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                                <Image
+                                    src="/images/about_hero_02.webp"
+                                    alt={isArabic ? "أسطول التوزيع المبرد" : "Refrigerated Logistics Fleet"}
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, 30vw"
+                                    className="object-cover hover:scale-105 transition-transform duration-700"
                                 />
                             </div>
 

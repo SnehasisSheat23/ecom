@@ -1,5 +1,6 @@
 "use client"
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowUpRightIcon, InstagramIcon, YoutubeIcon, LinkedinIcon, TwitterIcon } from 'lucide-animated';
 import { cn } from '@/lib/utils';
 import { useShop } from '@/context/ShopContext';
@@ -83,12 +84,14 @@ export default function ConnectCTA() {
                         {/* Bottom Row: Image + AND TALK */}
                         <div className="flex flex-row lg:flex-row items-end lg:items-end justify-between w-full mt-8 md:mt-1 gap-4 lg:gap-0">
 
-                            {/* Product Image */}
-                            <div className="w-[150px] md:w-[350px] lg:w-[450px] h-[100px] md:h-[220px] relative bg-gray-100 overflow-hidden lg:translate-x-10 flex-shrink-0">
-                                <img
-                                    src="/images/53140adbcf2e27d7332f768e35de12328b2adba3.jpg"
-                                    alt="Mayonnaise Packets"
-                                    className="w-full h-full object-cover"
+                            {/* Meeting / Consultation Image */}
+                            <div className="w-[150px] md:w-[350px] lg:w-[450px] h-[100px] md:h-[220px] relative bg-gray-100 overflow-hidden lg:translate-x-10 flex-shrink-0 shadow-sm">
+                                <Image
+                                    src="/images/lets_connect_talk.webp"
+                                    alt={isArabic ? "لنتواصل ونتحدث" : "Let's Connect & Talk"}
+                                    fill
+                                    sizes="(max-width: 768px) 150px, (max-width: 1024px) 350px, 450px"
+                                    className="object-cover hover:scale-105 transition-transform duration-700"
                                 />
                             </div>
 

@@ -1,5 +1,6 @@
 "use client"
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowUpRightIcon } from 'lucide-animated';
 import { useShop } from '@/context/ShopContext';
 import { translations } from '@/lib/translations';
@@ -55,26 +56,30 @@ export default function AboutPrinciples() {
                             </h3>
                         </div>
 
-                        {/* Scales Image */}
-                        <div className="w-full h-[250px] lg:flex-grow bg-gray-100 overflow-hidden">
-                            <img
-                                src="/images/948f6236332983ad25e7ff28ce62bed5ac361bcf.jpg"
-                                alt="Scales of Justice"
-                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                        {/* Left Column Small Image: Image 4 */}
+                        <div className="w-full h-[250px] lg:flex-grow bg-gray-100 overflow-hidden relative shadow-sm min-h-[180px]">
+                            <Image
+                                src="/images/mission_thumb_04.webp"
+                                alt={isArabic ? "أسطول التوصيل والنقل" : "Delivery Fleet Logistics"}
+                                fill
+                                sizes="(max-width: 1024px) 50vw, 20vw"
+                                className="object-cover hover:scale-105 transition-transform duration-700"
                             />
                         </div>
                     </div>
 
-                    {/* Middle Column: Tall Floating Island Image */}
-                    <div className="lg:col-span-4 h-[400px] lg:h-auto bg-gray-100 overflow-hidden">
-                        <img
-                            src="/images/0517b4886cef67fc8979157e419d49271f57a298.jpg"
-                            alt="Floating Island Silhouette"
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                    {/* Middle Column: Main Mission Warehouse & Logistics Image */}
+                    <div className="lg:col-span-4 h-[400px] lg:h-auto min-h-[350px] bg-gray-100 overflow-hidden relative shadow-sm">
+                        <Image
+                            src="/images/mission_main.webp"
+                            alt={isArabic ? "مهمتنا في التوريد والخدمات اللوجستية" : "Our Mission - Warehouse Logistics & Fleet Supply"}
+                            fill
+                            sizes="(max-width: 1024px) 100vw, 35vw"
+                            className="object-cover hover:scale-105 transition-transform duration-700"
                         />
                     </div>
 
-                    {/* Right Column: Text Block & Small Image Grid */}
+                    {/* Right Column: Text Block & 3 Small Images Grid (Images 1, 2, 3) */}
                     <div className="lg:col-span-6 flex flex-col gap-6">
 
                         {/* Text Block */}
@@ -88,16 +93,34 @@ export default function AboutPrinciples() {
                             </p>
                         </div>
 
-                        {/* 3 Small Images Grid */}
-                        <div className="grid grid-cols-3 gap-3 md:gap-5 h-[150px] md:h-[220px]">
-                            <div className="bg-gray-100 overflow-hidden">
-                                <img src="/images/29037d4b274f867b0d5063ca5e57964ca55c5043.webp" alt="Tech Abstract" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                        {/* 3 Small Images Grid (Images 1, 2, 3) */}
+                        <div className="grid grid-cols-3 gap-3 md:gap-5 h-[150px] md:h-[200px]">
+                            <div className="bg-gray-100 overflow-hidden relative shadow-xs">
+                                <Image
+                                    src="/images/mission_thumb_01.webp"
+                                    alt={isArabic ? "فحص جودة المنتجات" : "Product Inspection"}
+                                    fill
+                                    sizes="(max-width: 640px) 33vw, 15vw"
+                                    className="object-cover hover:scale-105 transition-transform duration-700"
+                                />
                             </div>
-                            <div className="bg-gray-100 overflow-hidden">
-                                <img src="/images/483c905dd6aa754cf5be5656b97241cbd75ac4f0.webp" alt="Team Hands Stacked" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                            <div className="bg-gray-100 overflow-hidden relative shadow-xs">
+                                <Image
+                                    src="/images/mission_thumb_02.webp"
+                                    alt={isArabic ? "استشارات المطابخ والشيف" : "Culinary & Chef Consultation"}
+                                    fill
+                                    sizes="(max-width: 640px) 33vw, 15vw"
+                                    className="object-cover hover:scale-105 transition-transform duration-700"
+                                />
                             </div>
-                            <div className="bg-gray-100 overflow-hidden">
-                                <img src="/images/2898467ae139f4dc507f86d7c184878ca9d89aa9.webp" alt="Team Hands Circle" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                            <div className="bg-gray-100 overflow-hidden relative shadow-xs">
+                                <Image
+                                    src="/images/mission_thumb_03.webp"
+                                    alt={isArabic ? "اللوجستيات والتخزين المبرد" : "Cold Storage Logistics"}
+                                    fill
+                                    sizes="(max-width: 640px) 33vw, 15vw"
+                                    className="object-cover hover:scale-105 transition-transform duration-700"
+                                />
                             </div>
                         </div>
 
