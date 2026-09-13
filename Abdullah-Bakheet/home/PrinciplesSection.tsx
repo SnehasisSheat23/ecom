@@ -53,11 +53,11 @@ export default function PrinciplesSection() {
                         </div>
 
                         {/* Dark Arrow Box */}
-                        <button className="w-[120px] h-[120px] bg-[#1a2b25] rounded-xl flex items-center justify-center group hover:bg-black transition-colors shadow-md lg:translate-y-15" aria-label="Explore mission">
+                        <Link href="/about" className="w-[120px] h-[120px] bg-[#1a2b25] rounded-full flex items-center justify-center group hover:bg-black transition-colors shadow-md lg:translate-y-15 [background-image:radial-gradient(rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:8px_8px]" aria-label="Explore mission">
                             <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
                                 <ArrowRightIcon size={20} className="text-[#1a2b25] group-hover:translate-x-1 transition-transform"  />
                             </div>
-                        </button>
+                        </Link>
                     </div>
 
                     {/* Center Column: Blob Image */}
@@ -72,26 +72,20 @@ export default function PrinciplesSection() {
                     </div>
 
                     {/* Right Column: Our Mission */}
-                    <div className="lg:col-span-4 flex flex-col items-start order-3 lg:order-3">
+                    <div className="lg:col-span-4 flex flex-col items-start order-3 lg:order-3 shadow-2xl ">
 
                         {/* Yellow Mission Title */}
-                        <div className="font-heading w-full px-6 py-4 mb-6">
+                        <div className="font-heading w-full px-6 py-4 mb-0">
                             <h3 className={`text-5xl md:text-[70px] mt-3 uppercase text-[#1a2b25] leading-none tracking-wider scale-y-110 transform origin-bottom text-center ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                                 {t.ourMission}
                             </h3>
                         </div>
 
-                        <p className={`text-[13px] md:text-[14px] text-gray-500 leading-relaxed font-medium mb-8 ${isArabic ? 'text-right' : 'text-justify'}`}>
+                        <p className={`text-[13px] md:text-[16px] text-gray-500 leading-relaxed font-medium mb-3 p-5 ${isArabic ? 'text-right' : 'text-justify'}`}>
                             {t.missionDescription}
                         </p>
 
-                        <Link
-                            href="/mission"
-                            className="inline-flex items-center gap-2 border-b border-black pb-1 text-[15px] font-semibold hover:opacity-60 transition-opacity self-start tracking-wide group"
-                        >
-                            {t.knowMore}
-                            <ArrowUpRightIcon size={18} className="text-black group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                        </Link>
+
                     </div>
 
                 </div>

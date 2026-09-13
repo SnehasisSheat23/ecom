@@ -98,20 +98,21 @@ export default function Footer() {
                     </div>
 
                     {/* Column 4: Our Contacts */}
-                    <div className={`sm:col-span-1 lg:col-span-2 sm:text-right sm:-translate-y-50 ${isArabic ? 'text-right' : 'text-left'}`}>
+                    <div className={`sm:col-span-1 lg:col-span-2 sm:text-right -translate-y-40 md:-translate-y-0 ${isArabic ? 'text-right' : 'text-left'}`}>
                         <h4 className="font-medium text-lg mb-6">{t.contactsTitle}</h4>
                         <ul className="flex flex-col gap-4 text-[15px] text-gray-400 mb-6">
                             <li>
                                 <span className="block text-white mb-1">{t.phoneLabel}</span>
-                                +91 8910647915
+                                +966 9200 15884
                             </li>
-                            <li>
-                                <span className="block text-white mb-1">{t.whatsappLabel}</span>
-                                +91 8910647915
-                            </li>
+                            {/*<li>*/}
+                            {/*    <span className="block text-white mb-1">{t.whatsappLabel}</span>*/}
+                            {/*    +91 8910647915*/}
+                            {/*</li>*/}
                             <li>
                                 <span className="block text-white mb-1">{t.emailLabel}</span>
-                                sandipan@gmail.com
+                                contact@abdullahbakhe
+                                etksa.com
                             </li>
                         </ul>
 
@@ -120,10 +121,10 @@ export default function Footer() {
                             <Link href="#" className={cn('bg-white text-black p-1.5 rounded-sm hover:opacity-80 transition-opacity')}>
                                 <TwitterIcon size={16} />
                             </Link>
-                            <Link href="#" className={cn('bg-white text-black p-1.5 rounded-sm hover:opacity-80 transition-opacity')}>
+                            <Link href="https://www.facebook.com/share/1Cx37kmDC8/?mibextid=wwXIfr" className={cn('bg-white text-black p-1.5 rounded-sm hover:opacity-80 transition-opacity')}>
                                 <FacebookIcon size={16} />
                             </Link>
-                            <Link href="#" className={cn('bg-white text-black p-1.5 rounded-sm hover:opacity-80 transition-opacity')}>
+                            <Link href="https://www.instagram.com/greenparkksa?stkn=MTEwcXlja3RreXF0NQ==" className={cn('bg-white text-black p-1.5 rounded-sm hover:opacity-80 transition-opacity')}>
                                 <InstagramIcon size={16} />
                             </Link>
                             <Link href="#" className={cn('bg-white text-black p-1.5 rounded-sm hover:opacity-80 transition-opacity')}>

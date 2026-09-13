@@ -126,7 +126,7 @@ export default function ContactForm() {
                             {isArabic ? 'الموقع' : 'Location'}
                         </h3>
                         <p className={`text-[15px] text-gray-500 font-medium leading-relaxed ${isArabic ? 'text-right' : 'text-left'}`}>
-                            {isArabic ? <>الرياض،<br />المملكة العربية السعودية</> : <>Riyadh,<br />Saudi Arabia</>}
+                            {isArabic ? <>الرياض،<br />المملكة العربية السعودية</> : <>9229 Al Washm St, Al Murabba, 2727, Riyadh 12631</>}
                         </p>
                     </div>
 
@@ -139,7 +139,7 @@ export default function ContactForm() {
                             {isArabic ? 'الهاتف' : 'Phone'}
                         </h3>
                         <p className={`text-[15px] text-gray-500 font-medium leading-relaxed ${isArabic ? 'text-right' : 'text-left'}`}>
-                            +966 11 2094636 , +966<br />9200 15884
+                            +966<br />9200 15884
                         </p>
                     </div>
 
