@@ -20,14 +20,14 @@ export default function AboutStory() {
                     <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 md:gap-8 relative w-full lg:pr-12">
 
                         {/* 'FOOD' Badge */}
-                        <div className="absolute -top-6 left-4 md:-top-8 md:left-8 z-10 hidden md:block">
+                        <div className="absolute -top-6 left-4 md:-top-0 md:left-8 z-10 hidden md:block">
                             <span className="inline-block bg-[#fbdc3c] text-black text-[10px] md:text-[12px] font-black px-4 py-1.5 rounded-full uppercase tracking-wider -rotate-[15deg] shadow-sm">
                                 {isArabic ? 'أغذية' : 'Food'}
                             </span>
                         </div>
 
-                        <h2 className={`font-heading text-[14vw] md:text-[100px] lg:text-[150px] uppercase text-[#1a2b25] leading-[0.8] tracking-wider scale-y-110 transform origin-bottom whitespace-nowrap md:translate-x-16 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
-                            {isArabic ? 'أفضل مستورد' : 'Best Importer'}
+                        <h2 className={`font-heading text-[14vw] md:text-[100px] lg:text-[110px] uppercase text-[#1a2b25] leading-[0.8] tracking-wider scale-y-110 transform origin-bottom whitespace-nowrap md:translate-x-16 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
+                            {isArabic ? 'أفضل مستورد' : 'TRUSTED SUPPLIER IN'}
                         </h2>
 
                         <div className="hidden md:block w-[100px] h-[100px] lg:w-[150px] lg:h-[150px] bg-white shadow-sm overflow-hidden md:translate-x-18 relative">
@@ -58,12 +58,12 @@ export default function AboutStory() {
                             />
                         </div>
 
-                        <h2 className={`font-heading text-[14vw] md:text-[100px] lg:text-[150px] uppercase text-[#1a2b25] leading-[0.8] tracking-wider scale-y-110 transform origin-bottom whitespace-nowrap relative md:-translate-x-30 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
-                            {isArabic ? 'في الرياض، المملكة' : 'In Riyadh, UAE'}
+                        <h2 className={`font-heading text-[11vw] md:text-[100px] lg:text-[90px] uppercase text-[#1a2b25] leading-[0.8] tracking-wider scale-y-110 transform origin-bottom whitespace-nowrap relative md:-translate-x-30 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
+                            {isArabic ? 'في الرياض، المملكة' : 'KINGDOM 0F SAUDI ARABIA'}
 
                             {/* 'TRADING' Badge */}
-                            <div className="absolute -top-2 -right-4 md:-top-4 md:-right-8 z-10 hidden md:block">
-                                <span className="inline-block bg-[#fbdc3c] text-black text-[10px] md:text-[12px] font-black px-4 py-1.5 rounded-full uppercase tracking-wider rotate-[15deg] shadow-sm">
+                            <div className="absolute -top-2 -right-4 md:-top-15 md:-right-5 z-10 hidden md:block">
+                                <span className="inline-block bg-[#fbdc3c] text-black text-[10px] md:text-[12px] font-stretch-normal px-4 py-1.5 rounded-full uppercase tracking-wider rotate-[15deg] shadow-sm">
                                     {isArabic ? 'تجارة' : 'Trading'}
                                 </span>
                             </div>
