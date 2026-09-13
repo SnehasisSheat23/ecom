@@ -38,8 +38,8 @@ export default function WantToKnowMore() {
                     <div className="w-full lg:w-[55%] bg-none flex items-center justify-center p-0 md:p-2">
                         <div className="relative w-full max-w-2xl h-[280px] md:h-[360px] lg:h-[420px] overflow-hidden rounded-none">
                             <Image
-                                src="/images/food_supply_warehouse_logistics.jpg"
-                                alt={isArabic ? "مركز التوزيع اللوجستي للأغذية" : "Food supply and logistics distribution center"}
+                                src="/images/abdullah_bakheet_warehouse.jpg"
+                                alt={isArabic ? "مركز التوزيع اللوجستي للأغذية - عبدالله بخيت" : "Abdullah Bakheet food supply and logistics distribution center"}
                                 fill
                                 sizes="(min-width: 1024px) 55vw, 100vw"
                                 className="object-cover object-center hover:scale-[1.02] transition-transform duration-700"

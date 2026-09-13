@@ -112,7 +112,7 @@ export const translations: Record<'en' | 'ar', HomeTranslation> = {
         hero: {
             firstName: "Abdullah",
             lastName: "Bakheet",
-            tagline: "Best trading company in Saudi Arabia, Riyadh",
+            tagline: "Your trusted food supplier in Saudi Arabia, Riyadh.",
             description: "Established in 2004, we have built a strong reputation for providing food essentials to restaurants, hotels, caterers, and wholesalers across the Kingdom. With over two decades of industry expertise, we have cultivated long-term relationships with top international brands.",
             knowMore: "Know More",
             imgAlt1: "Riyadh Street View",
@@ -212,14 +212,14 @@ export const translations: Record<'en' | 'ar', HomeTranslation> = {
             badgeCompany: "Company",
             copyright: "© 2023 .abdullahbakheetksa. All rights reserved.",
             builtWith: "Built With Love By",
-            by: "Stanford Consultancy"
+            by: "Stancord Consultancy"
         }
     },
     ar: {
         hero: {
             firstName: "عبدالله",
             lastName: "بخيت",
-            tagline: "أفضل شركة تجارية في المملكة العربية السعودية، الرياض",
+            tagline: "مورد الأغذية الموثوق به في المملكة العربية السعودية، الرياض.",
             description: "تأسست في عام 2004، وقمنا ببناء سمعة قوية في توفير المواد الغذائية الأساسية والمستلزمات للمطاعم والفنادق وشركات الإعاشة وتجار الجملة في جميع أنحاء المملكة. مع أكثر من عقدين من الخبرة في هذا المجال، قمنا بتطوير علاقات طويلة الأمد مع كبرى العلامات التجارية العالمية.",
             knowMore: "اعرف المزيد",
             imgAlt1: "إطلالة على شوارع الرياض",

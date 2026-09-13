@@ -136,10 +136,10 @@ export default function HeroSection() {
             >
                 {/* Left Bottom: Brand Title & Subtle One-Liner */}
                 <div className="flex flex-col items-start text-left">
-                    <div className="font-heading flex flex-col items-start justify-center">
+                    <div className="font-heading flex flex-col items-start justify-center gap-2 sm:gap-4 md:gap-5 lg:gap-6">
                         <h1
-                            className={`text-[23vw] sm:text-[90px] md:text-[110px] lg:text-[130px] font-normal uppercase text-white leading-[0.82] tracking-tight scale-y-110 transform origin-bottom drop-shadow-[0_12px_40px_rgba(0,0,0,0.95)] ${
-                                isArabic ? 'font-sans font-black tracking-tight scale-y-100 text-[18vw] sm:text-[80px] lg:text-[100px]' : ''
+                            className={`text-[23vw] sm:text-[90px] md:text-[110px] lg:text-[130px] font-normal uppercase text-white leading-[0.9] tracking-wide scale-y-110 transform origin-bottom drop-shadow-[0_12px_40px_rgba(0,0,0,0.95)] ${
+                                isArabic ? 'font-sans font-black tracking-normal scale-y-100 text-[18vw] sm:text-[80px] lg:text-[100px]' : ''
                             }`}
                         >
                             {t.firstName}
@@ -147,8 +147,8 @@ export default function HeroSection() {
 
                         <div className="flex items-center justify-start gap-2.5 sm:gap-6">
                             <h1
-                                className={`text-[23vw] sm:text-[90px] md:text-[110px] lg:text-[130px] font-normal uppercase text-white leading-[0.82] tracking-tight scale-y-110 transform origin-bottom relative drop-shadow-[0_12px_40px_rgba(0,0,0,0.95)] ${
-                                    isArabic ? 'font-sans font-black tracking-tight scale-y-100 text-[18vw] sm:text-[80px] lg:text-[100px]' : ''
+                                className={`text-[23vw] sm:text-[90px] md:text-[110px] lg:text-[130px] font-normal uppercase text-white leading-[0.9] tracking-wide scale-y-110 transform origin-bottom relative drop-shadow-[0_12px_40px_rgba(0,0,0,0.95)] ${
+                                    isArabic ? 'font-sans font-black tracking-normal scale-y-100 text-[18vw] sm:text-[80px] lg:text-[100px]' : ''
                                 }`}
                             >
                                 {t.lastName}
