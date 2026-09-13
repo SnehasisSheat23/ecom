@@ -328,7 +328,7 @@ export default function ProductListing() {
                                         <div className={`flex justify-between items-center mb-3 text-xs font-bold text-gray-700 ${isArabic ? 'flex-row-reverse' : ''}`}>
                                             <span className="uppercase tracking-wider">{isArabic ? 'نطاق السعر الأقصى' : 'Max Price'}</span>
                                             <span className="bg-[#fbdc3c] text-black px-2.5 py-1 rounded-sm font-black text-xs">
-                                                {currency} {priceRange}
+                                                {isArabic ? `${priceRange} ${(currency === 'SAR' || !currency) ? 'ر.س' : currency}` : `${currency} ${priceRange}`}
                                             </span>
                                         </div>
                                         <div className="relative w-full h-2 bg-gray-200 rounded-full mb-3">
@@ -346,8 +346,8 @@ export default function ProductListing() {
                                             <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-4 border-[#1a2b25] shadow-md cursor-grab active:cursor-grabbing pointer-events-none" style={{ left: `calc(${Math.min(Math.max((priceRange / 2000) * 100, 0), 96)}% - 8px)` }}></div>
                                         </div>
                                         <div className={`flex justify-between text-[11px] font-bold text-gray-500 ${isArabic ? 'flex-row-reverse' : ''}`}>
-                                            <span>{currency} 50</span>
-                                            <span>{currency} 2000</span>
+                                            <span>{isArabic ? `50 ${(currency === 'SAR' || !currency) ? 'ر.س' : currency}` : `${currency} 50`}</span>
+                                            <span>{isArabic ? `2000 ${(currency === 'SAR' || !currency) ? 'ر.س' : currency}` : `${currency} 2000`}</span>
                                         </div>
                                     </div>
 
@@ -412,7 +412,9 @@ export default function ProductListing() {
                             </h4>
                             <div className="flex justify-between items-center mb-4 text-xs font-bold text-gray-500">
                                 <span>{isArabic ? 'السعر' : 'PRICING'}</span>
-                                <span className="bg-[#fbdc3c] text-black px-2 py-0.5 rounded-sm">{currency} {priceRange}</span>
+                                <span className="bg-[#fbdc3c] text-black px-2 py-0.5 rounded-sm">
+                                    {isArabic ? `${priceRange} ${(currency === 'SAR' || !currency) ? 'ر.س' : currency}` : `${currency} ${priceRange}`}
+                                </span>
                             </div>
 
                             {/* Custom Range Slider */}
@@ -431,8 +433,8 @@ export default function ProductListing() {
                                 <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-4 border-[#1a2b25] shadow-md cursor-grab active:cursor-grabbing pointer-events-none" style={{ left: `calc(${Math.min(Math.max((priceRange / 2000) * 100, 0), 96)}% - 8px)` }}></div>
                             </div>
                             <div className="flex justify-between items-center text-[11px] font-bold text-black">
-                                <span>{currency} 50</span>
-                                <span>{currency} 2000</span>
+                                <span>{isArabic ? `50 ${(currency === 'SAR' || !currency) ? 'ر.س' : currency}` : `${currency} 50`}</span>
+                                <span>{isArabic ? `2000 ${(currency === 'SAR' || !currency) ? 'ر.س' : currency}` : `${currency} 2000`}</span>
                             </div>
                         </div>
 

@@ -137,7 +137,7 @@ export async function fetchProductsApi(options?: FetchProductsOptions | number):
     const opts: FetchProductsOptions = typeof options === 'number' ? { limit: options } : (options || {})
     const page = opts.page || 1
     const limit = opts.limit || 16
-    const currency = opts.currency || 'AED'
+    const currency = opts.currency || 'SAR'
     const lang = opts.lang || 'en'
 
     let url = `${API_BASE}/storefront/products?page=${page}&limit=${limit}&currency=${currency}&lang=${lang}`
@@ -170,7 +170,7 @@ export async function fetchProductsApi(options?: FetchProductsOptions | number):
   }
 }
 
-export async function fetchProductBySlugApi(slugOrId: string, currency: string = 'AED', lang: string = 'en'): Promise<StorefrontProduct | null> {
+export async function fetchProductBySlugApi(slugOrId: string, currency: string = 'SAR', lang: string = 'en'): Promise<StorefrontProduct | null> {
   try {
     const res = await fetch(`${API_BASE}/storefront/products/${slugOrId}?currency=${currency}&lang=${lang}`, {
       headers: buildHeaders(),

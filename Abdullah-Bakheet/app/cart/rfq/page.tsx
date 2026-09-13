@@ -127,7 +127,7 @@ export default function RfqRequestPage() {
                 customerPhone: contactPhone,
                 companyName: companyName || (isCorporateUser ? user?.companyName : 'Commercial Buyer'),
                 taxNumber: taxNumber || undefined,
-                currency: currency || 'AED',
+                currency: currency || 'SAR',
                 customerNotes: combinedNotes,
                 items: quotationItems,
             };

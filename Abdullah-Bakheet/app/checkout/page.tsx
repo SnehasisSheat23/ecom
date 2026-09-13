@@ -19,6 +19,7 @@ export default function CheckoutPage() {
         isAuthLoading,
         clearCart,
         user,
+        language,
         currency,
         shippingCost,
         shippingFormatted,
@@ -59,7 +60,7 @@ export default function CheckoutPage() {
 
     const subtotalConverted = getConvertedPrice(cartTotal);
     const totalConverted = subtotalConverted + (cart.length > 0 ? shippingCost : 0);
-    const currSymbol = currency === 'SAR' ? 'ر.س' : (currency === 'USD' ? '$' : (currency === 'EUR' ? '€' : (currency === 'INR' ? '₹' : 'AED')));
+    const currSymbol = (currency === 'SAR' || !currency) ? (language.startsWith('Arabic') ? 'ر.س' : 'SAR') : (currency === 'USD' ? '$' : (currency === 'EUR' ? '€' : (currency === 'INR' ? '₹' : (currency === 'AED' ? 'AED' : 'SAR'))));
     const totalFormatted = `${currSymbol} ${totalConverted.toFixed(2)}`;
 
     const handleFillDemoCard = () => {
@@ -126,7 +127,7 @@ export default function CheckoutPage() {
                 : (paymentMethod === 'purchase_order' ? 'PURCHASE_ORDER' : paymentMethod.toUpperCase());
 
             const orderPayload: any = {
-                currency: (currency || 'AED').toUpperCase(),
+                currency: (currency || 'SAR').toUpperCase(),
                 shippingMethodId: selectedShippingMethodId || 'standard',
                 shippingCost: shippingCost,
                 shippingAddressSnapshot: {
@@ -635,8 +636,8 @@ export default function CheckoutPage() {
                                     <span className="font-bold text-black">
                                         {(() => {
                                             const rawVal = parseFloat(String(placedOrder?.totalAmount || placedOrder?.total || totalConverted));
-                                            const ordCurr = (placedOrder?.currency || currency || 'AED').toUpperCase();
-                                            const sym = ordCurr === 'SAR' ? 'ر.س' : (ordCurr === 'USD' ? '$' : (ordCurr === 'EUR' ? '€' : (ordCurr === 'INR' ? '₹' : 'AED')));
+                                            const ordCurr = (placedOrder?.currency || currency || 'SAR').toUpperCase();
+                                            const sym = ordCurr === 'SAR' ? 'ر.س' : (ordCurr === 'USD' ? '$' : (ordCurr === 'EUR' ? '€' : (ordCurr === 'INR' ? '₹' : (ordCurr === 'AED' ? 'AED' : 'SAR'))));
                                             return `${sym} ${rawVal.toFixed(2)}`;
                                         })()}
                                     </span>

@@ -230,10 +230,28 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const [accessToken, setAccessToken] = useState<string | null>(null);
     const [guestSessionId, setGuestSessionId] = useState<string>(() => getOrCreateGuestSessionId());
 
-    const [language, setLanguage] = useState('English');
-    const [currency, setCurrency] = useState('AED');
+    const [language, setLanguageState] = useState('English');
+    const [currency, setCurrencyState] = useState('SAR');
     const [shippingMethods, setShippingMethods] = useState<ShippingMethodItem[]>([]);
     const [selectedShippingMethodId, setSelectedShippingMethodId] = useState<string>('standard');
+
+    const setCurrency = useCallback((curr: string) => {
+        setCurrencyState(curr);
+        if (typeof window !== 'undefined') {
+            try {
+                localStorage.setItem('abdullah_bakheet_currency', curr);
+            } catch (e) {}
+        }
+    }, []);
+
+    const setLanguage = useCallback((lang: string) => {
+        setLanguageState(lang);
+        if (typeof window !== 'undefined') {
+            try {
+                localStorage.setItem('abdullah_bakheet_language', lang);
+            } catch (e) {}
+        }
+    }, []);
 
     // Fetch active shipping methods from backend
     useEffect(() => {
@@ -296,6 +314,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         let initialWishlist: WishlistItem[] = [];
 
         try {
+            const savedCurrency = localStorage.getItem('abdullah_bakheet_currency');
+            if (savedCurrency) {
+                setCurrencyState(savedCurrency);
+            }
+            const savedLanguage = localStorage.getItem('abdullah_bakheet_language');
+            if (savedLanguage) {
+                setLanguageState(savedLanguage);
+            }
+
             const savedCart = localStorage.getItem(LOCAL_STORAGE_CART_KEY);
             if (savedCart) {
                 const parsed = JSON.parse(savedCart);
@@ -444,26 +471,38 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
     // Currency helper functions
     const getConvertedPrice = (price: number): number => {
-        const normCurrency = (currency || 'AED').toUpperCase();
-        const rateInfo = CURRENCY_RATES[normCurrency] || CURRENCY_RATES['AED'];
+        const normCurrency = (currency || 'SAR').toUpperCase();
+        const rateInfo = CURRENCY_RATES[normCurrency] || CURRENCY_RATES['SAR'] || CURRENCY_RATES['AED'];
         const rate = rateInfo ? rateInfo.rate : 1.0;
         return Number(price || 0) * rate;
     };
 
     const formatPrice = (price: number): string => {
         const isArabic = language.startsWith('Arabic') || language === 'ar' || language === 'العربية';
-        const normCurrency = (currency || 'AED').toUpperCase();
-        const rateInfo = CURRENCY_RATES[normCurrency] || CURRENCY_RATES['AED'];
+        const normCurrency = (currency || 'SAR').toUpperCase();
+        const rateInfo = CURRENCY_RATES[normCurrency] || CURRENCY_RATES['SAR'] || CURRENCY_RATES['AED'];
         const rate = rateInfo ? rateInfo.rate : 1.0;
         const converted = Number(price || 0) * rate;
 
-        let symbol = currency;
-        if (currency === 'SAR' || currency === 'ر.س') symbol = isArabic ? 'ر.س' : 'SAR';
-        else if (currency === 'AED' || currency === 'د.إ') symbol = isArabic ? 'د.إ' : 'AED';
-        else if (currency === 'USD') symbol = '$';
-        else if (currency === 'EUR') symbol = '€';
-        else if (currency === 'INR') symbol = '₹';
-        else if (currency === 'GBP') symbol = '£';
+        if (isArabic) {
+            let arSymbol = 'ر.س';
+            if (normCurrency === 'AED' || currency === 'د.إ') arSymbol = 'د.إ';
+            else if (normCurrency === 'USD') arSymbol = '$';
+            else if (normCurrency === 'EUR') arSymbol = '€';
+            else if (normCurrency === 'INR') arSymbol = '₹';
+            else if (normCurrency === 'GBP') arSymbol = '£';
+            else arSymbol = 'ر.س';
+
+            return `${converted.toFixed(2)} ${arSymbol}`;
+        }
+
+        let symbol = 'SAR';
+        if (normCurrency === 'AED') symbol = 'AED';
+        else if (normCurrency === 'USD') symbol = '$';
+        else if (normCurrency === 'EUR') symbol = '€';
+        else if (normCurrency === 'INR') symbol = '₹';
+        else if (normCurrency === 'GBP') symbol = '£';
+        else symbol = 'SAR';
 
         return `${symbol} ${converted.toFixed(2)}`;
     };
@@ -833,14 +872,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         shippingMethods[0] ||
         null;
 
-    const normCurrency = (currency || 'AED').toUpperCase();
+    const normCurrency = (currency || 'SAR').toUpperCase();
     const rawMethodRate = selectedShippingMethod?.rates?.[normCurrency] !== undefined
         ? selectedShippingMethod.rates[normCurrency]
-        : (selectedShippingMethod?.rates?.['AED'] !== undefined ? selectedShippingMethod.rates['AED'] : 0);
+        : (selectedShippingMethod?.rates?.['SAR'] !== undefined 
+            ? selectedShippingMethod.rates['SAR'] 
+            : (selectedShippingMethod?.rates?.['AED'] !== undefined ? selectedShippingMethod.rates['AED'] : 0));
 
     const shippingCost = Number(rawMethodRate);
-    const rateInfo = CURRENCY_RATES[normCurrency] || CURRENCY_RATES['AED'];
-    const shippingFormatted = `${rateInfo.symbol} ${shippingCost.toFixed(2)}`;
+    const rateInfo = CURRENCY_RATES[normCurrency] || CURRENCY_RATES['SAR'] || CURRENCY_RATES['AED'];
+    const isArabic = language.startsWith('Arabic') || language === 'ar' || language === 'العربية';
+    const arSym = (normCurrency === 'SAR' || normCurrency === 'ر.س') ? 'ر.س' : (normCurrency === 'AED' ? 'د.إ' : rateInfo.symbol);
+    const shippingFormatted = isArabic ? `${shippingCost.toFixed(2)} ${arSym}` : `${rateInfo.symbol} ${shippingCost.toFixed(2)}`;
 
     return (
         <ShopContext.Provider
