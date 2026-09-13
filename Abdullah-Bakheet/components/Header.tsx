@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
     BoxIcon,
     CartIcon,
@@ -102,8 +103,12 @@ export default function Header() {
             {/* Main Navigation Bar */}
             <nav className={cn('w-full text-white', !isHome && 'bg-brand-dark')}>
                 <div className="max-w-7xl mx-auto px-4 lg:px-8 flex justify-between items-center h-14 sm:h-16">
-                    {/* Left: Navigation Links */}
+                    {/* Left: Logo & Navigation Links */}
                     <div className="flex items-center gap-8 h-full">
+                        {/* Logo */}
+                        <Link href="/" className="flex items-center shrink-0">
+                            <Image src="/images/logo.png" alt="Abdullah Bakheet Logo" width={44} height={44} className="h-11 w-auto object-contain" priority />
+                        </Link>
                         {/* Navigation Links - Desktop Only */}
                         <div className="hidden lg:flex items-center gap-1 h-full">
                             {navLinks.map((link) => {
