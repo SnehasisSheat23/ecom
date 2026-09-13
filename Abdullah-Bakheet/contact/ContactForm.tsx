@@ -35,7 +35,7 @@ export default function ContactForm() {
                                 </label>
                                 <input
                                     type="text"
-                                    placeholder={isArabic ? 'أدخل الاسم الأول' : 'abc'}
+                                    placeholder={isArabic ? 'أدخل الاسم الأول' : 'Enter Your First Name'}
                                     className={`w-full border border-gray-200 px-4 py-3 text-sm text-black outline-none focus:border-[#1a2b25] transition-colors ${isArabic ? 'text-right' : 'text-left'}`}
                                 />
                             </div>
@@ -45,7 +45,7 @@ export default function ContactForm() {
                                 </label>
                                 <input
                                     type="text"
-                                    placeholder={isArabic ? 'أدخل اسم العائلة' : 'abc'}
+                                    placeholder={isArabic ? 'أدخل اسم العائلة' : 'Enter Your Last Name'}
                                     className={`w-full border border-gray-200 px-4 py-3 text-sm text-black outline-none focus:border-[#1a2b25] transition-colors ${isArabic ? 'text-right' : 'text-left'}`}
                                 />
                             </div>
@@ -57,7 +57,7 @@ export default function ContactForm() {
                             </label>
                             <input
                                 type="email"
-                                placeholder={isArabic ? 'example@domain.com' : 'abc'}
+                                placeholder={isArabic ? 'example@domain.com' : 'Enter Your Email'}
                                 className={`w-full border border-gray-200 px-4 py-3 text-sm text-black outline-none focus:border-[#1a2b25] transition-colors ${isArabic ? 'text-right' : 'text-left'}`}
                             />
                         </div>
@@ -68,17 +68,17 @@ export default function ContactForm() {
                             </label>
                             <input
                                 type="tel"
-                                placeholder={isArabic ? '+966 5X XXX XXXX' : 'abc'}
+                                placeholder={isArabic ? '+966 5X XXX XXXX' : 'Enter Your Phone Number'}
                                 className={`w-full border border-gray-200 px-4 py-3 text-sm text-black outline-none focus:border-[#1a2b25] transition-colors ${isArabic ? 'text-right' : 'text-left'}`}
                             />
                         </div>
 
                         <div className="flex flex-col gap-1.5">
                             <label className={`text-[10px] font-bold text-gray-400 uppercase tracking-widest ${isArabic ? 'text-right' : 'text-left'}`}>
-                                {isArabic ? 'الشركة / التفاصيل' : 'Company'}
+                                {isArabic ? 'الشركة / التفاصيل' : 'message'}
                             </label>
                             <textarea
-                                placeholder={isArabic ? 'اكتب تفاصيل طلبك هنا...' : 'abc'}
+                                placeholder={isArabic ? 'اكتب تفاصيل طلبك هنا...' : 'Enter If Want To Share Anything With Us...'}
                                 rows={4}
                                 className={`w-full border border-gray-200 px-4 py-3 text-sm text-black outline-none focus:border-[#1a2b25] transition-colors resize-none ${isArabic ? 'text-right' : 'text-left'}`}
                             ></textarea>
@@ -92,12 +92,22 @@ export default function ContactForm() {
                         </button>
                     </div>
 
-                    {/* Right Image Area */}
-                    <div className="w-full lg:w-1/2 h-[400px] lg:h-auto bg-gray-100 relative overflow-hidden group">
-                        <img
-                            src="/images/Rectangle3.webp"
-                            alt={isArabic ? "موقع المكتب" : "Office Location"}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    {/* Right Map Area */}
+                    <a
+                        href="https://maps.app.goo.gl/pd2bsejNPqZg1DFT8?g_st=ic"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full lg:w-1/2 h-[400px] lg:h-auto bg-gray-100 relative overflow-hidden cursor-pointer"
+                    >
+                        <iframe
+                            width="100%"
+                            height="100%"
+                            style={{ border: 0, pointerEvents: 'none' }}
+                            loading="lazy"
+                            allowFullScreen
+                            referrerPolicy="no-referrer-when-downgrade"
+                            title={isArabic ? "موقع المكتب" : "Office Location"}
+                            src={`https://www.google.com/maps?q=9229 Al Washm St, Al Murabba, 2727, Riyadh 12631&output=embed`}
                         />
 
                         {/* Overlay Glassmorphism Box */}
@@ -107,10 +117,10 @@ export default function ContactForm() {
                                 <h4 className="font-bold text-base tracking-wide">{isArabic ? 'موقع المكتب الرئيس' : 'Office Location'}</h4>
                             </div>
                             <p className={`text-[13px] text-gray-200 leading-relaxed font-medium ${isArabic ? 'text-right' : 'text-left'}`}>
-                                {isArabic ? 'الرياض، المملكة العربية السعودية' : 'Riyadh, Kingdom of Saudi Arabia'}
+                                {isArabic ? 'الرياض، المملكة العربية السعودية' : 'https://maps.app.goo.gl/pd2bsejNPqZg1DFT8?g_st=ic'}
                             </p>
                         </div>
-                    </div>
+                    </a>
 
                 </div>
 
@@ -125,7 +135,7 @@ export default function ContactForm() {
                         <h3 className={`font-heading text-3xl md:text-5xl uppercase text-black leading-none tracking-wide scale-y-110 transform origin-bottom mb-6 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                             {isArabic ? 'الموقع' : 'Location'}
                         </h3>
-                        <p className={`text-[15px] text-gray-500 font-medium leading-relaxed ${isArabic ? 'text-right' : 'text-left'}`}>
+                        <p className={`text-[18px] text-gray-500 font-medium leading-relaxed ${isArabic ? 'text-right' : 'text-left'}`}>
                             {isArabic ? <>الرياض،<br />المملكة العربية السعودية</> : <>9229 Al Washm St, Al Murabba, 2727, Riyadh 12631</>}
                         </p>
                     </div>
@@ -138,8 +148,8 @@ export default function ContactForm() {
                         <h3 className={`font-heading text-3xl md:text-5xl uppercase text-black leading-none tracking-wide scale-y-110 transform origin-bottom mb-6 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                             {isArabic ? 'الهاتف' : 'Phone'}
                         </h3>
-                        <p className={`text-[15px] text-gray-500 font-medium leading-relaxed ${isArabic ? 'text-right' : 'text-left'}`}>
-                            +966<br />9200 15884
+                        <p className={`text-[18px] text-gray-500 font-medium leading-relaxed ${isArabic ? 'text-right' : 'text-left'}`}>
+                            +966 9200 15884
                         </p>
                     </div>
 
@@ -151,9 +161,15 @@ export default function ContactForm() {
                         <h3 className={`font-heading text-3xl md:text-5xl uppercase text-black leading-none tracking-wide scale-y-110 transform origin-bottom mb-6 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                             {isArabic ? 'البريد الإلكتروني' : 'Email'}
                         </h3>
-                        <p className="text-[15px] text-gray-500 font-medium leading-relaxed">
-                            contact@abdullahbakhe<br/>etksa.com
-                        </p>
+                        <a
+                            href="mailto:contact@abdullahbakheetksa.com"
+                            className={`text-[18px] text-gray-500 font-medium leading-relaxed hover:text-black transition-colors ${isArabic ? 'text-right' : 'text-left'}`}
+                        >
+                            <span className="hidden sm:inline">contact@abdullahbakhe</span>
+                            <span className="sm:hidden">contact@abdullahbakheetksa.com</span>
+                            <br className="sm:block hidden" />
+                            <span className="hidden sm:inline">etksa.com</span>
+                        </a>
                     </div>
 
                     {/* Timing Card */}
@@ -164,13 +180,12 @@ export default function ContactForm() {
                         <h3 className={`font-heading text-3xl md:text-5xl uppercase text-black leading-none tracking-wide scale-y-110 transform origin-bottom mb-6 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                             {isArabic ? 'أوقات العمل' : 'Timing'}
                         </h3>
-                        <p className={`text-[15px] text-gray-500 font-medium leading-relaxed ${isArabic ? 'text-right' : 'text-left'}`}>
-                            {isArabic ? <>صباحًا 10:00 إلى<br />مساءً 7:00</> : <>Morning 10 : 00 AM to<br />Evening 7 : 00 PM</>}
+                        <p className={`text-[18px] text-gray-500 font-medium leading-relaxed ${isArabic ? 'text-right' : 'text-left'}`}>
+                            {isArabic ? <>الأحد - الخميس<br />من 8:30 ص - 4:30 م</> : <>Sunday - Thursday<br />8:30AM - 4:30PM</>}
                         </p>
                     </div>
 
                 </div>
-
             </div>
         </section>
     );

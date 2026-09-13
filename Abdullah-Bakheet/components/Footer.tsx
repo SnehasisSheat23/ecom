@@ -109,11 +109,13 @@ export default function Footer() {
                             {/*    <span className="block text-white mb-1">{t.whatsappLabel}</span>*/}
                             {/*    +91 8910647915*/}
                             {/*</li>*/}
-                            <li>
-                                <span className="block text-white mb-1">{t.emailLabel}</span>
-                                contact@abdullahbakhe
-                                etksa.com
-                            </li>
+                             <a href="mailto:contact@abdullahbakheetksa.com" className={`block hover:text-white transition-colors lg:text-right`}>
+                                 <span className="block text-white mb-1">{t.emailLabel}</span>
+                                 <span className="hidden lg:inline">contact@abdullahbakhe</span>
+                                 <span className="lg:hidden">contact@abdullahbakheetksa.com</span>
+                                 <br className="hidden lg:block" />
+                                 <span className="hidden lg:inline">etksa.com</span>
+                             </a>
                         </ul>
 
                         {/* Social Icons */}
