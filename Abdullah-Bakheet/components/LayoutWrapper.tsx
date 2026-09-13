@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import SearchModal from '@/components/SearchModal';
 import IntroAnimation from '@/components/IntroAnimation';
+import WhatsAppButton from '@/components/SocialAppsButton';
 import { useShop } from '@/context/ShopContext';
 
 const INTRO_SEEN_KEY = 'ab_intro_seen';
@@ -100,6 +101,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
                     {children}
                 </main>
                 <Footer />
+                <WhatsAppButton />
                 <SearchModal />
             </div>
         </>
