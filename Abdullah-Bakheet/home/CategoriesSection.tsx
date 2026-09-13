@@ -118,33 +118,37 @@ export default function CategoriesSection() {
                     </div>
                 </div>
 
-                {/* Bottom Row: Category Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-2">
+                {/* Bottom Row: Category Cards Grid (2 Columns on Mobile) */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mt-2">
                     {categoryCards.map((card, index) => (
                         <div
                             key={index}
-                            className="bg-white p-6 md:p-8 flex flex-col shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_30px_-10px_rgba(0,0,0,0.1)] transition-shadow duration-300 group"
+                            className="bg-white p-3.5 sm:p-6 md:p-8 rounded-2xl flex flex-col justify-between shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_30px_-10px_rgba(0,0,0,0.1)] transition-all duration-300 group border border-gray-100/60"
                         >
                             {/* Product Image Area */}
-                            <div className="w-full h-[180px] flex items-center justify-center mb-6 relative">
+                            <div className="w-full h-[110px] sm:h-[180px] bg-white rounded-xl flex items-center justify-center mb-3 sm:mb-6 relative p-2">
                                 <img
                                     src={card.img}
                                     alt={card.title}
-                                    className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform duration-500"
+                                    className="max-h-full max-w-full object-contain group-hover:scale-108 transition-transform duration-500"
                                 />
                             </div>
 
                             {/* Text Content */}
-                            <div className="flex flex-col flex-grow">
-                                <h3 className={`text-lg font-bold text-gray-900 mb-2 ${isArabic ? 'text-right' : 'text-left'}`}>{card.title}</h3>
-                                <p className={`text-sm text-gray-500 leading-relaxed font-medium mb-6 flex-grow ${isArabic ? 'text-right' : 'text-left'}`}>
-                                    {card.desc}
-                                </p>
+                            <div className="flex flex-col flex-grow justify-between">
+                                <div>
+                                    <h3 className={`text-xs sm:text-lg font-bold text-gray-900 mb-1 sm:mb-2 line-clamp-1 ${isArabic ? 'text-right' : 'text-left'}`}>
+                                        {card.title}
+                                    </h3>
+                                    <p className={`text-[10px] sm:text-sm text-gray-500 leading-snug sm:leading-relaxed font-medium mb-3 sm:mb-6 line-clamp-2 ${isArabic ? 'text-right' : 'text-left'}`}>
+                                        {card.desc}
+                                    </p>
+                                </div>
 
                                 {/* See More Button */}
                                 <Link
                                     href={card.href}
-                                    className="bg-[#1a2b25] text-white text-sm font-semibold py-2.5 px-6 rounded-full self-start hover:bg-black transition-colors"
+                                    className="bg-[#1a2b25] text-white text-[10px] sm:text-sm font-semibold py-1.5 px-3 sm:py-2.5 sm:px-6 rounded-full self-start hover:bg-black transition-colors"
                                 >
                                     {t.seeMore}
                                 </Link>

@@ -2,7 +2,7 @@
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useShop } from '@/context/ShopContext';
-import { ChevronLeft, Star, Plus, Minus, Share, Heart, ArrowUpRight, ChevronDown, FileText, Download, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Plus, Minus, Share, Heart, ArrowUpRight, ChevronDown, FileText, Download, Check } from 'lucide-react';
 import { useState, useEffect, Suspense } from 'react';
 import { fetchProductBySlug, StorefrontProduct } from '@/lib/api';
 
@@ -18,6 +18,7 @@ function ProductDescriptionContent() {
     const [isLoading, setIsLoading] = useState(true);
     const [product, setProduct] = useState<StorefrontProduct | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [quantity, setQuantity] = useState(1);
     const [wishlistNotification, setWishlistNotification] = useState<string | null>(null);
     const [openAccordions, setOpenAccordions] = useState<string[]>([
@@ -33,6 +34,7 @@ function ProductDescriptionContent() {
                 if (apiProd && isMounted) {
                     setProduct(apiProd);
                     setSelectedImage(null);
+                    setActiveImageIndex(0);
                     setQuantity(Math.max(1, apiProd.moq || 1));
                 }
             } finally {
@@ -195,50 +197,139 @@ function ProductDescriptionContent() {
                         : (product.img ? [product.img] : []);
                     const primaryImg = rawImages[0] || product.img || 'https://placehold.co/600x600?text=No+Image';
 
-                    // Slot 0 (Main featured view)
+                    // Desktop slot images
                     const mainDisplayImg = selectedImage || rawImages[0] || primaryImg;
-
-                    // Slot 1, 2, 3: Use secondary images if available, otherwise reuse primary image
                     const slot1Img = rawImages[1] || primaryImg;
                     const slot2Img = rawImages[2] || primaryImg;
                     const slot3Img = rawImages[3] || primaryImg;
 
+                    // Mobile carousel images
+                    const uniqueImages = Array.from(new Set(rawImages.filter(Boolean)));
+                    const mobileImages = uniqueImages.length > 0 ? uniqueImages : [primaryImg];
+                    const currentMobileImg = mobileImages[activeImageIndex] || mobileImages[0];
+
+                    const nextMobileImage = () => {
+                        setActiveImageIndex((prev) => (prev + 1) % mobileImages.length);
+                    };
+
+                    const prevMobileImage = () => {
+                        setActiveImageIndex((prev) => (prev - 1 + mobileImages.length) % mobileImages.length);
+                    };
+
                     return (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
-                            {/* Main Image View */}
-                            <div className="bg-[#eaf3f8] rounded-xl overflow-hidden aspect-[4/3] relative flex items-center justify-center p-8">
-                                <div className="absolute inset-0 bg-gradient-to-b from-blue-300/30 to-transparent pointer-events-none"></div>
-                                <img 
-                                    src={mainDisplayImg} 
-                                    alt={product.title} 
-                                    className="w-full h-full object-contain z-10 hover:scale-105 transition-transform duration-300"
-                                />
+                        <div className="mb-8 md:mb-12">
+                            {/* Mobile View: 1 Image Carousel */}
+                            <div className="block md:hidden">
+                                {/* Main Carousel Card */}
+                                <div className="bg-white rounded-2xl overflow-hidden aspect-[4/3] relative flex items-center justify-center p-6 border border-gray-100 shadow-sm">
+                                    <img
+                                        src={currentMobileImg}
+                                        alt={`${product.title} image ${activeImageIndex + 1}`}
+                                        className="w-full h-full object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-all duration-300"
+                                    />
+
+                                    {/* Left / Right Carousel Controls */}
+                                    {mobileImages.length > 1 && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={prevMobileImage}
+                                                className={`absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-xs text-gray-800 shadow-md flex items-center justify-center hover:bg-white active:scale-95 transition-all cursor-pointer z-20 ${isArabic ? 'rotate-180' : ''}`}
+                                                aria-label="Previous image"
+                                            >
+                                                <ChevronLeft size={18} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={nextMobileImage}
+                                                className={`absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-xs text-gray-800 shadow-md flex items-center justify-center hover:bg-white active:scale-95 transition-all cursor-pointer z-20 ${isArabic ? 'rotate-180' : ''}`}
+                                                aria-label="Next image"
+                                            >
+                                                <ChevronRight size={18} />
+                                            </button>
+
+                                            {/* Indicator Dots */}
+                                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/35 backdrop-blur-xs px-2.5 py-1 rounded-full z-20">
+                                                {mobileImages.map((_, dotIdx) => (
+                                                    <button
+                                                        key={dotIdx}
+                                                        type="button"
+                                                        onClick={() => setActiveImageIndex(dotIdx)}
+                                                        className={`transition-all rounded-full ${
+                                                            activeImageIndex === dotIdx
+                                                                ? 'w-5 h-1.5 bg-white'
+                                                                : 'w-1.5 h-1.5 bg-white/50'
+                                                        }`}
+                                                        aria-label={`Go to image ${dotIdx + 1}`}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Horizontal Thumbnails Strip below Main Image on Mobile */}
+                                {mobileImages.length > 1 && (
+                                    <div className="flex items-center gap-2.5 overflow-x-auto pt-3 pb-1 scrollbar-none px-1">
+                                        {mobileImages.map((imgSrc, imgIdx) => (
+                                            <button
+                                                key={imgIdx}
+                                                type="button"
+                                                onClick={() => setActiveImageIndex(imgIdx)}
+                                                className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden bg-white p-1.5 border transition-all cursor-pointer ${
+                                                    activeImageIndex === imgIdx
+                                                        ? 'border-[#1a2b25] ring-2 ring-[#1a2b25]/20 shadow-xs scale-105'
+                                                        : 'border-gray-200 opacity-70 hover:opacity-100'
+                                                }`}
+                                            >
+                                                <img
+                                                    src={imgSrc}
+                                                    alt={`Thumbnail ${imgIdx + 1}`}
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                            
-                            {/* Sub Images Grid */}
-                            <div className="grid grid-cols-2 gap-4">
-                                {/* Sub Image 1 (Top Wide) */}
-                                <div 
-                                    onClick={() => setSelectedImage(slot1Img)}
-                                    className="col-span-2 bg-[#f4ece3] rounded-xl overflow-hidden h-[240px] relative flex items-center justify-center p-4 cursor-pointer"
-                                >
-                                    <img src={slot1Img} alt={`${product.title} view 2`} className="w-full h-full object-contain hover:scale-105 transition-transform duration-300" />
-                                </div>
 
-                                {/* Sub Image 2 (Bottom Left) */}
-                                <div 
-                                    onClick={() => setSelectedImage(slot2Img)}
-                                    className="bg-[#eaf3f8] rounded-xl overflow-hidden h-[180px] flex items-center justify-center p-2 cursor-pointer"
-                                >
-                                    <img src={slot2Img} alt={`${product.title} view 3`} className="w-full h-full object-contain hover:scale-105 transition-transform duration-300" />
+                            {/* Desktop View: Restored Previous Multi-Slot Layout */}
+                            <div className="hidden md:grid md:grid-cols-2 gap-4">
+                                {/* Main Image View */}
+                                <div className="bg-[#eaf3f8] rounded-xl overflow-hidden aspect-[4/3] relative flex items-center justify-center p-8">
+                                    <div className="absolute inset-0 bg-gradient-to-b from-blue-300/30 to-transparent pointer-events-none"></div>
+                                    <img 
+                                        src={mainDisplayImg} 
+                                        alt={product.title} 
+                                        className="w-full h-full object-contain z-10 hover:scale-105 transition-transform duration-300"
+                                    />
                                 </div>
+                                
+                                {/* Sub Images Grid */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* Sub Image 1 (Top Wide) */}
+                                    <div 
+                                        onClick={() => setSelectedImage(slot1Img)}
+                                        className="col-span-2 bg-[#f4ece3] rounded-xl overflow-hidden h-[240px] relative flex items-center justify-center p-4 cursor-pointer hover:opacity-95 transition-opacity"
+                                    >
+                                        <img src={slot1Img} alt={`${product.title} view 2`} className="w-full h-full object-contain hover:scale-105 transition-transform duration-300" />
+                                    </div>
 
-                                {/* Sub Image 3 (Bottom Right) */}
-                                <div 
-                                    onClick={() => setSelectedImage(slot3Img)}
-                                    className="bg-[#eaf3f8] rounded-xl overflow-hidden h-[180px] flex items-center justify-center p-2 cursor-pointer"
-                                >
-                                    <img src={slot3Img} alt={`${product.title} view 4`} className="w-full h-full object-contain hover:scale-105 transition-transform duration-300" />
+                                    {/* Sub Image 2 (Bottom Left) */}
+                                    <div 
+                                        onClick={() => setSelectedImage(slot2Img)}
+                                        className="bg-[#eaf3f8] rounded-xl overflow-hidden h-[180px] flex items-center justify-center p-2 cursor-pointer hover:opacity-95 transition-opacity"
+                                    >
+                                        <img src={slot2Img} alt={`${product.title} view 3`} className="w-full h-full object-contain hover:scale-105 transition-transform duration-300" />
+                                    </div>
+
+                                    {/* Sub Image 3 (Bottom Right) */}
+                                    <div 
+                                        onClick={() => setSelectedImage(slot3Img)}
+                                        className="bg-[#eaf3f8] rounded-xl overflow-hidden h-[180px] flex items-center justify-center p-2 cursor-pointer hover:opacity-95 transition-opacity"
+                                    >
+                                        <img src={slot3Img} alt={`${product.title} view 4`} className="w-full h-full object-contain hover:scale-105 transition-transform duration-300" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -246,146 +337,18 @@ function ProductDescriptionContent() {
                 })()}
 
                 {/* Product Details Section */}
-                <div className="flex flex-col lg:flex-row gap-12">
-                    
-                    {/* Left Column - Info & Accordions */}
-                    <div className="flex-1">
-                        <div className={`mb-8 ${isArabic ? 'text-right' : 'text-left'}`}>
-                            <h1 className="text-3xl md:text-5xl font-heading mb-2 inline-block transform scale-y-110 origin-bottom">
-                                <span className="bg-[#fbdc3c] px-3 pt-2 pb-1 inline-block leading-none">
-                                    {isArabic ? (product.arabic || product.title) : product.title}
-                                </span>
-                            </h1>
-                            {isArabic ? (
-                                hasEnglishSubtitle && (
-                                    <p className="text-xl font-bold text-gray-500 mt-2 font-sans">
-                                        {product.title}
-                                    </p>
-                                )
-                            ) : (
-                                hasArabicTitle && (
-                                    <p className="text-2xl font-bold text-gray-700 mt-2 dir-rtl text-right font-sans">
-                                        {product.arabic}
-                                    </p>
-                                )
-                            )}
-                        </div>
-                        
-                        {/* Accordions */}
-                        <div className="border-t border-gray-200 divide-y divide-gray-100">
-                            {accordions.map((acc) => {
-                                const isOpen = openAccordions.includes(acc.id);
-                                return (
-                                    <div key={acc.id} className="py-2">
-                                        <button 
-                                            onClick={() => toggleAccordion(acc.id)}
-                                            className={`w-full py-4 flex justify-between items-center text-left focus:outline-none group cursor-pointer ${isArabic ? 'flex-row-reverse text-right' : ''}`}
-                                        >
-                                            <span className={`font-bold text-base md:text-lg transition-colors ${isOpen ? 'text-[#1a2b25]' : 'text-gray-800 group-hover:text-gray-600'}`}>
-                                                {acc.id}
-                                            </span>
-                                            <div className={`size-7 rounded-full flex items-center justify-center transition-colors ${isOpen ? 'bg-gray-100' : 'bg-transparent group-hover:bg-gray-50'}`}>
-                                                <ChevronDown size={18} className={`text-gray-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
-                                            </div>
-                                        </button>
-                                        
-                                        {isOpen && (
-                                            <div className="pb-6 pt-1">
-                                                {acc.type === 'description' && (
-                                                    <div 
-                                                        className={`prose prose-sm md:prose-base max-w-none text-gray-700 text-[15px] leading-relaxed font-sans ${isArabic ? 'dir-rtl text-right' : 'text-left'} [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3 [&_li]:mb-1 [&_strong]:font-bold [&_strong]:text-gray-900 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-gray-900 [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-gray-900 [&_h3]:mb-2 [&_table]:w-full [&_table]:border [&_table]:border-gray-200 [&_table]:my-3 [&_th]:border [&_th]:border-gray-200 [&_th]:p-2 [&_th]:bg-gray-50 [&_th]:font-bold [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_blockquote]:border-l-4 [&_blockquote]:border-amber-400 [&_blockquote]:pl-4 [&_blockquote]:italic [&_a]:text-emerald-600 [&_a]:underline`}
-                                                        dangerouslySetInnerHTML={{
-                                                            __html: descriptionHtml || (isArabic ? '<p>منتج عالي الجودة مُعد بأعلى معايير سلامة الأغذية للتزويد الفندقي والتجاري في المملكة.</p>' : '<p>High-quality food product prepared to the highest food safety standards for wholesale and commercial supply.</p>')
-                                                        }}
-                                                    />
-                                                )}
-
-                                                {acc.type === 'specifications' && (
-                                                    <div className={`space-y-4 ${isArabic ? 'dir-rtl text-right' : 'text-left'}`}>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                            <div className="p-3.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs">
-                                                                <span className="text-[11px] text-gray-400 uppercase font-semibold block tracking-wider mb-1">
-                                                                    {isArabic ? 'الماركة' : 'Brand'}
-                                                                </span>
-                                                                <span className="font-bold text-gray-900 text-sm">
-                                                                    {isArabic 
-                                                                        ? (product.specifications?.brandAr || product.specifications?.brand || 'شركة عبد الله بخيت للتجارة') 
-                                                                        : (product.specifications?.brand || 'Abdullah Bakheet Trading')}
-                                                                </span>
-                                                            </div>
-                                                            <div className="p-3.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs">
-                                                                <span className="text-[11px] text-gray-400 uppercase font-semibold block tracking-wider mb-1">
-                                                                    {isArabic ? 'الوزن الصافي / الحجم' : 'Net Weight / Pack Size'}
-                                                                </span>
-                                                                <span className="font-bold text-gray-900 text-sm">
-                                                                    {isArabic 
-                                                                        ? (product.specifications?.netWeightAr || product.specifications?.netWeight || product.size || 'حسب الطلب') 
-                                                                        : (product.specifications?.netWeight || product.size || 'As requested')}
-                                                                </span>
-                                                            </div>
-                                                            <div className="p-3.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs">
-                                                                <span className="text-[11px] text-gray-400 uppercase font-semibold block tracking-wider mb-1">
-                                                                    {isArabic ? 'الحد الأدنى للطلب (MOQ)' : 'Minimum Order (MOQ)'}
-                                                                </span>
-                                                                <span className="font-bold text-[#1a2b25] text-sm">
-                                                                    {product.moq || 1} {isArabic ? 'وحدات' : 'Units'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="p-3.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs">
-                                                                <span className="text-[11px] text-gray-400 uppercase font-semibold block tracking-wider mb-1">
-                                                                    {isArabic ? 'بلد المنشأ' : 'Country of Origin'}
-                                                                </span>
-                                                                <span className="font-bold text-gray-900 text-sm">
-                                                                    {isArabic 
-                                                                        ? (product.specifications?.originAr || product.specifications?.origin || 'المملكة العربية السعودية') 
-                                                                        : (product.specifications?.origin || 'Saudi Arabia')}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-
-                                                        {(product.specifications?.mouqFile || product.specifications?.mouq_file) && (
-                                                            <div className="pt-2">
-                                                                <a
-                                                                    href={product.specifications?.mouqFile || product.specifications?.mouq_file}
-                                                                    target="_blank"
-                                                                    rel="noreferrer"
-                                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
-                                                                >
-                                                                    <FileText size={14} />
-                                                                    <span>{isArabic ? 'تحميل ملف المواصفات MOUQ' : 'Download MOUQ Specification File'}</span>
-                                                                    <Download size={13} />
-                                                                </a>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                {acc.type === 'text' && (
-                                                    <p className={`text-gray-600 text-[14px] leading-relaxed ${isArabic ? 'text-right dir-rtl' : ''}`}>
-                                                        {acc.content}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Right Column - Sticky Sidebar */}
-                    <div className="w-full lg:w-[400px]">
-                        <div className="bg-[#fafafa] p-8 rounded-xl sticky top-8 border border-gray-100 shadow-sm">
-                            
+                {(() => {
+                    const BuyBoxContent = ({ isMobile = false }: { isMobile?: boolean }) => (
+                        <div className="flex flex-col">
                             {/* Price display with Corporate badge if applicable */}
                             <div className="mb-4">
                                 {isCorporateUser && product.corporatePrice ? (
                                     <div className="flex flex-col gap-1.5">
                                         <div className="flex items-center gap-2">
-                                            <span className="bg-[#fbdc3c] px-3 pt-2 pb-1 inline-block text-3xl font-heading leading-none text-[#1a2b25]">
+                                            <span className="bg-[#fbdc3c] px-3 pt-2 pb-1 inline-block text-2xl sm:text-3xl font-heading leading-none text-[#1a2b25]">
                                                 {formatPrice(product.corporatePrice)}
                                             </span>
-                                            <span className="text-gray-400 line-through text-lg font-medium">
+                                            <span className="text-gray-400 line-through text-base sm:text-lg font-medium">
                                                 {formatPrice(product.price)}
                                             </span>
                                         </div>
@@ -395,7 +358,7 @@ function ProductDescriptionContent() {
                                     </div>
                                 ) : (
                                     <div className="inline-block">
-                                        <span className="bg-[#fbdc3c] px-3 pt-2 pb-1 inline-block text-3xl font-heading leading-none transform scale-y-110 origin-bottom text-[#1a2b25]">
+                                        <span className="bg-[#fbdc3c] px-3 pt-2 pb-1 inline-block text-2xl sm:text-3xl font-heading leading-none transform scale-y-110 origin-bottom text-[#1a2b25]">
                                             {formatPrice(product.price)}
                                         </span>
                                     </div>
@@ -450,7 +413,7 @@ function ProductDescriptionContent() {
                                 </div>
                             )}
                             
-                            <div className="space-y-6 mb-8">
+                            <div className="space-y-4 sm:space-y-6 mb-6 sm:mb-8">
                                 <div>
                                     <div className="flex justify-between items-center mb-2">
                                         <label className={`text-xs font-medium text-gray-500 ${isArabic ? 'text-right' : 'text-left'}`}>
@@ -462,11 +425,11 @@ function ProductDescriptionContent() {
                                             </span>
                                         )}
                                     </div>
-                                    <div className="flex items-center justify-between border border-gray-200 rounded-md p-1 bg-white">
+                                    <div className="flex items-center justify-between border border-gray-200 rounded-lg p-1 bg-white">
                                         <button 
                                             onClick={() => setQuantity(Math.max(product.moq || 1, quantity - 1))}
                                             disabled={quantity <= (product.moq || 1)}
-                                            className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 rounded transition-colors disabled:opacity-30 cursor-pointer"
+                                            className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 rounded-md transition-colors disabled:opacity-30 cursor-pointer"
                                         >
                                             <Minus size={16} />
                                         </button>
@@ -488,21 +451,23 @@ function ProductDescriptionContent() {
                                         />
                                         <button 
                                             onClick={() => setQuantity(quantity + 1)}
-                                            className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 rounded transition-colors cursor-pointer"
+                                            className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 rounded-md transition-colors cursor-pointer"
                                         >
                                             <Plus size={16} />
                                         </button>
                                     </div>
                                 </div>
                                 
-                                <div>
-                                    <label className={`block text-xs font-medium text-gray-500 mb-2 ${isArabic ? 'text-right' : 'text-left'}`}>
-                                        {isArabic ? 'الوزن / الحجم' : 'Weight / Size'}
-                                    </label>
-                                    <div className="flex items-center justify-between border border-gray-200 rounded-md p-1 bg-white">
-                                        <span className="font-bold text-sm px-3 py-2">{product.size}</span>
+                                {product.size && (
+                                    <div>
+                                        <label className={`block text-xs font-medium text-gray-500 mb-2 ${isArabic ? 'text-right' : 'text-left'}`}>
+                                            {isArabic ? 'الوزن / الحجم' : 'Weight / Size'}
+                                        </label>
+                                        <div className="flex items-center justify-between border border-gray-200 rounded-lg p-1 bg-white">
+                                            <span className="font-bold text-sm px-3 py-2">{product.size}</span>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                             
                             <div className="space-y-3 mb-6">
@@ -528,14 +493,14 @@ function ProductDescriptionContent() {
                                         );
                                         setTimeout(() => setWishlistNotification(null), 3500);
                                     }}
-                                    className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-[#22322a] transition-colors group cursor-pointer shadow-md"
+                                    className="w-full bg-[#1a2b25] text-white py-4 rounded-xl font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-[#22322a] transition-colors group cursor-pointer shadow-md"
                                 >
                                     {isArabic ? 'أضف إلى السلة' : 'ADD TO CART'}
                                     <ArrowUpRight size={16} className={`text-gray-400 group-hover:text-white transition-colors ${isArabic ? 'rotate-180' : ''}`} />
                                 </button>
                                 <button 
                                     onClick={handleWishlistAction}
-                                    className="w-full bg-white text-black border border-gray-200 py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:border-[#1a2b25] transition-colors group cursor-pointer"
+                                    className="w-full bg-white text-black border border-gray-200 py-4 rounded-xl font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:border-[#1a2b25] transition-colors group cursor-pointer"
                                 >
                                     {isInWishlist(product.id) 
                                         ? (isArabic ? 'إزالة من المفضلة' : 'REMOVE FROM WISHLIST') 
@@ -560,21 +525,161 @@ function ProductDescriptionContent() {
                             )}
                             
                             <div className="flex justify-center items-center gap-4">
-                                <button className="w-12 h-12 flex items-center justify-center border border-gray-200 rounded-lg hover:border-gray-400 transition-colors text-gray-500 hover:text-black">
+                                <button className="w-12 h-12 flex items-center justify-center border border-gray-200 rounded-lg hover:border-gray-400 transition-colors text-gray-500 hover:text-black cursor-pointer">
                                     <Share size={18} />
                                 </button>
                                 <button 
                                     onClick={handleWishlistAction}
-                                    className={`w-12 h-12 flex items-center justify-center border rounded-lg transition-colors ${isInWishlist(product.id) ? 'border-red-200 text-red-500 bg-red-50' : 'border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-500 hover:bg-red-50'}`}
+                                    className={`w-12 h-12 flex items-center justify-center border rounded-lg transition-colors cursor-pointer ${isInWishlist(product.id) ? 'border-red-200 text-red-500 bg-red-50' : 'border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-500 hover:bg-red-50'}`}
                                 >
                                     <Heart size={18} fill={isInWishlist(product.id) ? 'currentColor' : 'none'} />
                                 </button>
                             </div>
-                            
                         </div>
-                    </div>
-                    
-                </div>
+                    );
+
+                    return (
+                        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start">
+                            {/* Left Column: Info & Accordions */}
+                            <div className="w-full lg:flex-1">
+                                {/* Title Block */}
+                                <div className={`mb-6 ${isArabic ? 'text-right' : 'text-left'}`}>
+                                    <h1 className="text-2xl sm:text-3xl md:text-5xl font-heading mb-2 inline-block transform scale-y-110 origin-bottom">
+                                        <span className="bg-[#fbdc3c] px-3 pt-2 pb-1 inline-block leading-none">
+                                            {isArabic ? (product.arabic || product.title) : product.title}
+                                        </span>
+                                    </h1>
+                                    {isArabic ? (
+                                        hasEnglishSubtitle && (
+                                            <p className="text-lg sm:text-xl font-bold text-gray-500 mt-2 font-sans">
+                                                {product.title}
+                                            </p>
+                                        )
+                                    ) : (
+                                        hasArabicTitle && (
+                                            <p className="text-xl sm:text-2xl font-bold text-gray-700 mt-2 dir-rtl text-right font-sans">
+                                                {product.arabic}
+                                            </p>
+                                        )
+                                    )}
+                                </div>
+
+                                {/* Mobile Price & Buy Box (Unboxed / No Container on Mobile) */}
+                                <div className="block lg:hidden my-6 border-b border-gray-200/80 pb-8">
+                                    <BuyBoxContent isMobile={true} />
+                                </div>
+                                
+                                {/* Accordions & Product Details */}
+                                <div className="border-t border-gray-200 divide-y divide-gray-100">
+                                    {accordions.map((acc) => {
+                                        const isOpen = openAccordions.includes(acc.id);
+                                        return (
+                                            <div key={acc.id} className="py-2">
+                                                <button 
+                                                    onClick={() => toggleAccordion(acc.id)}
+                                                    className={`w-full py-4 flex justify-between items-center text-left focus:outline-none group cursor-pointer ${isArabic ? 'flex-row-reverse text-right' : ''}`}
+                                                >
+                                                    <span className={`font-bold text-base md:text-lg transition-colors ${isOpen ? 'text-[#1a2b25]' : 'text-gray-800 group-hover:text-gray-600'}`}>
+                                                        {acc.id}
+                                                    </span>
+                                                    <div className={`size-7 rounded-full flex items-center justify-center transition-colors ${isOpen ? 'bg-gray-100' : 'bg-transparent group-hover:bg-gray-50'}`}>
+                                                        <ChevronDown size={18} className={`text-gray-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+                                                    </div>
+                                                </button>
+                                                
+                                                {isOpen && (
+                                                    <div className="pb-6 pt-1">
+                                                        {acc.type === 'description' && (
+                                                            <div 
+                                                                className={`prose prose-sm md:prose-base max-w-none text-gray-700 text-[15px] leading-relaxed font-sans ${isArabic ? 'dir-rtl text-right' : 'text-left'} [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3 [&_li]:mb-1 [&_strong]:font-bold [&_strong]:text-gray-900 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-gray-900 [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-gray-900 [&_h3]:mb-2 [&_table]:w-full [&_table]:border [&_table]:border-gray-200 [&_table]:my-3 [&_th]:border [&_th]:border-gray-200 [&_th]:p-2 [&_th]:bg-gray-50 [&_th]:font-bold [&_td]:border [&_td]:border-gray-200 [&_td]:p-2 [&_blockquote]:border-l-4 [&_blockquote]:border-amber-400 [&_blockquote]:pl-4 [&_blockquote]:italic [&_a]:text-emerald-600 [&_a]:underline`}
+                                                                dangerouslySetInnerHTML={{
+                                                                    __html: descriptionHtml || (isArabic ? '<p>منتج عالي الجودة مُعد بأعلى معايير سلامة الأغذية للتزويد الفندقي والتجاري في المملكة.</p>' : '<p>High-quality food product prepared to the highest food safety standards for wholesale and commercial supply.</p>')
+                                                                }}
+                                                            />
+                                                        )}
+
+                                                        {acc.type === 'specifications' && (
+                                                            <div className={`space-y-4 ${isArabic ? 'dir-rtl text-right' : 'text-left'}`}>
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                    <div className="p-3.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs">
+                                                                        <span className="text-[11px] text-gray-400 uppercase font-semibold block tracking-wider mb-1">
+                                                                            {isArabic ? 'الماركة' : 'Brand'}
+                                                                        </span>
+                                                                        <span className="font-bold text-gray-900 text-sm">
+                                                                            {isArabic 
+                                                                                ? (product.specifications?.brandAr || product.specifications?.brand || 'شركة عبد الله بخيت للتجارة') 
+                                                                                : (product.specifications?.brand || 'Abdullah Bakheet Trading')}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="p-3.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs">
+                                                                        <span className="text-[11px] text-gray-400 uppercase font-semibold block tracking-wider mb-1">
+                                                                            {isArabic ? 'الوزن الصافي / الحجم' : 'Net Weight / Pack Size'}
+                                                                        </span>
+                                                                        <span className="font-bold text-gray-900 text-sm">
+                                                                            {isArabic 
+                                                                                ? (product.specifications?.netWeightAr || product.specifications?.netWeight || product.size || 'حسب الطلب') 
+                                                                                : (product.specifications?.netWeight || product.size || 'As requested')}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="p-3.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs">
+                                                                        <span className="text-[11px] text-gray-400 uppercase font-semibold block tracking-wider mb-1">
+                                                                            {isArabic ? 'الحد الأدنى للطلب (MOQ)' : 'Minimum Order (MOQ)'}
+                                                                        </span>
+                                                                        <span className="font-bold text-[#1a2b25] text-sm">
+                                                                            {product.moq || 1} {isArabic ? 'وحدات' : 'Units'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="p-3.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs">
+                                                                        <span className="text-[11px] text-gray-400 uppercase font-semibold block tracking-wider mb-1">
+                                                                            {isArabic ? 'بلد المنشأ' : 'Country of Origin'}
+                                                                        </span>
+                                                                        <span className="font-bold text-gray-900 text-sm">
+                                                                            {isArabic 
+                                                                                ? (product.specifications?.originAr || product.specifications?.origin || 'المملكة العربية السعودية') 
+                                                                                : (product.specifications?.origin || 'Saudi Arabia')}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+
+                                                                {(product.specifications?.mouqFile || product.specifications?.mouq_file) && (
+                                                                    <div className="pt-2">
+                                                                        <a
+                                                                            href={product.specifications?.mouqFile || product.specifications?.mouq_file}
+                                                                            target="_blank"
+                                                                            rel="noreferrer"
+                                                                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+                                                                        >
+                                                                            <FileText size={14} />
+                                                                            <span>{isArabic ? 'تحميل ملف المواصفات MOUQ' : 'Download MOUQ Specification File'}</span>
+                                                                            <Download size={13} />
+                                                                        </a>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {acc.type === 'text' && (
+                                                            <p className={`text-gray-600 text-[14px] leading-relaxed ${isArabic ? 'text-right dir-rtl' : ''}`}>
+                                                                {acc.content}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Right Column: Desktop Sticky Buy Box Container */}
+                            <div className="hidden lg:block w-[400px] flex-shrink-0">
+                                <div className="bg-[#fafafa] p-8 rounded-2xl sticky top-8 border border-gray-100 shadow-sm">
+                                    <BuyBoxContent isMobile={false} />
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
         </div>
     );
