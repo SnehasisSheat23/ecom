@@ -146,10 +146,10 @@ export default function Footer() {
                 <div className="relative w-full flex justify-center items-center mt-12 mb-8">
 
                     {/* Tilted Badges */}
-                    <div className="absolute left-[10%] md:left-[15%] top-4 z-20 rotate-[-10deg] bg-brand-yellow text-black font-bold text-xs md:text-sm px-4 py-1.5 rounded-full uppercase tracking-wider -translate-y-40 md:-translate-y-0 ">
+                    <div className="absolute left-[2%] md:left-[7%] -top-4 md:top-3 z-20 rotate-[-10deg] bg-brand-yellow text-black font-bold text-xs md:text-sm px-4 py-1.5 rounded-full uppercase tracking-wider -translate-y-40 md:-translate-y-0 ">
                         {t.badgeTrading}
                     </div>
-                    <div className="absolute right-[5%] md:right-[15%] top-2 z-20 rotate-10 bg-brand-yellow text-black font-bold text-xs md:text-sm px-4 py-1.5 rounded-full uppercase tracking-wider -translate-y-40 md:translate-y-0">
+                    <div className="absolute right-[1%] md:right-[5%] -top-4 md:top-2 z-20 rotate-8 bg-brand-yellow text-black font-bold text-xs md:text-sm px-4 py-1.5 rounded-full uppercase tracking-wider -translate-y-40 md:translate-y-0">
                         {t.badgeCompany}
                     </div>
 
