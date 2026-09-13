@@ -36,7 +36,7 @@ export default function WantToKnowMore() {
 
                     {/* Left: Product Image */}
                     <div className="w-full lg:w-[55%] bg-none flex items-center justify-center p-0 md:p-2">
-                        <div className="relative w-full max-w-2xl h-[280px] md:h-[360px] lg:h-[420px] overflow-hidden rounded-none">
+                        <div className="relative w-full max-w-2xl h-[280px] md:h-[360px] lg:h-[350px] overflow-hidden rounded-none">
                             <Image
                                 src="/images/abdullah_bakheet_warehouse.jpg"
                                 alt={isArabic ? "مركز التوزيع اللوجستي للأغذية - عبدالله بخيت" : "Abdullah Bakheet food supply and logistics distribution center"}

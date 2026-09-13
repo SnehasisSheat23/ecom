@@ -1,5 +1,6 @@
 "use client"
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { ArrowUpRightIcon, ArrowLeftIcon, ArrowRightIcon } from 'lucide-animated';
 import { useShop } from '@/context/ShopContext';
 import { translations } from '@/lib/translations';
@@ -23,6 +24,21 @@ export default function WhyChooseUs() {
             desc: t.feature3Desc,
         },
     ];
+
+    const sliderImages = [
+        "/images/WhatsApp Image 2026-09-13 at 2.14.0004 PM.jpeg",
+        "/images/WhatsApp Image 2026-09-13 at 2.14.06 PM.jpeg",
+        "/images/WhatsApp Image 2026-09-13 at 2.14.05 PM.jpeg",
+    ];
+    const [currentImage, setCurrentImage] = useState(0);
+
+    const nextImage = () => setCurrentImage((prev) => (prev + 1) % sliderImages.length);
+    const prevImage = () => setCurrentImage((prev) => (prev - 1 + sliderImages.length) % sliderImages.length);
+
+    useEffect(() => {
+        const timer = setInterval(nextImage, 5000);
+        return () => clearInterval(timer);
+    }, []);
 
     return (
         <section className="w-full bg-brand-gray py-0 md:py-6 font-sans">
@@ -76,13 +92,20 @@ export default function WhyChooseUs() {
 
                 </div>
 
-                {/* Center Column: Featured Image */}
+                {/* Center Column: Featured Image Slider */}
                 <div className="lg:col-span-4 relative h-[500px] lg:h-[600px] w-full bg-gray-100 group overflow-hidden">
-                    <img
-                        src="/images/9196aa974a546890810c6016161c0beac023dd87.png"
-                        alt="Saudi Arabia Landmark"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                    />
+                    {sliderImages.map((img, idx) => (
+                        <img
+                            key={idx}
+                            src={img}
+                            alt="Saudi Arabia Landmark"
+                            className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-in-out ${
+                                idx === currentImage
+                                    ? 'opacity-100 z-10 group-hover:scale-[1.05]'
+                                    : 'opacity-0 z-0'
+                            }`}
+                        />
+                    ))}
 
                     {/* "Featured" Pill Badge */}
                     <div className="absolute top-6 left-6 bg-white text-black text-xs font-bold px-4 py-1.5 rounded-full z-10 shadow-sm">
@@ -91,10 +114,10 @@ export default function WhyChooseUs() {
 
                     {/* Navigation Arrows */}
                     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-6 z-10 text-white/80">
-                        <button className="hover:text-white transition-colors p-2" aria-label="Previous image">
+                        <button onClick={prevImage} className="hover:text-white transition-colors p-2" aria-label="Previous image">
                             <ArrowLeftIcon size={24} />
                         </button>
-                        <button className="hover:text-white transition-colors p-2" aria-label="Next image">
+                        <button onClick={nextImage} className="hover:text-white transition-colors p-2" aria-label="Next image">
                             <ArrowRightIcon size={24} />
                         </button>
                     </div>

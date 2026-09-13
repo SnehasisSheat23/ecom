@@ -21,7 +21,7 @@ export default function Footer() {
     const tCards = isArabic ? translations.ar.categories.cards : translations.en.categories.cards;
 
     return (
-        <footer className={cn('w-full bg-black text-white pt-16 font-sans relative overflow-hidden')}>
+        <footer className={cn('w-full h-340 md:h-auto bg-black text-white pt-16 font-sans relative overflow-hidden')}>
             <div className="max-w-[1400px] mx-auto px-4 md:px-8 lg:px-10 ">
 
                 {/* Top Grid Section */}
@@ -98,20 +98,21 @@ export default function Footer() {
                     </div>
 
                     {/* Column 4: Our Contacts */}
-                    <div className={`sm:col-span-1 lg:col-span-2 sm:text-right sm:-translate-y-50 ${isArabic ? 'text-right' : 'text-left'}`}>
+                    <div className={`sm:col-span-1 lg:col-span-2 sm:text-right -translate-y-40 md:-translate-y-0 ${isArabic ? 'text-right' : 'text-left'}`}>
                         <h4 className="font-medium text-lg mb-6">{t.contactsTitle}</h4>
                         <ul className="flex flex-col gap-4 text-[15px] text-gray-400 mb-6">
                             <li>
                                 <span className="block text-white mb-1">{t.phoneLabel}</span>
-                                +91 8910647915
+                                +966 9200 15884
                             </li>
-                            <li>
-                                <span className="block text-white mb-1">{t.whatsappLabel}</span>
-                                +91 8910647915
-                            </li>
+                            {/*<li>*/}
+                            {/*    <span className="block text-white mb-1">{t.whatsappLabel}</span>*/}
+                            {/*    +91 8910647915*/}
+                            {/*</li>*/}
                             <li>
                                 <span className="block text-white mb-1">{t.emailLabel}</span>
-                                sandipan@gmail.com
+                                contact@abdullahbakhe
+                                etksa.com
                             </li>
                         </ul>
 
@@ -120,10 +121,10 @@ export default function Footer() {
                             <Link href="#" className={cn('bg-white text-black p-1.5 rounded-sm hover:opacity-80 transition-opacity')}>
                                 <TwitterIcon size={16} />
                             </Link>
-                            <Link href="#" className={cn('bg-white text-black p-1.5 rounded-sm hover:opacity-80 transition-opacity')}>
+                            <Link href="https://www.facebook.com/share/1Cx37kmDC8/?mibextid=wwXIfr" className={cn('bg-white text-black p-1.5 rounded-sm hover:opacity-80 transition-opacity')}>
                                 <FacebookIcon size={16} />
                             </Link>
-                            <Link href="#" className={cn('bg-white text-black p-1.5 rounded-sm hover:opacity-80 transition-opacity')}>
+                            <Link href="https://www.instagram.com/greenparkksa?stkn=MTEwcXlja3RreXF0NQ==" className={cn('bg-white text-black p-1.5 rounded-sm hover:opacity-80 transition-opacity')}>
                                 <InstagramIcon size={16} />
                             </Link>
                             <Link href="#" className={cn('bg-white text-black p-1.5 rounded-sm hover:opacity-80 transition-opacity')}>
@@ -145,15 +146,15 @@ export default function Footer() {
                 <div className="relative w-full flex justify-center items-center mt-12 mb-8">
 
                     {/* Tilted Badges */}
-                    <div className="absolute left-[10%] md:left-[15%] top-4 z-20 rotate-[-10deg] bg-brand-yellow text-black font-bold text-xs md:text-sm px-4 py-1.5 rounded-full uppercase tracking-wider">
+                    <div className="absolute left-[10%] md:left-[15%] top-4 z-20 rotate-[-10deg] bg-brand-yellow text-black font-bold text-xs md:text-sm px-4 py-1.5 rounded-full uppercase tracking-wider -translate-y-40 md:-translate-y-0 ">
                         {t.badgeTrading}
                     </div>
-                    <div className="absolute right-[5%] md:right-[15%] top-2 z-20 rotate-10 bg-brand-yellow text-black font-bold text-xs md:text-sm px-4 py-1.5 rounded-full uppercase tracking-wider">
+                    <div className="absolute right-[5%] md:right-[15%] top-2 z-20 rotate-10 bg-brand-yellow text-black font-bold text-xs md:text-sm px-4 py-1.5 rounded-full uppercase tracking-wider -translate-y-40 md:translate-y-0">
                         {t.badgeCompany}
                     </div>
 
                     {/* Central Product Image */}
-                    <div className="absolute top-1/2 left-1/3 translate-x-1/2 translate-y-[-220%] z-30 w-32 h-32 md:w-40 md:h-40 bg-white rounded-full border-4 border-black flex items-center justify-center overflow-hidden">
+                    <div className="absolute top-1/2 left-1/3 translate-x-1/2 translate-y-[-300%] md:translate-y-[-220%]  z-30 w-32 h-32 md:w-40 md:h-40 bg-white rounded-full border-4 border-black flex items-center justify-center overflow-hidden">
                         <Image
                             src="/images/a86ce4a691c715f9e05179a25eb352f4328feeab.jpg"
                             alt="Nestol Mustard"
@@ -165,13 +166,13 @@ export default function Footer() {
                     </div>
 
                     {/* Gradient Text */}
-                    <h1 className={`font-heading text-[15vw] font-lg uppercase tracking-normal leading-none select-none text-transparent bg-clip-text bg-linear-to-b from-white via-white/25 to-black w-full text-center scale-y-100 transform origin-bottom pb-4 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
+                    <h1 className={`font-heading text-[15vw] font-lg uppercase tracking-normal leading-none select-none text-transparent bg-clip-text bg-linear-to-b from-white via-white/25 to-black w-full text-center scale-y-100 -translate-y-40 md:-translate-y-0 transform origin-bottom pb-4 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
                         {isArabic ? translations.ar.hero.firstName + ' ' + translations.ar.hero.lastName : 'Abdullah Bakheet'}
                     </h1>
                 </div>
 
                 {/* Bottom Copyright Bar */}
-                <div className="w-full border-t border-gray-800 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] text-gray-400 tracking-wide z-10 relative">
+                <div className="w-full border-t -translate-y-40 md:-translate-y-0 border-gray-800 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] text-gray-400 tracking-wide z-10 relative">
                     <p>{t.copyright}</p>
                     <p>
                         {t.builtWith} <span className="text-white font-medium">{t.by}</span> <span className="text-red-500 text-sm">❤</span>
