@@ -11,9 +11,20 @@ export class NotificationAdapterFactory {
   }
 
   private registerDefaultAdapters() {
-    this.register(new EmailAdapter())
-    this.register(new WhatsAppAdapter())
-    this.register(new SystemAdapter())
+    // Check enabled channels from environment (defaulting to email only if not specified)
+    const envChannels = process.env.ENABLED_NOTIFICATION_CHANNELS
+      ? process.env.ENABLED_NOTIFICATION_CHANNELS.split(',').map((s) => s.trim().toLowerCase())
+      : ['email']
+
+    if (envChannels.includes('email')) {
+      this.register(new EmailAdapter())
+    }
+    if (envChannels.includes('whatsapp')) {
+      this.register(new WhatsAppAdapter())
+    }
+    if (envChannels.includes('system')) {
+      this.register(new SystemAdapter())
+    }
   }
 
   public register(adapter: NotificationAdapter) {
