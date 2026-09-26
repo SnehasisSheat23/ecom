@@ -30,13 +30,14 @@ export default function AboutStory() {
                             {isArabic ? 'أفضل مستورد' : 'TRUSTED SUPPLIER IN'}
                         </h2>
 
-                        <div className="hidden md:block w-[100px] h-[100px] lg:w-[150px] lg:h-[150px] bg-white shadow-sm overflow-hidden md:translate-x-18 relative">
+                        <div className="hidden md:block w-[120px] h-[120px] lg:w-[150px] lg:h-[150px] md:translate-x-18 relative filter drop-shadow-md hover:scale-105 transition-transform duration-300">
                             <Image
-                                src="/images/e307efad5c4c43cfa7dbe3a5922100bb8a19ae1e.png"
-                                alt={isArabic ? 'شاي تويننجز الأخضر' : 'Twinings Green Tea'}
+                                src="/images/green_park_product_1.png"
+                                alt={isArabic ? 'منتجات جرين بارك' : 'Green Park Products'}
                                 fill
-                                sizes="(max-width: 1024px) 100px, 150px"
-                                className="object-cover"
+                                unoptimized
+                                sizes="(max-width: 1024px) 120px, 150px"
+                                className="object-contain"
                             />
                         </div>
 
@@ -48,18 +49,19 @@ export default function AboutStory() {
 
                         <div className="hidden lg:block w-[50px] h-[130px] bg-[#fbdc3c] flex-shrink-0 mr-auto translate-x-5"></div>
 
-                        <div className="hidden md:block w-[120px] h-[120px] lg:w-[150px] lg:h-[150px] bg-white shadow-sm overflow-hidden md:-translate-x-33 relative">
+                        <div className="hidden md:block w-[130px] h-[130px] lg:w-[150px] lg:h-[150px] md:-translate-x-33 relative filter drop-shadow-md hover:scale-105 transition-transform duration-300">
                             <Image
-                                src="/images/fb6086db76f48ad87a9eaa300b5e268336554933.png"
-                                alt={isArabic ? 'كوكتيل فواكه' : 'Fruit Cocktail'}
+                                src="/images/green_park_product_2.png"
+                                alt={isArabic ? 'زيتون أسود يوناني جرين بارك' : 'Green Park Greek Black Olives Tin'}
                                 fill
-                                sizes="(max-width: 1024px) 120px, 150px"
-                                className="object-cover"
+                                unoptimized
+                                sizes="(max-width: 1024px) 130px, 150px"
+                                className="object-contain"
                             />
                         </div>
 
                         <h2 className={`font-heading text-[11vw] md:text-[100px] lg:text-[90px] uppercase text-[#1a2b25] leading-[0.8] tracking-wider scale-y-110 transform origin-bottom whitespace-nowrap relative md:-translate-x-30 ${isArabic ? 'font-sans font-black tracking-tight scale-y-100' : ''}`}>
-                            {isArabic ? 'في الرياض، المملكة' : 'KINGDOM 0F SAUDI ARABIA'}
+                            {isArabic ? 'في الرياض، المملكة' : 'KINGDOM OF SAUDI ARABIA'}
 
                             {/* 'TRADING' Badge */}
                             <div className="absolute -top-2 -right-4 md:-top-15 md:-right-5 z-10 hidden md:block">
