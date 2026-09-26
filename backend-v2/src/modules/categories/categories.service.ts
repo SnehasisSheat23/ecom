@@ -21,14 +21,25 @@ export class CategoriesService {
   private db = getDatabase()
 
   async createCategory(input: CreateCategoryInput) {
-    const slug = input.slug || input.name?.toLowerCase().replace(/\s+/g, '-') || `cat-${Date.now()}`
+    const slug = input.slug || input.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `cat-${Date.now()}`
     const status = (input.status || (input.isActive !== undefined ? (input.isActive ? 'active' : 'draft') : 'active')).toLowerCase()
-    const translations = input.translations || {
+
+    const translations = {
       en: {
-        name: input.name || 'New Category',
-        description: input.description || '',
-        slug,
+        name: input.name || input.translations?.en?.name || 'New Category',
+        description: input.description || input.translations?.en?.description || '',
+        slug: input.slug || input.translations?.en?.slug || slug,
       },
+      ar: {
+        name: input.translations?.ar?.name || input.name || '',
+        description: input.translations?.ar?.description || input.description || '',
+        slug: input.slug || input.translations?.ar?.slug || slug,
+      },
+      ...(input.translations || {}),
+    }
+
+    if (!translations.en.name && input.name) {
+      translations.en.name = input.name
     }
 
     const [cat] = await this.db
@@ -44,9 +55,37 @@ export class CategoriesService {
     return this.formatCategory(cat, 'en')
   }
 
-  async getCategories(options: { lang?: 'en' | 'ar'; tree?: boolean }) {
+  async getCategories(options: {
+    lang?: 'en' | 'ar'
+    tree?: boolean
+    parentId?: string | null
+    status?: string
+    includeInactive?: boolean
+  }) {
     const lang = options.lang || 'en'
-    const allCategories = await this.db.select().from(categories).orderBy(categories.displayOrder)
+    let query = this.db.select().from(categories).$dynamic()
+
+    const conditions = []
+
+    if (options.parentId !== undefined) {
+      if (options.parentId === 'null' || options.parentId === '' || options.parentId === 'root' || options.parentId === null) {
+        conditions.push(isNull(categories.parentId))
+      } else {
+        conditions.push(eq(categories.parentId, options.parentId))
+      }
+    }
+
+    if (!options.includeInactive && options.status) {
+      conditions.push(eq(categories.status, options.status))
+    }
+
+    if (conditions.length === 1) {
+      query = query.where(conditions[0])
+    } else if (conditions.length > 1) {
+      query = query.where(sql`${conditions[0]} AND ${conditions[1]}`)
+    }
+
+    const allCategories = await query.orderBy(categories.displayOrder)
 
     const formatted = allCategories.map((c) => this.formatCategory(c, lang))
 

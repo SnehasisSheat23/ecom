@@ -19,7 +19,6 @@ import { ShippingCard } from "./product-details/shipping-card"
 import { VariantsCard } from "./product-details/variants-card"
 import { SEOCard } from "./product-details/seo-card"
 import { StatusCard } from "./product-details/status-card"
-import { PublishingCard } from "./product-details/publishing-card"
 import { CategoryCard } from "./product-details/category-card"
 import { OrganizationCard } from "./product-details/organization-card"
 
@@ -966,11 +965,6 @@ export function ProductDetails({ id }: { id: string }) {
           <StatusCard
             product={product}
             setProduct={setProduct}
-          />
-
-          {/* Publishing Card (Always visible below Status) */}
-          <PublishingCard
-            product={product}
           />
 
           {/* Category Card */}

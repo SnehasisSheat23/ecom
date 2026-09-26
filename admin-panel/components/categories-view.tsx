@@ -178,6 +178,34 @@ export function CategoriesView() {
     }, 800)
   }
 
+  // ── Process Categories response (Builds root categories & children mapping) ─────────
+  const processCategoriesData = React.useCallback((items: BackendCategoryApiItem[]) => {
+    // 1. Separate roots vs children
+    const roots = items.filter((c) => !c.parentId || c.parentId === null)
+
+    // 2. Pre-build children map for all categories
+    const newChildrenMap = new Map<string, CategoryItem[]>()
+    for (const item of items) {
+      if (item.parentId) {
+        const existing = newChildrenMap.get(item.parentId) || []
+        existing.push(mapApiToCategoryItem(item, 1))
+        newChildrenMap.set(item.parentId, existing)
+      }
+    }
+
+    // Sort subcategories in map
+    for (const [, subs] of newChildrenMap.entries()) {
+      subs.sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.name.localeCompare(b.name))
+    }
+
+    setChildrenMap(newChildrenMap)
+    setTopLevelCategories(
+      roots
+        .map((c) => mapApiToCategoryItem(c, 0))
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.name.localeCompare(b.name))
+    )
+  }, [])
+
   // ── Load Root Top-Level Categories (Level 0) on Mount ────────────────────
   const loadRootCategories = React.useCallback(async () => {
     try {
@@ -185,11 +213,7 @@ export function CategoriesView() {
       if (res.ok) {
         const body = await res.json()
         const items: BackendCategoryApiItem[] = Array.isArray(body.data) ? body.data : body.data?.items ?? []
-        setTopLevelCategories(
-          items
-            .map((c) => mapApiToCategoryItem(c, 0))
-            .sort((a, b) => a.name.localeCompare(b.name))
-        )
+        processCategoriesData(items)
       } else {
         toast.error("Failed to fetch categories")
       }
@@ -199,7 +223,7 @@ export function CategoriesView() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [processCategoriesData])
 
   React.useEffect(() => {
     let isMounted = true
@@ -209,11 +233,7 @@ export function CategoriesView() {
         if (res.ok && isMounted) {
           const body = await res.json()
           const items: BackendCategoryApiItem[] = Array.isArray(body.data) ? body.data : body.data?.items ?? []
-          setTopLevelCategories(
-            items
-              .map((c) => mapApiToCategoryItem(c, 0))
-              .sort((a, b) => a.name.localeCompare(b.name))
-          )
+          processCategoriesData(items)
         }
       } catch (err) {
         console.error("Failed to load categories:", err)
@@ -226,7 +246,7 @@ export function CategoriesView() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [processCategoriesData])
 
   // ── Fetch Subcategories On-Demand when Chevron ▶ is clicked ────────────────
   const handleToggleExpand = async (cat: CategoryItem, e?: React.MouseEvent) => {
@@ -244,21 +264,23 @@ export function CategoriesView() {
     }
 
     // Check if children are already fetched
-    if (childrenMap.has(catId)) {
+    if (childrenMap.has(catId) && (childrenMap.get(catId)?.length ?? 0) > 0) {
       setExpandedRows((prev) => new Set(prev).add(catId))
       return
     }
 
-    // On-Demand Lazy Fetch from Backend API
+    // On-Demand Lazy Fetch from Backend API (with strict parentId filter)
     try {
       setLoadingParents((prev) => new Set(prev).add(catId))
       const res = await apiRequest(`/categories?parentId=${catId}&includeInactive=true`)
       if (res.ok) {
         const body = await res.json()
         const items: BackendCategoryApiItem[] = Array.isArray(body.data) ? body.data : body.data?.items ?? []
+        // Strictly filter items belonging directly to this parent
         const children: CategoryItem[] = items
+          .filter((c) => c.parentId === catId)
           .map((c) => mapApiToCategoryItem(c, (cat.level ?? 0) + 1))
-          .sort((a, b) => a.name.localeCompare(b.name))
+          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.name.localeCompare(b.name))
 
         setChildrenMap((prev) => new Map(prev).set(catId, children))
         setExpandedRows((prev) => new Set(prev).add(catId))
@@ -412,10 +434,16 @@ export function CategoriesView() {
         isActive: formIsActive,
         translations: {
           ...(editingCategory?.translations || {}),
+          en: {
+            name: formName.trim(),
+            description: formDescription || "",
+            slug: finalSlug,
+          },
           ar: {
             ...((editingCategory?.translations?.ar as Record<string, any>) || {}),
-            name: formArabicName.trim(),
-            description: formArabicDescription || "",
+            name: formArabicName.trim() || formName.trim(),
+            description: formArabicDescription || formDescription || "",
+            slug: finalSlug,
           },
         },
       }
@@ -428,23 +456,7 @@ export function CategoriesView() {
         if (res.ok) {
           toast.success("Category updated successfully")
           setIsAddOpen(false)
-          const body = await res.json()
-          const updatedRaw = body.data ?? body
-          const updated = mapApiToCategoryItem(updatedRaw, updatedRaw.level ?? editingCategory.level)
-
-          setTopLevelCategories((prev) =>
-            prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c))
-          )
-          setChildrenMap((prev) => {
-            const next = new Map(prev)
-            for (const [key, list] of next.entries()) {
-              next.set(
-                key,
-                list.map((c) => (c.id === updated.id ? { ...c, ...updated } : c))
-              )
-            }
-            return next
-          })
+          loadRootCategories()
         } else {
           const errData = await res.json().catch(() => ({}))
           toast.error(errData.message || "Failed to update category")
@@ -457,26 +469,7 @@ export function CategoriesView() {
         if (res.ok) {
           toast.success("Category created successfully")
           setIsAddOpen(false)
-          const body = await res.json()
-          const createdRaw = body.data ?? body
-          const created = mapApiToCategoryItem(createdRaw, createdRaw.level)
-
-          if (!created.parentId) {
-            setTopLevelCategories((prev) =>
-              [...prev, created].sort((a, b) => a.name.localeCompare(b.name))
-            )
-          } else {
-            setChildrenMap((prev) => {
-              const next = new Map(prev)
-              const list = next.get(created.parentId!) || []
-              next.set(
-                created.parentId!,
-                [...list, created].sort((a, b) => a.name.localeCompare(b.name))
-              )
-              return next
-            })
-            setExpandedRows((prev) => new Set(prev).add(created.parentId!))
-          }
+          loadRootCategories()
         } else {
           const errData = await res.json().catch(() => ({}))
           toast.error(errData.message || "Failed to create category")
@@ -504,18 +497,7 @@ export function CategoriesView() {
           next.delete(id)
           return next
         })
-        setTopLevelCategories((prev) => prev.filter((c) => c.id !== id))
-        setChildrenMap((prev) => {
-          const next = new Map(prev)
-          next.delete(id)
-          for (const [key, list] of next.entries()) {
-            next.set(
-              key,
-              list.filter((c) => c.id !== id)
-            )
-          }
-          return next
-        })
+        loadRootCategories()
       } else {
         toast.error("Failed to delete category")
       }
@@ -537,6 +519,7 @@ export function CategoriesView() {
 
   // ── Recursive Row Rendering ───────────────────────────────────────────────
   const renderCategoryRow = (cat: CategoryItem, depth: number = 0) => {
+    if (depth > 5) return null // Recursion safety guard
     if (activeTab === "Active" && !cat.isActive) return null
     if (activeTab === "Draft" && cat.isActive) return null
 
@@ -546,6 +529,7 @@ export function CategoriesView() {
     const isFetchingChildren = loadingParents.has(catId)
     const isSelected = selectedRows.has(catId)
     const indentPadding = depth * 24
+    const hasSubcategories = children.length > 0 || (depth === 0 && (childrenMap.get(catId)?.length ?? 0) > 0)
 
     return (
       <React.Fragment key={catId}>
@@ -564,24 +548,30 @@ export function CategoriesView() {
 
           <td className="px-3 py-2.5">
             <div className="flex items-center gap-2" style={{ paddingLeft: `${indentPadding}px` }}>
-              {/* Expand Chevron / On-Demand Loading Spinner */}
-              <button
-                type="button"
-                onClick={(e) => handleToggleExpand(cat, e)}
-                disabled={isFetchingChildren}
-                className="size-5 rounded hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer shrink-0 transition-transform disabled:opacity-50"
-                title={isExpanded ? "Collapse" : "Fetch subcategories"}
-              >
-                {isFetchingChildren ? (
-                  <div className="size-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
-                ) : (
-                  <Icon
-                    name={isExpanded ? "expand_more" : "chevron_right"}
-                    size={16}
-                    className="size-4!"
-                  />
-                )}
-              </button>
+              {/* Expand Chevron (only if subcategories exist) or Spacer */}
+              {hasSubcategories ? (
+                <button
+                  type="button"
+                  onClick={(e) => handleToggleExpand(cat, e)}
+                  disabled={isFetchingChildren}
+                  className="size-5 rounded hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer shrink-0 transition-transform disabled:opacity-50"
+                  title={isExpanded ? "Collapse" : "Expand subcategories"}
+                >
+                  {isFetchingChildren ? (
+                    <div className="size-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+                  ) : (
+                    <Icon
+                      name={isExpanded ? "expand_more" : "chevron_right"}
+                      size={16}
+                      className="size-4!"
+                    />
+                  )}
+                </button>
+              ) : (
+                <div className="size-5 shrink-0 flex items-center justify-center">
+                  <div className="size-1 rounded-full bg-muted-foreground/30" />
+                </div>
+              )}
 
               {/* Cover Image */}
               {(cat.imageUrl && cat.imageUrl.trim()) ? (
@@ -604,7 +594,7 @@ export function CategoriesView() {
 
                 {children.length > 0 && (
                   <span className="text-[10px] font-mono text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-full shrink-0">
-                    {children.length} items loaded
+                    {children.length} subcategories
                   </span>
                 )}
               </div>
@@ -657,7 +647,7 @@ export function CategoriesView() {
         </tr>
 
         {/* Render Children On-Demand when Expanded */}
-        {isExpanded && children.map((child) => renderCategoryRow(child, depth + 1))}
+        {isExpanded && children.filter((child) => child.id !== catId).map((child) => renderCategoryRow(child, depth + 1))}
       </React.Fragment>
     )
   }

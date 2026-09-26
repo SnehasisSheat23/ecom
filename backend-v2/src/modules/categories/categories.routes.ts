@@ -5,12 +5,21 @@ const categoriesService = new CategoriesService()
 
 export const categoriesRoutes = new Hono()
 
-// GET /api/v1/categories - List categories (with optional ?tree=true and ?lang=en|ar)
+// GET /api/v1/categories - List categories (with optional ?tree=true, ?parentId=null|UUID and ?lang=en|ar)
 categoriesRoutes.get('/', async (c) => {
   const lang = (c.req.query('lang') as 'en' | 'ar') || 'en'
   const tree = c.req.query('tree') === 'true'
+  const parentId = c.req.query('parentId')
+  const status = c.req.query('status')
+  const includeInactive = c.req.query('includeInactive') === 'true'
 
-  const result = await categoriesService.getCategories({ lang, tree })
+  const result = await categoriesService.getCategories({
+    lang,
+    tree,
+    parentId,
+    status,
+    includeInactive,
+  })
   return c.json({ success: true, data: result })
 })
 

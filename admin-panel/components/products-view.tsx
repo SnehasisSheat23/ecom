@@ -289,7 +289,6 @@ export function ProductsView() {
   // Column Visibility Checkers
   const hasPrice = isLoading || products.some(p => p.price && p.price.length > 0)
   const hasCategory = isLoading || products.some(p => p.category && p.category.length > 0)
-  const hasType = isLoading || products.some(p => p.type && p.type.length > 0)
   const hasMarkets = false
   const hasVendor = false
 
@@ -572,13 +571,6 @@ export function ProductsView() {
                     </div>
                   </th>
                 )}
-                {hasType && (
-                  <th className="px-4 py-3 font-semibold text-foreground select-none">
-                    <div onClick={() => toggleSort("type")} className="flex items-center cursor-pointer hover:text-foreground">
-                      Type {renderSortIcon("type")}
-                    </div>
-                  </th>
-                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -607,16 +599,11 @@ export function ProductsView() {
                         <div className="h-4 w-20 bg-muted/60 rounded-full" />
                       </td>
                     )}
-                    {hasType && (
-                      <td className="px-4 py-3.5">
-                        <div className="h-4 w-16 bg-muted/60 rounded-full" />
-                      </td>
-                    )}
                   </tr>
                 ))
               ) : filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted-foreground font-ui text-sm">
+                  <td colSpan={5} className="p-8 text-center text-muted-foreground font-ui text-sm">
                     No products found
                   </td>
                 </tr>
@@ -668,11 +655,6 @@ export function ProductsView() {
                       {hasCategory && (
                         <td className="px-4 py-3.5 text-muted-foreground whitespace-nowrap">
                           {product.category}
-                        </td>
-                      )}
-                      {hasType && (
-                        <td className="px-4 py-3.5 text-muted-foreground whitespace-nowrap">
-                          {product.type}
                         </td>
                       )}
                     </tr>
