@@ -1,6 +1,7 @@
 import { eq, desc, and, sql, or } from 'drizzle-orm'
 import { getDatabase } from '../../lib/db.js'
 import { quotations, quotationItems, products, customers, orders, orderItems } from '../../database/schema.js'
+import { notify } from '../notifications/index.js'
 
 export interface CreateQuotationItemInput {
   productId: string
@@ -189,7 +190,24 @@ export class QuotationsService {
       })
     }
 
-    return this.getQuotationById(createdQuote.id)
+    const fullQuote = await this.getQuotationById(createdQuote.id)
+
+    // Fire-and-forget quotation request notification
+    if (fullQuote) {
+      notify('B2B_QUOTATION_REQUESTED', {
+        quoteNumber: fullQuote.quoteNumber,
+        customerName: fullQuote.customerName,
+        customerEmail: fullQuote.customerEmail,
+        customerPhone: fullQuote.customerPhone,
+        companyName: fullQuote.companyName,
+        currency: fullQuote.currency,
+        totalAmount: fullQuote.totalAmount,
+        itemsCount: fullQuote.items?.length || 0,
+        customerNotes: fullQuote.customerNotes,
+      })
+    }
+
+    return fullQuote
   }
 
   async getQuotations(filters?: { customerId?: string; email?: string; status?: string; search?: string }) {
@@ -312,7 +330,25 @@ export class QuotationsService {
       })
       .where(eq(quotations.id, existing.id))
 
-    return this.getQuotationById(existing.id)
+    const updatedQuote = await this.getQuotationById(existing.id)
+
+    // Fire-and-forget notification when quote status is updated / priced
+    if (updatedQuote && (update.status === 'quoted' || update.items || update.discountAmount !== undefined || update.paymentLink)) {
+      notify('B2B_QUOTATION_RESPONDED', {
+        quoteNumber: updatedQuote.quoteNumber,
+        customerName: updatedQuote.customerName,
+        customerEmail: updatedQuote.customerEmail,
+        customerPhone: updatedQuote.customerPhone,
+        currency: updatedQuote.currency,
+        subtotal: updatedQuote.subtotal,
+        totalAmount: updatedQuote.totalAmount,
+        validUntil: updatedQuote.validUntil,
+        paymentLink: updatedQuote.paymentLink,
+        adminNotes: updatedQuote.adminNotes,
+      })
+    }
+
+    return updatedQuote
   }
 
   async acceptAndConvertToOrder(id: string, input: AcceptQuotationInput) {

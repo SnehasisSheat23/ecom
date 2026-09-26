@@ -3,6 +3,7 @@ import { getDatabase } from '../../lib/db.js'
 import { orders, orderItems, products, customers } from '../../database/schema.js'
 import { ProductsService } from '../products/products.service.js'
 import { shippingService } from '../shipping/shipping.service.js'
+import { notify } from '../notifications/index.js'
 
 export interface CreateOrderItemInput {
   productId: string
@@ -241,7 +242,47 @@ export class OrdersService {
       }
     }
 
-    return this.getOrderById(newOrder.id)
+    const createdOrder = await this.getOrderById(newOrder.id)
+
+    // Fire-and-forget notification dispatch
+    if (createdOrder) {
+      const custObj = (createdOrder as any).customer
+      const shipSnap = (createdOrder.shippingAddressSnapshot as any) || {}
+      const customerName = custObj?.firstName
+        ? `${custObj.firstName} ${custObj.lastName || ''}`.trim()
+        : (shipSnap.fullName || shipSnap.recipientName || 'Valued Customer')
+      const customerEmail = custObj?.email || shipSnap.email || 'customer@example.com'
+      const customerPhone = custObj?.phone || shipSnap.phone || null
+
+      notify('ORDER_PLACED', {
+        orderNumber: createdOrder.orderNumber,
+        customerName,
+        customerEmail,
+        customerPhone,
+        totalAmount: createdOrder.totalAmount,
+        subtotal: createdOrder.subtotal,
+        shippingCost: createdOrder.shippingCost,
+        currency: createdOrder.currency,
+        paymentMethod: createdOrder.paymentMethodType,
+        shippingAddress: [
+          (createdOrder.shippingAddressSnapshot as any)?.addressLine1,
+          (createdOrder.shippingAddressSnapshot as any)?.city,
+          (createdOrder.shippingAddressSnapshot as any)?.country,
+        ]
+          .filter(Boolean)
+          .join(', '),
+        items: (createdOrder.items || []).map((item: any) => ({
+          name: item.title || item.name || 'Product Item',
+          quantity: item.quantity,
+          unitPrice: Number(item.unitPrice || 0),
+          totalPrice: Number(item.totalPrice || 0),
+          sku: item.sku,
+          image: item.image,
+        })),
+      })
+    }
+
+    return createdOrder
   }
 
   async getOrders(options: {
@@ -465,6 +506,30 @@ export class OrdersService {
       .set({ status: cleanStatus, updatedAt: new Date() })
       .where(eq(orders.id, id))
       .returning()
+
+    if (updated) {
+      const fullOrder = await this.getOrderById(updated.id)
+      if (fullOrder) {
+        const custObj = (fullOrder as any).customer
+        const shipSnap = (fullOrder.shippingAddressSnapshot as any) || {}
+        const customerName = custObj?.firstName
+          ? `${custObj.firstName} ${custObj.lastName || ''}`.trim()
+          : (shipSnap.fullName || shipSnap.recipientName || 'Valued Customer')
+        const customerEmail = custObj?.email || shipSnap.email || 'customer@example.com'
+        const customerPhone = custObj?.phone || shipSnap.phone || null
+
+        notify('ORDER_STATUS_CHANGED', {
+          orderNumber: fullOrder.orderNumber,
+          customerName,
+          customerEmail,
+          customerPhone,
+          newStatus: cleanStatus,
+          currency: fullOrder.currency,
+          totalAmount: fullOrder.totalAmount,
+        })
+      }
+    }
+
     return updated
   }
 }
