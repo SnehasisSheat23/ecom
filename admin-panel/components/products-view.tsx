@@ -154,7 +154,7 @@ export function ProductsView() {
       setIsLoading(true)
       const typeData = await getProductTypeData()
 
-      let url = "/products?limit=50"
+      let url = "/products?limit=50&currency=SAR"
       if (debouncedSearchQuery.trim()) {
         url += `&q=${encodeURIComponent(debouncedSearchQuery.trim())}`
       }
@@ -175,7 +175,7 @@ export function ProductsView() {
 
             const title = p.title || p.translations?.en?.title || p.sku || "Untitled Product"
             const numericPrice = typeof p.price === "number" ? p.price : (p.variants?.[0]?.price ?? 0)
-            const activeCurrency = p.currency || "AED"
+            const activeCurrency = p.currency || "SAR"
             
             const priceFormatted = numericPrice > 0 
               ? formatPrice(numericPrice, { currency: activeCurrency, isMinorUnit: false }) 
@@ -340,6 +340,7 @@ export function ProductsView() {
         body: JSON.stringify({
           title: "Untitled Product",
           status: "draft",
+          currency: "SAR",
           variants: [
             {
               sku: "AUTO",

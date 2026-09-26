@@ -35,7 +35,7 @@ export class OrdersService {
   private productsService = new ProductsService()
 
   async createOrder(input: CreateOrderInput) {
-    const currency = (input.currency || 'AED').toUpperCase()
+    const currency = (input.currency || 'SAR').toUpperCase()
 
     if (!input.items || input.items.length === 0) {
       throw new Error('Order must contain at least one product item.')

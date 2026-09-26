@@ -8,7 +8,7 @@ export const storefrontRoutes = new Hono()
 storefrontRoutes.get('/snapshot', async (c) => {
   try {
     const lang = (c.req.query('lang') || 'en') as 'en' | 'ar'
-    const currency = c.req.query('currency') || 'AED'
+    const currency = c.req.query('currency') || 'SAR'
     const snapshot = await storefrontService.getCatalogSnapshot(lang, currency)
     return c.json({ success: true, data: snapshot })
   } catch (err: any) {
@@ -49,7 +49,7 @@ storefrontRoutes.get('/categories/:idOrSlug', async (c) => {
 storefrontRoutes.get('/products', async (c) => {
   try {
     const lang = (c.req.query('lang') || 'en') as 'en' | 'ar'
-    const currency = c.req.query('currency') || 'AED'
+    const currency = c.req.query('currency') || 'SAR'
     const q = c.req.query('q')
     const categoryId = c.req.query('categoryId')
     const categorySlug = c.req.query('categorySlug')
@@ -79,7 +79,7 @@ storefrontRoutes.get('/products/:idOrSlug', async (c) => {
   try {
     const idOrSlug = c.req.param('idOrSlug')
     const lang = (c.req.query('lang') || 'en') as 'en' | 'ar'
-    const currency = c.req.query('currency') || 'AED'
+    const currency = c.req.query('currency') || 'SAR'
 
     const product = await storefrontService.getProductBySlugOrId(idOrSlug, lang, currency)
 

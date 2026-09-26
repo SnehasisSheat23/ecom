@@ -27,8 +27,8 @@ export default function Footer() {
                 {/* Top Grid Section */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-20 pb-8 relative z-10">
 
-                    {/* Column 1: Brand & Newsletter (Span 5 cols on large screens) */}
-                    <div className={`sm:col-span-2 lg:col-span-5 flex flex-col gap-6 ${isArabic ? 'text-right' : 'text-justify'}`}>
+                    {/* Column 1: Brand & Newsletter & Vision 2030 (Span 6 cols on large screens) */}
+                    <div className={`sm:col-span-2 lg:col-span-6 flex flex-col gap-6 ${isArabic ? 'text-right' : 'text-justify'}`}>
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 bg-white rounded-full p-1.5 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
                                 <Image
@@ -52,20 +52,34 @@ export default function Footer() {
                             {t.vision2}
                         </p>
 
-                        <div className="mt-2">
-                            <span className="text-sm font-semibold mb-3 block">{t.newsletterTitle}</span>
-                            <div className={cn('flex bg-white rounded-full p-1.5 w-full max-w-sm items-center')}>
-                                <div className="pl-3 pr-2 text-gray-500">
-                                    <MailboxIcon size={18} />
+                        <div className="mt-2 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6">
+                            <div className="w-full max-w-xs">
+                                <span className="text-sm font-semibold mb-3 block">{t.newsletterTitle}</span>
+                                <div className={cn('flex bg-white rounded-full p-1.5 w-full items-center')}>
+                                    <div className="pl-3 pr-2 text-gray-500">
+                                        <MailboxIcon size={18} />
+                                    </div>
+                                    <input
+                                        type="email"
+                                        placeholder={t.emailPlaceholder}
+                                        className="bg-transparent text-gray-900 text-sm outline-none flex-1 placeholder:text-gray-500 min-w-0"
+                                    />
+                                    <button className="bg-[#1b2a26] text-white text-sm px-5 py-2 rounded-full hover:bg-gray-800 transition-colors font-medium shrink-0">
+                                        {t.submit}
+                                    </button>
                                 </div>
-                                <input
-                                    type="email"
-                                    placeholder={t.emailPlaceholder}
-                                    className="bg-transparent text-gray-900 text-sm outline-none flex-1 placeholder:text-gray-500"
+                            </div>
+
+                            {/* Desktop Vision 2030 Logo in circled position */}
+                            <div className="hidden sm:flex w-36 h-20 sm:w-40 sm:h-24 md:w-48 md:h-28 lg:w-52 lg:h-32 relative items-center justify-center shrink-0 self-center sm:self-end">
+                                <Image
+                                    src="/images/vision-2030.svg"
+                                    alt="Saudi Vision 2030"
+                                    className="w-full h-full object-contain"
+                                    width={208}
+                                    height={128}
+                                    unoptimized
                                 />
-                                <button className="bg-[#1b2a26] text-white text-sm px-6 py-2 rounded-full hover:bg-gray-800 transition-colors font-medium">
-                                    {t.submit}
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -144,27 +158,29 @@ export default function Footer() {
 
                 </div>
 
+                {/* Mobile Vision 2030 Logo (Left-aligned on mobile) */}
+                <div className={`sm:hidden w-full flex ${isArabic ? 'justify-end' : 'justify-start'} px-2 -translate-y-40 mb-2`}>
+                    <div className="w-28 h-16 relative flex items-center">
+                        <Image
+                            src="/images/vision-2030.svg"
+                            alt="Saudi Vision 2030"
+                            className={`w-full h-full object-contain ${isArabic ? 'object-right' : 'object-left'}`}
+                            width={112}
+                            height={64}
+                            unoptimized
+                        />
+                    </div>
+                </div>
+
                 {/* Massive Brand Graphic Section */}
                 <div className="relative w-full flex justify-center items-center mt-12 mb-8">
 
                     {/* Tilted Badges */}
-                    <div className="absolute left-[2%] md:left-[7%] -top-4 md:top-3 z-20 rotate-[-10deg] bg-brand-yellow text-black font-bold text-xs md:text-sm px-4 py-1.5 rounded-full uppercase tracking-wider -translate-y-40 md:-translate-y-0 ">
+                    <div className="absolute left-[2%] md:left-[7%] -top-3 md:top-3 z-20 rotate-[-10deg] bg-brand-yellow text-black font-bold text-[9px] md:text-sm px-2.5 py-0.5 md:px-4 md:py-1.5 rounded-full uppercase tracking-normal md:tracking-wider -translate-y-40 md:-translate-y-0 shadow-sm">
                         {t.badgeTrading}
                     </div>
-                    <div className="absolute right-[1%] md:right-[5%] -top-4 md:top-2 z-20 rotate-8 bg-brand-yellow text-black font-bold text-xs md:text-sm px-4 py-1.5 rounded-full uppercase tracking-wider -translate-y-40 md:translate-y-0">
+                    <div className="absolute right-[1%] md:right-[5%] -top-3 md:top-2 z-20 rotate-8 bg-brand-yellow text-black font-bold text-[9px] md:text-sm px-2.5 py-0.5 md:px-4 md:py-1.5 rounded-full uppercase tracking-normal md:tracking-wider -translate-y-40 md:translate-y-0 shadow-sm">
                         {t.badgeCompany}
-                    </div>
-
-                    {/* Central Product Image */}
-                    <div className="absolute top-1/2 left-1/3 translate-x-1/2 translate-y-[-300%] md:translate-y-[-220%]  z-30 w-32 h-32 md:w-40 md:h-40 bg-white rounded-full border-4 border-black flex items-center justify-center overflow-hidden">
-                        <Image
-                            src="/images/a86ce4a691c715f9e05179a25eb352f4328feeab.jpg"
-                            alt="Nestol Mustard"
-                            className="h-[80%] w-auto object-contain"
-                            width={160}
-                            height={160}
-                            unoptimized
-                        />
                     </div>
 
                     {/* Gradient Text */}

@@ -284,7 +284,7 @@ export function ProductDetails({ id }: { id: string }) {
 
     async function loadProduct() {
       try {
-        const res = await apiRequest(`/admin/products/${id}`)
+        const res = await apiRequest(`/admin/products/${id}?currency=SAR`)
         if (res.ok) {
           const body = await res.json()
           if (active && body.data) {
@@ -863,7 +863,7 @@ export function ProductDetails({ id }: { id: string }) {
   const numericCost = Number(product.costPerItem || 0)
   const profit = numericCost ? numericPrice - numericCost : 0
   const margin = numericCost && numericPrice > 0 ? ((numericPrice - numericCost) / numericPrice) * 100 : 0
-  const currencySymbol = formatPrice(0, { currency: product.currency }).replace(/[0-9.,\s]/g, "")
+  const currencySymbol = (product.currency || "SAR").toUpperCase()
 
   return (
     <div className="flex flex-col h-full font-ui min-h-0">

@@ -27,8 +27,8 @@ export function formatPrice(
   options: FormatPriceOptions = {}
 ): string {
   const {
-    currency = 'AED',
-    locale = CURRENCY_LOCALE_MAP[currency.toUpperCase()] || 'en-US',
+    currency = 'SAR',
+    locale = CURRENCY_LOCALE_MAP[currency.toUpperCase()] || 'en-SA',
     isMinorUnit = false, // Default to false for existing decimal-based mock JSON data
     maximumFractionDigits,
     minimumFractionDigits,
@@ -43,16 +43,18 @@ export function formatPrice(
   const maxDigits = maximumFractionDigits ?? 2;
   const minDigits = minimumFractionDigits ?? (maximumFractionDigits === 0 ? 0 : 2);
 
+  const upperCurrency = (currency || 'SAR').toUpperCase();
+
   try {
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: currency.toUpperCase(),
+    const formattedNumber = new Intl.NumberFormat('en-US', {
       minimumFractionDigits: minDigits,
       maximumFractionDigits: maxDigits,
     }).format(decimalValue);
+
+    return `${upperCurrency} ${formattedNumber}`;
   } catch (error) {
     console.error('Failed to format currency:', error);
-    return `${currency.toUpperCase()} ${decimalValue.toFixed(2)}`;
+    return `${upperCurrency} ${decimalValue.toFixed(2)}`;
   }
 }
 

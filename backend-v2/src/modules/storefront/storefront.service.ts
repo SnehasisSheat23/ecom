@@ -86,7 +86,7 @@ export class StorefrontService {
    */
   async getProducts(options: StorefrontProductsOptions) {
     const lang = options.lang || 'en'
-    const rawCurr = (options.currency || 'AED').toUpperCase()
+    const rawCurr = (options.currency || 'SAR').toUpperCase()
     const currency = rawCurr === 'ر.س' ? 'SAR' : (rawCurr === 'د.إ' ? 'AED' : rawCurr)
     const limit = Math.min(100, Math.max(1, options.limit || 20))
     const page = Math.max(1, options.page || 1)
@@ -171,8 +171,8 @@ export class StorefrontService {
   /**
    * Get single active product detail by ID or Slug
    */
-  async getProductBySlugOrId(idOrSlug: string, lang: 'en' | 'ar' = 'en', currency: string = 'AED') {
-    const rawCurr = (currency || 'AED').toUpperCase()
+  async getProductBySlugOrId(idOrSlug: string, lang: 'en' | 'ar' = 'en', currency: string = 'SAR') {
+    const rawCurr = (currency || 'SAR').toUpperCase()
     const normalizedCurr = rawCurr === 'ر.س' ? 'SAR' : (rawCurr === 'د.إ' ? 'AED' : rawCurr)
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug)
 
@@ -203,7 +203,7 @@ export class StorefrontService {
   /**
    * Catalog snapshot (Categories + Top Featured Products) for fast storefront home page caching
    */
-  async getCatalogSnapshot(lang: 'en' | 'ar' = 'en', currency: string = 'AED') {
+  async getCatalogSnapshot(lang: 'en' | 'ar' = 'en', currency: string = 'SAR') {
     const categoryTree = await this.getCategories({ lang, tree: true })
     const featuredProducts = await this.getProducts({ lang, currency, limit: 12, sort: 'newest' })
 
@@ -237,7 +237,7 @@ export class StorefrontService {
     const langData = translations[lang] || translations['en'] || translations['ar'] || {}
 
     const pricing = (product.pricing || {}) as Record<string, { price: number; compare_at?: number }>
-    const rawCurr = (currency || 'AED').toUpperCase()
+    const rawCurr = (currency || 'SAR').toUpperCase()
     const normalizedCurr = rawCurr === 'ر.س' ? 'SAR' : (rawCurr === 'د.إ' ? 'AED' : rawCurr)
     const priceData = pricing[normalizedCurr] || pricing[currency] || pricing['SAR'] || pricing['AED'] || { price: 0 }
 

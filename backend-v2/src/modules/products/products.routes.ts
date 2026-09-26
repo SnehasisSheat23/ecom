@@ -8,7 +8,7 @@ export const productsRoutes = new Hono()
 // GET /api/v1/products - List products
 productsRoutes.get('/', async (c) => {
   const lang = (c.req.query('lang') as 'en' | 'ar') || 'en'
-  const currency = c.req.query('currency') || 'AED'
+  const currency = c.req.query('currency') || 'SAR'
   const q = c.req.query('q') || c.req.query('search')
   const status = c.req.query('status')
   const limit = c.req.query('perPage') ? parseInt(c.req.query('perPage')!) : (c.req.query('limit') ? parseInt(c.req.query('limit')!) : 50)
@@ -22,7 +22,7 @@ productsRoutes.get('/', async (c) => {
 productsRoutes.get('/:idOrSlug', async (c) => {
   const idOrSlug = c.req.param('idOrSlug')
   const lang = (c.req.query('lang') as 'en' | 'ar') || 'en'
-  const currency = c.req.query('currency') || 'AED'
+  const currency = c.req.query('currency') || 'SAR'
 
   const product = await productsService.getProductByIdOrSlug(idOrSlug, lang, currency)
   if (!product) {

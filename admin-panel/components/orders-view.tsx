@@ -147,7 +147,7 @@ const mapBackendOrderToFrontend = (item: BackendOrderSummary): Order => {
     total: parseFloat(String(item.total || (item as any).totalAmount || 0)),
     syncMessage: item.syncMessage,
     orderNumber: item.orderNumber,
-    currency: item.currency || (item as any).currency || "AED",
+    currency: item.currency || (item as any).currency || "SAR",
   }
 }
 
@@ -173,7 +173,7 @@ export function OrdersView() {
   const [pageSize, setPageSize] = React.useState(20)
   const [totalOrders, setTotalOrders] = React.useState(0)
   const [summaryStats, setSummaryStats] = React.useState<OrderSummaryStatsProps | null>(null)
-  const [tenantCurrency, setTenantCurrency] = React.useState<string>("AED")
+  const [tenantCurrency, setTenantCurrency] = React.useState<string>("SAR")
   const [debouncedSearch, setDebouncedSearch] = React.useState(searchQuery)
 
   React.useEffect(() => {
@@ -259,7 +259,7 @@ export function OrdersView() {
         const backendItems = json.data?.items || []
         const total = json.data?.total || 0
         const stats = json.data?.stats
-        const currency = json.data?.currency || backendItems[0]?.currency || "AED"
+        const currency = json.data?.currency || backendItems[0]?.currency || "SAR"
         const mapped = backendItems.map(mapBackendOrderToFrontend)
         setOrders(mapped)
         setTotalOrders(total)
@@ -713,7 +713,7 @@ export function OrdersView() {
                       </td>
                       <td className="p-3 text-foreground">{order.customer.name}</td>
                       <td className="p-3 text-foreground font-mono">
-                        {formatPrice(order.total, { currency: order.currency || "AED" })}
+                        {formatPrice(order.total, { currency: order.currency || "SAR" })}
                       </td>
                       <td className="p-3">
                         <StatusBadge status={order.paymentStatus} />

@@ -26,9 +26,18 @@ export default function WhyChooseUs() {
     ];
 
     const sliderImages = [
-        "/images/WhatsApp Image 2026-09-13 at 2.14.0004 PM.jpeg",
-        "/images/WhatsApp Image 2026-09-13 at 2.14.06 PM.jpeg",
-        "/images/WhatsApp Image 2026-09-13 at 2.14.05 PM.jpeg",
+        {
+            src: "/images/why_choose_1.png",
+            className: "object-cover object-top",
+        },
+        {
+            src: "/images/why_choose_2.png",
+            className: "object-cover object-top",
+        },
+        {
+            src: "/images/why_choose_3.png",
+            className: "object-cover object-top",
+        },
     ];
     const [currentImage, setCurrentImage] = useState(0);
 
@@ -79,7 +88,7 @@ export default function WhyChooseUs() {
                     </div>
 
                     <Link
-                        href="/Abdullah%20Bakheet%20Revised%20Catalog.pdf"
+                        href="/ABDULLAH%20BAKHEET%20CATALOG%20(FMCG).pdf"
                         target="_blank"
                         className="hidden lg:flex bg-[#1a2b25] text-white px-8 py-4 items-center justify-center w-fit hover:bg-black transition-colors group mt-auto"
                     >
@@ -97,9 +106,9 @@ export default function WhyChooseUs() {
                     {sliderImages.map((img, idx) => (
                         <img
                             key={idx}
-                            src={img}
+                            src={img.src}
                             alt="Saudi Arabia Landmark"
-                            className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-in-out ${
+                            className={`absolute inset-0 w-full h-full object-cover ${img.className} transition-all duration-700 ease-in-out ${
                                 idx === currentImage
                                     ? 'opacity-100 z-10 group-hover:scale-[1.05]'
                                     : 'opacity-0 z-0'
@@ -154,7 +163,7 @@ export default function WhyChooseUs() {
                     </div>
 
                     <Link
-                        href="/Abdullah%20Bakheet%20Revised%20Catalog.pdf"
+                        href="/ABDULLAH%20BAKHEET%20CATALOG%20(FMCG).pdf"
                         target="_blank"
                         className="bg-[#1a2b25] text-white px-8 py-4 flex items-center justify-center w-fit hover:bg-black transition-colors group"
                     >

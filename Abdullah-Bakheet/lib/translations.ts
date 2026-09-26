@@ -212,7 +212,7 @@ export const translations: Record<'en' | 'ar', HomeTranslation> = {
             badgeCompany: "Company",
             copyright: "© 2023 .abdullahbakheetksa. All rights reserved.",
             builtWith: "Built With Love By",
-            by: "Stancord Consultancy"
+            by: "Standcore Consultancy Services"
         }
     },
     ar: {
@@ -317,9 +317,9 @@ export const translations: Record<'en' | 'ar', HomeTranslation> = {
             cookiePolicy: "سياسة ملفات تعريف الارتباط",
             badgeTrading: "شركة",
             badgeCompany: "تجارية",
-            copyright: "© 2023 .abdullahbakheetksa. جميع الحقوق محفوظة.",
+            copyright: "© 2023 .abdullahbakheetksa. All rights reserved.",
             builtWith: "تم التطوير بحب بواسطة",
-            by: "ستانفورد للاستشارات"
+            by: "ستاندكور للخدمات الاستشارية (Standcore Consultancy Services)"
         }
     }
 };

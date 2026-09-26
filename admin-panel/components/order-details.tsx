@@ -240,7 +240,7 @@ const mapBackendOrderToFrontend = (item: BackendOrder): Order => {
     discountAmount: Number(item.discountAmount || 0),
     total: totalVal,
     notes: item.notes || null,
-    currency: item.currency || "AED",
+    currency: item.currency || "SAR",
     orderNumber: item.orderNumber || item.id,
     status: mappedStatus,
     shippingMethodName: item.shippingMethodSnapshot?.name || item.shippingMethodSnapshot?.label || (meta.deliveryType as string) || "Standard Delivery",

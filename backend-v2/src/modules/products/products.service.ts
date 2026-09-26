@@ -34,7 +34,7 @@ export class ProductsService {
     pricing?: Record<string, { price: number; compare_at?: number; cost_per_item?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }>,
     defaultPrice?: number,
     defaultCompareAt?: number,
-    defaultCurrency: string = 'AED'
+    defaultCurrency: string = 'SAR'
   ) {
     const result: Record<string, { price: number; compare_at?: number; cost_per_item?: number; corporatePrice?: number; tieredPricing?: PriceTier[] }> = {}
 
@@ -70,8 +70,11 @@ export class ProductsService {
       }
     }
 
-    if (!result['AED']) {
-      result['AED'] = { price: 65, compare_at: 75 }
+    if (!result['SAR']) {
+      result['SAR'] = result['AED'] || { price: 65, compare_at: 75 }
+    }
+    if (!result['AED'] && result['SAR']) {
+      result['AED'] = { ...result['SAR'] }
     }
 
     return result
@@ -95,7 +98,7 @@ export class ProductsService {
       input.pricing,
       input.price,
       input.compareAtPrice,
-      input.currency || 'AED'
+      input.currency || 'SAR'
     )
 
     const rawImages = input.images || []
@@ -163,7 +166,7 @@ export class ProductsService {
     return { items: formatted, page, limit, total: formatted.length }
   }
 
-  async getProductByIdOrSlug(idOrSlug: string, lang: 'en' | 'ar' = 'en', currency: string = 'AED') {
+  async getProductByIdOrSlug(idOrSlug: string, lang: 'en' | 'ar' = 'en', currency: string = 'SAR') {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug)
     let item: any[] = []
 
