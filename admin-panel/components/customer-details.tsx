@@ -25,6 +25,12 @@ interface Customer {
   companyName?: string
   companyTaxId?: string
   crNumber?: string
+  businessType?: string
+  status?: string
+  crDocumentUrl?: string
+  vatDocumentUrl?: string
+  deliveryAddress?: string
+  rejectionReason?: string
   customerGroup: "retail" | "wholesale" | "corporate"
   creditLimit: number
   availableCredit: number
@@ -128,12 +134,18 @@ export function CustomerDetails({ id }: { id: string }) {
             const mainAddress = (c.addresses || [])[0] || {}
             const formatted: Customer = {
               id: c.id,
-              name: `${c.firstName || ""} ${c.lastName || ""}`.trim() || c.email || "Valued Customer",
+              name: `${c.firstName || ""} ${c.lastName || ""}`.trim() || c.companyName || c.email || "Valued Customer",
               email: c.email || "",
               phone: c.phone || "",
               companyName: c.companyName || "",
               companyTaxId: c.companyTaxId || "",
               crNumber: c.crNumber || "",
+              businessType: c.businessType || "",
+              status: c.status || "active",
+              crDocumentUrl: c.crDocumentUrl || "",
+              vatDocumentUrl: c.vatDocumentUrl || "",
+              deliveryAddress: c.deliveryAddress || "",
+              rejectionReason: c.rejectionReason || "",
               customerGroup: c.customerGroup || "retail",
               creditLimit: Number(c.creditLimit || 0),
               availableCredit: Number(c.availableCredit || 0),
@@ -143,11 +155,11 @@ export function CustomerDetails({ id }: { id: string }) {
               totalSpent: 0,
               lastOrderDate: "",
               lastOrderId: "",
-              address: [mainAddress.addressLine1, mainAddress.addressLine2].filter(Boolean).join(', ') || "",
-              city: mainAddress.city || "",
+              address: [mainAddress.addressLine1, mainAddress.addressLine2].filter(Boolean).join(', ') || c.deliveryAddress || "",
+              city: mainAddress.city || c.city || "",
               province: mainAddress.province || mainAddress.state || "",
               zip: mainAddress.postalCode || "",
-              country: mainAddress.country || "",
+              country: mainAddress.country || "Saudi Arabia",
               marketingConsent: false,
               taxExempt: false,
               tags: c.isAdmin ? ["Admin"] : [],
@@ -236,8 +248,8 @@ export function CustomerDetails({ id }: { id: string }) {
           method: "POST",
           body: JSON.stringify({
             addressLine1: customer.address || "Street Address",
-            city: customer.city || "Dubai",
-            country: customer.country || "United Arab Emirates",
+            city: customer.city || "Riyadh",
+            country: customer.country || "Saudi Arabia",
             postalCode: customer.zip || "",
             isDefault: true,
           }),
@@ -257,6 +269,58 @@ export function CustomerDetails({ id }: { id: string }) {
   const handleDiscard = () => {
     if (!initialCustomer) return
     setCustomer(JSON.parse(JSON.stringify(initialCustomer)))
+  }
+
+  // Approval & Rejection Handlers
+  const handleApprove = async () => {
+    try {
+      const res = await apiRequest(`/admin/customers/${id}/approve`, { method: "POST" })
+      if (res.ok) {
+        toast.success("Corporate account approved successfully! Welcome email sent.")
+        setCustomer(prev => prev ? { ...prev, status: "approved" } : null)
+        setInitialCustomer(prev => prev ? { ...prev, status: "approved" } : null)
+      } else {
+        const err = await res.json()
+        toast.error(err.error || "Failed to approve account")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to approve account")
+    }
+  }
+
+  const handleReject = async () => {
+    try {
+      const res = await apiRequest(`/admin/customers/${id}/reject`, { method: "POST" })
+      if (res.ok) {
+        toast.info("Corporate application marked as rejected.")
+        setCustomer(prev => prev ? { ...prev, status: "rejected" } : null)
+        setInitialCustomer(prev => prev ? { ...prev, status: "rejected" } : null)
+      } else {
+        const err = await res.json()
+        toast.error(err.error || "Failed to reject account")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to reject account")
+    }
+  }
+
+  const handleSuspend = async () => {
+    try {
+      const res = await apiRequest(`/admin/customers/${id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "suspended" }),
+      })
+      if (res.ok) {
+        toast.warning("Corporate account suspended.")
+        setCustomer(prev => prev ? { ...prev, status: "suspended" } : null)
+        setInitialCustomer(prev => prev ? { ...prev, status: "suspended" } : null)
+      } else {
+        toast.error("Failed to suspend account")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to suspend account")
+    }
   }
 
   // Fetch orders matching this customer's email dynamically from orders database
@@ -310,6 +374,8 @@ export function CustomerDetails({ id }: { id: string }) {
     (customer?.companyName && customer.companyName.trim().length > 0)
   )
 
+  const isPending = customer?.status === "pending" || customer?.status === "pending_approval"
+
   return (
     <div className="flex flex-col h-full font-ui min-h-0">
       {/* Top Navigation / Header */}
@@ -322,7 +388,9 @@ export function CustomerDetails({ id }: { id: string }) {
             <Icon name="arrow_back" className="size-5 text-[20px]" />
           </Link>
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold font-heading text-foreground tracking-tight leading-none">{customer.name}</h2>
+            <h2 className="text-xl font-bold font-heading text-foreground tracking-tight leading-none">
+              {customer.companyName || customer.name}
+            </h2>
             <span className={`text-[11px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider ${
               customer.customerGroup === "corporate" 
                 ? "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
@@ -332,10 +400,54 @@ export function CustomerDetails({ id }: { id: string }) {
             }`}>
               {customer.customerGroup || "retail"}
             </span>
+            {customer.status === "suspended" && (
+              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                Suspended
+              </span>
+            )}
           </div>
         </div>
+
+        {/* Action Buttons in Header */}
         <div className="flex items-center gap-2">
-          {!isCorporate && (
+          {isPending ? (
+            <div className="flex items-center gap-1.5">
+              <Button 
+                size="sm" 
+                className="h-8 shadow-xs text-xs px-3 bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer font-medium rounded-md transition-colors"
+                onClick={handleApprove}
+              >
+                Approve
+              </Button>
+              <Button 
+                variant="outline"
+                size="sm" 
+                className="h-8 shadow-xs text-xs px-2.5 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 cursor-pointer font-medium rounded-md transition-colors border-border/80"
+                onClick={handleReject}
+              >
+                Reject
+              </Button>
+            </div>
+          ) : customer.status === "suspended" ? (
+            <Button 
+              size="sm" 
+              className="h-8 shadow-xs text-xs px-3 bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer font-medium gap-1.5 rounded-lg transition-colors"
+              onClick={handleApprove}
+            >
+              <Icon name="check_circle" className="size-3.5 text-white" />
+              Reactivate Account
+            </Button>
+          ) : isCorporate ? (
+            <Button 
+              variant="outline"
+              size="sm" 
+              className="h-8 shadow-xs text-xs px-3 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 border-amber-300 dark:border-amber-900 cursor-pointer font-medium gap-1.5 rounded-lg transition-colors"
+              onClick={handleSuspend}
+            >
+              <Icon name="pause_circle" className="size-3.5 text-amber-600" />
+              Suspend Account
+            </Button>
+          ) : (
             <Button 
               variant="outline"
               size="sm" 
@@ -520,6 +632,40 @@ export function CustomerDetails({ id }: { id: string }) {
                     />
                   </div>
                 </div>
+
+                {/* Uploaded Documents Section */}
+                {(customer.crDocumentUrl || customer.vatDocumentUrl) && (
+                  <div className="pt-3 border-t border-border/60 flex flex-col gap-2">
+                    <label className="text-[13px] font-semibold text-foreground flex items-center gap-1.5">
+                      <Icon name="folder" size={15} className="size-3.5 text-muted-foreground" />
+                      Uploaded Verification Documents
+                    </label>
+                    <div className="flex flex-wrap gap-2.5 mt-1">
+                      {customer.crDocumentUrl && (
+                        <a
+                          href={customer.crDocumentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-xs font-semibold text-blue-700 dark:text-blue-300 transition-colors shadow-xs"
+                        >
+                          <Icon name="description" size={16} className="size-4" />
+                          <span>View Commercial Registration (CR) ↗</span>
+                        </a>
+                      )}
+                      {customer.vatDocumentUrl && (
+                        <a
+                          href={customer.vatDocumentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-xs font-semibold text-blue-700 dark:text-blue-300 transition-colors shadow-xs"
+                        >
+                          <Icon name="receipt_long" size={16} className="size-4" />
+                          <span>View VAT Certificate ↗</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ) : null}

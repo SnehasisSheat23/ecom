@@ -359,7 +359,7 @@ export default function QuotationViewPage() {
                                 </div>
 
                                 <div className="flex justify-between text-gray-600">
-                                    <span>{isArabic ? 'ضريبة القيمة المضافة (5% VAT):' : 'Estimated Tax (5% VAT):'}</span>
+                                    <span>{isArabic ? 'ضريبة القيمة المضافة (15% VAT):' : 'Estimated VAT (15% ZATCA):'}</span>
                                     <span className="font-medium text-gray-900">{formatPrice(taxAmount)}</span>
                                 </div>
                             </div>

@@ -85,14 +85,14 @@ export interface UserProfile {
 }
 
 export const CURRENCY_RATES: Record<string, { rate: number; symbol: string; code: string }> = {
-    'AED': { rate: 1.0, symbol: 'AED', code: 'AED' },
-    'SAR': { rate: 1.02, symbol: 'SAR', code: 'SAR' },
-    'USD': { rate: 0.272, symbol: '$', code: 'USD' },
-    'EUR': { rate: 0.25, symbol: '€', code: 'EUR' },
-    'INR': { rate: 22.7, symbol: '₹', code: 'INR' },
+    'SAR': { rate: 1.0, symbol: 'SAR', code: 'SAR' },
+    'AED': { rate: 0.98, symbol: 'AED', code: 'AED' },
+    'USD': { rate: 0.267, symbol: '$', code: 'USD' },
+    'EUR': { rate: 0.245, symbol: '€', code: 'EUR' },
+    'INR': { rate: 22.25, symbol: '₹', code: 'INR' },
     'GBP': { rate: 0.21, symbol: '£', code: 'GBP' },
-    'ر.س': { rate: 1.02, symbol: 'ر.س', code: 'SAR' },
-    'د.إ': { rate: 1.0, symbol: 'AED', code: 'AED' },
+    'ر.س': { rate: 1.0, symbol: 'ر.س', code: 'SAR' },
+    'د.إ': { rate: 0.98, symbol: 'AED', code: 'AED' },
 };
 
 interface ShopContextType {
@@ -148,6 +148,11 @@ interface ShopContextType {
         companyName?: string;
         companyTaxId?: string;
         crNumber?: string;
+        businessType?: string;
+        city?: string;
+        deliveryAddress?: string;
+        crDocumentUrl?: string;
+        vatDocumentUrl?: string;
         customerGroup?: 'retail' | 'corporate' | 'wholesale';
     }) => Promise<any>;
     logout: () => void;
@@ -157,8 +162,8 @@ interface ShopContextType {
     setLanguage: (lang: string) => void;
     currency: string;
     setCurrency: (curr: string) => void;
-    getConvertedPrice: (basePriceAED: number) => number;
-    formatPrice: (basePriceAED: number) => string;
+    getConvertedPrice: (basePrice: number) => number;
+    formatPrice: (basePrice: number) => string;
 }
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
@@ -808,6 +813,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         companyName?: string;
         companyTaxId?: string;
         crNumber?: string;
+        businessType?: string;
+        city?: string;
+        deliveryAddress?: string;
+        crDocumentUrl?: string;
+        vatDocumentUrl?: string;
         customerGroup?: 'retail' | 'corporate' | 'wholesale';
     }) => {
         const data = await registerApi(payload);

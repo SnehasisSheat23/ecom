@@ -5,6 +5,7 @@ import { getDatabase } from '../../lib/db.js'
 import { adminUsers, customers } from '../../database/schema.js'
 import { hashPassword, verifyPassword, signJwt } from '../../lib/auth-crypto.js'
 import { requireAdminAuth, requireCustomerAuth } from '../../middleware/auth.middleware.js'
+import { notify } from '../notifications/index.js'
 
 const JWT_SECRET = process.env.APP_SECRET || process.env.JWT_SECRET || 'dubai-ecom-secure-jwt-secret-key-2026'
 
@@ -25,6 +26,11 @@ const registerSchema = z.object({
   companyName: z.string().optional(),
   companyTaxId: z.string().optional(),
   crNumber: z.string().optional(),
+  businessType: z.string().optional(),
+  city: z.string().optional(),
+  deliveryAddress: z.string().optional(),
+  crDocumentUrl: z.string().optional(),
+  vatDocumentUrl: z.string().optional(),
   customerGroup: z.enum(['retail', 'wholesale', 'corporate', 'vip']).optional(),
 })
 
@@ -236,8 +242,9 @@ authRoutes.post('/register', async (c) => {
 
     const hashedPassword = await hashPassword(parsed.password)
 
-    const isCorporate = Boolean(parsed.companyName || parsed.companyTaxId || parsed.customerGroup === 'corporate' || parsed.customerGroup === 'wholesale')
+    const isCorporate = Boolean(parsed.companyName || parsed.companyTaxId || parsed.crNumber || parsed.customerGroup === 'corporate' || parsed.customerGroup === 'wholesale')
     const targetGroup = parsed.customerGroup || (isCorporate ? 'corporate' : 'retail')
+    const initialStatus = isCorporate ? 'pending' : 'active'
 
     let customerRecord: any
 
@@ -257,7 +264,13 @@ authRoutes.post('/register', async (c) => {
           companyName: parsed.companyName || cust.companyName,
           companyTaxId: parsed.companyTaxId || cust.companyTaxId,
           crNumber: parsed.crNumber || cust.crNumber,
+          businessType: parsed.businessType || cust.businessType,
+          city: parsed.city || cust.city,
+          deliveryAddress: parsed.deliveryAddress || cust.deliveryAddress,
+          crDocumentUrl: parsed.crDocumentUrl || cust.crDocumentUrl,
+          vatDocumentUrl: parsed.vatDocumentUrl || cust.vatDocumentUrl,
           customerGroup: cust.customerGroup === 'retail' ? targetGroup : cust.customerGroup,
+          status: isCorporate ? 'pending' : (cust.status || 'active'),
           updatedAt: new Date(),
         })
         .where(eq(customers.id, cust.id))
@@ -275,14 +288,39 @@ authRoutes.post('/register', async (c) => {
           companyName: parsed.companyName || '',
           companyTaxId: parsed.companyTaxId || '',
           crNumber: parsed.crNumber || '',
+          businessType: parsed.businessType || null,
+          city: parsed.city || null,
+          deliveryAddress: parsed.deliveryAddress || null,
+          crDocumentUrl: parsed.crDocumentUrl || null,
+          vatDocumentUrl: parsed.vatDocumentUrl || null,
           customerGroup: targetGroup,
-          status: 'active',
+          status: initialStatus,
         })
         .returning()
       customerRecord = inserted[0]
     }
 
     const displayName = `${customerRecord.firstName || ''} ${customerRecord.lastName || ''}`.trim() || customerRecord.email.split('@')[0]
+    
+    // Fire-and-forget notification dispatch
+    if (isCorporate) {
+      notify('BUSINESS_REGISTRATION_SUBMITTED', {
+        companyName: customerRecord.companyName || 'Corporate Entity',
+        contactPerson: displayName,
+        email: customerRecord.email,
+        phone: customerRecord.phone,
+        crNumber: customerRecord.crNumber,
+        vatNumber: customerRecord.companyTaxId,
+        businessType: customerRecord.businessType,
+        city: customerRecord.city,
+      })
+    } else {
+      notify('CUSTOMER_WELCOME', {
+        customerName: displayName,
+        customerEmail: customerRecord.email,
+      })
+    }
+
     const accessToken = signJwt(
       {
         sub: customerRecord.id,
@@ -306,7 +344,13 @@ authRoutes.post('/register', async (c) => {
             lastName: customerRecord.lastName,
             phone: customerRecord.phone,
             companyName: customerRecord.companyName,
+            customerGroup: customerRecord.customerGroup,
+            status: customerRecord.status,
+            isPendingApproval: customerRecord.status === 'pending',
           },
+          message: isCorporate && customerRecord.status === 'pending'
+            ? 'Your corporate registration has been submitted and is currently under review.'
+            : 'Account registered successfully.',
         },
       },
       201

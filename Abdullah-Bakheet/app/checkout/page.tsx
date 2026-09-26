@@ -33,12 +33,12 @@ export default function CheckoutPage() {
 
     const [firstName, setFirstName] = useState(user?.firstName || 'Abdullah');
     const [lastName, setLastName] = useState(user?.lastName || 'Bakheet');
-    const [email, setEmail] = useState(user?.email || 'demo@dubai-ecom.com');
-    const [phone, setPhone] = useState(user?.phone || '+971 50 123 4567');
-    const [street, setStreet] = useState('Sheikh Zayed Road, Tower 4');
-    const [pinCode, setPinCode] = useState('00000');
-    const [city, setCity] = useState('Dubai');
-    const [country, setCountry] = useState('UAE');
+    const [email, setEmail] = useState(user?.email || 'demo@bakheet-ksa.com');
+    const [phone, setPhone] = useState(user?.phone || '+966 50 123 4567');
+    const [street, setStreet] = useState('King Fahd Road, Al Olaya');
+    const [pinCode, setPinCode] = useState('12211');
+    const [city, setCity] = useState('Riyadh');
+    const [country, setCountry] = useState('Saudi Arabia');
 
     // Payment Form state
     const [paymentMethod, setPaymentMethod] = useState<'credit' | 'applepay' | 'cod' | 'credit_terms' | 'purchase_order'>(
@@ -52,7 +52,7 @@ export default function CheckoutPage() {
 
     // Fake Gateway Processing state
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-    const [paymentStepText, setPaymentStepText] = useState('Initializing DubaiPay Gateway...');
+    const [paymentStepText, setPaymentStepText] = useState('Initializing Mada / Payment Gateway...');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [placedOrder, setPlacedOrder] = useState<any | null>(null);
@@ -80,7 +80,7 @@ export default function CheckoutPage() {
 
         // Fake Payment Gateway Simulation
         try {
-            setPaymentStepText('Connecting to DubaiPay Secure Gateway...');
+            setPaymentStepText('Connecting to Mada / Saudi Card Secure Gateway...');
             await new Promise(r => setTimeout(r, 600));
 
             if (paymentMethod === 'credit_terms') {
@@ -90,7 +90,7 @@ export default function CheckoutPage() {
                 setPaymentStepText(`Validating Purchase Order Invoice (${poReference || 'PO-DIRECT'})...`);
                 await new Promise(r => setTimeout(r, 600));
             } else if (paymentMethod === 'credit') {
-                setPaymentStepText(`Verifying Demo Card (${cardNumber.slice(-4) || '4242'})...`);
+                setPaymentStepText(`Verifying Mada / Credit Card (${cardNumber.slice(-4) || '4242'})...`);
                 await new Promise(r => setTimeout(r, 600));
             } else if (paymentMethod === 'applepay') {
                 setPaymentStepText('Authorizing 1-Tap Apple Pay Demo...');
@@ -244,25 +244,25 @@ export default function CheckoutPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Phone</label>
-                                    <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="+971 50 123 4567" />
+                                    <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="+966 50 123 4567" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Street</label>
-                                    <input required type="text" value={street} onChange={(e) => setStreet(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Sheikh Zayed Road" />
+                                    <input required type="text" value={street} onChange={(e) => setStreet(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="King Fahd Road, Al Olaya" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Pin Code</label>
-                                    <input required type="text" value={pinCode} onChange={(e) => setPinCode(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="00000" />
+                                    <input required type="text" value={pinCode} onChange={(e) => setPinCode(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="12211" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">City</label>
-                                    <input required type="text" value={city} onChange={(e) => setCity(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Dubai" />
+                                    <input required type="text" value={city} onChange={(e) => setCity(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Riyadh" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Country</label>
                                     <select value={country} onChange={(e) => setCountry(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm appearance-none">
-                                        <option>UAE</option>
                                         <option>Saudi Arabia</option>
+                                        <option>UAE</option>
                                         <option>India</option>
                                     </select>
                                 </div>
@@ -320,7 +320,7 @@ export default function CheckoutPage() {
                                             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                                     }`}
                                 >
-                                    <CreditCardIcon size={16} /> DubaiPay Gateway
+                                    <CreditCardIcon size={16} /> Mada / Card Gateway
                                 </button>
 
                                 <button 
@@ -392,8 +392,8 @@ export default function CheckoutPage() {
                                 <div className="space-y-6 bg-white p-6 rounded-xl border border-gray-100 shadow-xs">
                                     <div className="flex justify-between items-center mb-4">
                                         <div className="flex items-center gap-3">
-                                            <h3 className="text-lg font-bold text-black">DubaiPay Demo Gateway</h3>
-                                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">SIMULATOR</span>
+                                            <h3 className="text-lg font-bold text-black">Mada & Credit Card Gateway</h3>
+                                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">ZATCA & PCI-DSS</span>
                                         </div>
                                         <button
                                             type="button"
@@ -575,7 +575,7 @@ export default function CheckoutPage() {
                             </div>
                         </div>
                         <div>
-                            <h3 className="font-bold text-lg text-gray-900 mb-1">DubaiPay Gateway</h3>
+                            <h3 className="font-bold text-lg text-gray-900 mb-1">Mada / Card Gateway</h3>
                             <p className="text-xs text-gray-500 font-medium">{paymentStepText}</p>
                         </div>
                         <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
@@ -644,7 +644,7 @@ export default function CheckoutPage() {
                                 </div>
                                 <div className="flex justify-between items-center text-sm font-medium text-gray-700">
                                     <span>Payment Method</span>
-                                    <span className="font-semibold text-black capitalize">{paymentMethod === 'credit' ? 'DubaiPay Demo Gateway' : paymentMethod}</span>
+                                    <span className="font-semibold text-black capitalize">{paymentMethod === 'credit' ? 'Mada / Card Gateway' : paymentMethod}</span>
                                 </div>
                             </div>
 

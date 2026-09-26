@@ -45,13 +45,19 @@ export function NavMain({
   return (
     <SidebarGroup className="pt-3">
       <SidebarGroupContent className="flex flex-col gap-2">
-        <SidebarMenu>
+        <SidebarMenu className="gap-1">
           {items.map((item) => {
             const hasSubItems = Boolean(item.items && item.items.length > 0)
-            const isSubActive = item.items?.some((sub) => pathname === sub.url || pathname.startsWith(sub.url))
+            const isSubActive = item.items?.some((sub) => pathname === sub.url || pathname.startsWith(`${sub.url}/`))
+            
+            // Fix double active selection: If another item has a more specific URL match (e.g. /dashboard/customers/corporate), don't activate the parent (/dashboard/customers)
+            const hasMoreSpecificSiblingMatch = items.some(
+              (other) => other.url !== item.url && other.url.startsWith(item.url) && (pathname === other.url || pathname.startsWith(`${other.url}/`))
+            )
+
             const isActive =
               pathname === item.url ||
-              (item.url !== "/dashboard" && pathname.startsWith(item.url)) ||
+              (!hasMoreSpecificSiblingMatch && item.url !== "/dashboard" && pathname.startsWith(`${item.url}/`)) ||
               Boolean(isSubActive)
 
             const isOpen = openItems[item.title] ?? Boolean(isSubActive)
@@ -63,7 +69,7 @@ export function NavMain({
                     asChild
                     tooltip={item.title}
                     isActive={isActive}
-                    className="w-full justify-between group/button cursor-pointer"
+                    className="w-full justify-between group/button cursor-pointer h-9 text-[13.5px] font-medium px-3 rounded-lg"
                   >
                     <Link
                       href={item.url}
@@ -74,9 +80,9 @@ export function NavMain({
                       }}
                       className="flex items-center justify-between w-full"
                     >
-                      <div className="flex items-center gap-2">
-                        {item.icon}
-                        <span>{item.title}</span>
+                      <div className="flex items-center gap-2.5">
+                        <span className="shrink-0 [&>span]:size-4.5 [&>span]:text-[19px]">{item.icon}</span>
+                        <span className="text-[13.5px]">{item.title}</span>
                       </div>
                       <span
                         role="button"
@@ -118,10 +124,15 @@ export function NavMain({
 
             return (
               <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
-                  <Link href={item.url}>
-                    {item.icon}
-                    <span>{item.title}</span>
+                <SidebarMenuButton 
+                  asChild 
+                  tooltip={item.title} 
+                  isActive={isActive}
+                  className="h-9 text-[13.5px] font-medium px-3 rounded-lg gap-2.5"
+                >
+                  <Link href={item.url} className="flex items-center gap-2.5 w-full">
+                    <span className="shrink-0 [&>span]:size-4.5 [&>span]:text-[19px]">{item.icon}</span>
+                    <span className="text-[13.5px]">{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

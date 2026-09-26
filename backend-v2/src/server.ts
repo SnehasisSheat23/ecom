@@ -37,12 +37,39 @@ app.route('/api/v1/me', authRoutes)
 app.route('/api/v1/products', productsRoutes)
 app.route('/api/v1/categories', categoriesRoutes)
 app.route('/api/v1/customers', customersRoutes)
+app.route('/api/v1/admin/customers', customersRoutes)
 app.route('/api/v1/orders', ordersRoutes)
 app.route('/api/v1/quotations', quotationsRoutes)
 app.route('/api/v1/storefront', storefrontRoutes)
 app.route('/api/v1/cart', cartRoutes)
 app.route('/api/v1/wishlist', wishlistRoutes)
 app.route('/api/v1/shipping', shippingRoutes)
+
+// Storefront Document Upload for B2B Registration (CR / VAT certificates to Cloudflare R2)
+app.post('/api/v1/storefront/upload-document', async (c) => {
+  try {
+    const body = await c.req.parseBody()
+    const file = body['file'] as File | undefined
+
+    if (file && typeof file === 'object' && 'arrayBuffer' in file) {
+      const buffer = await file.arrayBuffer()
+      const ext = file.name ? file.name.split('.').pop() : 'pdf'
+      const safeFilename = `b2b-docs/doc-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}.${ext}`
+      const publicUrl = await storageService.uploadFile(safeFilename, buffer, file.type || 'application/pdf')
+      return c.json({
+        success: true,
+        data: {
+          url: publicUrl,
+          filename: file.name,
+        },
+      })
+    }
+    return c.json({ success: false, error: 'No file provided' }, 400)
+  } catch (err: any) {
+    console.error('Document upload error:', err)
+    return c.json({ success: false, error: err.message || 'Failed to upload document' }, 400)
+  }
+})
 
 // Real Cloudflare R2 Media Upload Route (Admin Protected)
 app.post('/api/v1/media', requireAdminAuth, async (c) => {

@@ -40,7 +40,7 @@ function baseEmailWrapper(title: string, bodyContent: string): string {
       ${bodyContent}
     </div>
     <div class="footer">
-      <p>© ${new Date().getFullYear()} Abdullah Bakheet General Trading LLC. Dubai, United Arab Emirates.</p>
+      <p>© ${new Date().getFullYear()} Abdullah Bakheet Commercial Establishment. Riyadh, Kingdom of Saudi Arabia.</p>
       <p>If you have any questions, reply to this email or contact support.</p>
     </div>
   </div>
@@ -261,6 +261,73 @@ export function renderEmailTemplate(event: NotificationEvent, payload: any): Out
       return {
         to: p.customerEmail,
         toName: p.customerName,
+        subject,
+        html,
+        text,
+      }
+    }
+
+    case 'BUSINESS_REGISTRATION_SUBMITTED': {
+      const p = payload as any
+      const subject = `Business Application Received: ${p.companyName}`
+      const html = baseEmailWrapper(
+        subject,
+        `
+          <h2 style="margin-top:0; font-size: 20px;">Corporate Account Application Under Review</h2>
+          <p style="color: #475569; font-size: 15px; line-height: 1.5;">
+            Dear ${p.contactPerson},
+          </p>
+          <p style="color: #475569; font-size: 15px; line-height: 1.5;">
+            Thank you for applying for a corporate wholesale account for <strong>${p.companyName}</strong>.
+          </p>
+          <div style="background-color: #f8fafc; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px;">
+            <p style="margin: 0 0 8px 0;"><strong>Company:</strong> ${p.companyName}</p>
+            ${p.crNumber ? `<p style="margin: 0 0 8px 0;"><strong>CR Number:</strong> ${p.crNumber}</p>` : ''}
+            ${p.vatNumber ? `<p style="margin: 0 0 8px 0;"><strong>VAT / TRN:</strong> ${p.vatNumber}</p>` : ''}
+            ${p.businessType ? `<p style="margin: 0 0 8px 0;"><strong>Business Type:</strong> ${p.businessType.toUpperCase()}</p>` : ''}
+            ${p.city ? `<p style="margin: 0;"><strong>City:</strong> ${p.city}</p>` : ''}
+          </div>
+          <p style="color: #475569; font-size: 14px; line-height: 1.5;">
+            Our B2B verification team is reviewing your commercial credentials. You will receive an email confirmation as soon as your account is approved (typically within 24 business hours).
+          </p>
+        `
+      )
+      const text = `Dear ${p.contactPerson},\nWe received your corporate account registration for ${p.companyName}. Our team is verifying your CR credentials and will update you shortly.`
+      return {
+        to: p.email,
+        toName: p.contactPerson,
+        subject,
+        html,
+        text,
+      }
+    }
+
+    case 'BUSINESS_ACCOUNT_APPROVED': {
+      const p = payload as any
+      const subject = `Account Approved: Welcome to Abdullah Bakheet Wholesale`
+      const html = baseEmailWrapper(
+        subject,
+        `
+          <h2 style="margin-top:0; font-size: 20px; color: #166534;">🎉 Your Corporate Account is Approved!</h2>
+          <p style="color: #475569; font-size: 15px; line-height: 1.5;">
+            Dear ${p.contactPerson}, we are pleased to confirm that <strong>${p.companyName}</strong> has been approved for full B2B Wholesale access.
+          </p>
+          <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px;">
+            <p style="margin: 0 0 6px 0; color: #166534; font-weight: 600;">Account Privileges Active:</p>
+            <ul style="margin: 6px 0 0 0; padding-left: 20px; color: #15803d;">
+              <li>Volume Tiered Pricing across our entire catalog</li>
+              <li>Fast B2B Quotation Requests & Direct Checkout</li>
+              ${p.creditLimit && Number(p.creditLimit) > 0 ? `<li>Corporate Credit Limit: SAR ${Number(p.creditLimit).toFixed(2)}</li>` : ''}
+              ${p.paymentTerms ? `<li>Payment Terms: ${p.paymentTerms.replace('_', ' ').toUpperCase()}</li>` : ''}
+            </ul>
+          </div>
+          <a href="https://abdullahbakheet.com/login?type=corporate" class="button">Log In to Your Corporate Account</a>
+        `
+      )
+      const text = `Dear ${p.contactPerson},\nYour corporate wholesale account for ${p.companyName} is approved! You can now log in and place orders.`
+      return {
+        to: p.email,
+        toName: p.contactPerson,
         subject,
         html,
         text,

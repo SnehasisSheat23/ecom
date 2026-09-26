@@ -458,6 +458,11 @@ export async function registerApi(payload: {
   companyName?: string;
   companyTaxId?: string;
   crNumber?: string;
+  businessType?: string;
+  city?: string;
+  deliveryAddress?: string;
+  crDocumentUrl?: string;
+  vatDocumentUrl?: string;
   customerGroup?: 'retail' | 'corporate' | 'wholesale';
 }) {
   const res = await fetch(`${API_BASE}/auth/register`, {
@@ -469,6 +474,21 @@ export async function registerApi(payload: {
     const err = await res.json().catch(() => ({}))
     const details = err.details ? err.details.map((d: any) => `${d.path?.join('.')}: ${d.message}`).join('; ') : ''
     throw new Error(details ? `${err.error}: ${details}` : (err.error || err.message || 'Registration failed'))
+  }
+  const json = await res.json()
+  return json.data
+}
+
+export async function uploadStorefrontDocumentApi(file: File): Promise<{ url: string; filename: string }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(`${API_BASE}/storefront/upload-document`, {
+    method: 'POST',
+    body: formData,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || err.message || 'Failed to upload document')
   }
   const json = await res.json()
   return json.data

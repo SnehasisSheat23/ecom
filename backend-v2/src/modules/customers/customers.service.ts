@@ -1,6 +1,7 @@
-import { eq, ilike, or, sql } from 'drizzle-orm'
+import { eq, ilike, or, and, sql, count } from 'drizzle-orm'
 import { getDatabase } from '../../lib/db.js'
 import { customers, customerAddresses } from '../../database/schema.js'
+import { notify } from '../notifications/index.js'
 
 export interface CreateCustomerInput {
   email: string
@@ -10,12 +11,18 @@ export interface CreateCustomerInput {
   companyName?: string
   companyTaxId?: string
   crNumber?: string
+  businessType?: string
+  city?: string
+  deliveryAddress?: string
+  crDocumentUrl?: string
+  vatDocumentUrl?: string
   customerGroup?: 'retail' | 'wholesale' | 'corporate'
   creditLimit?: number | string
   availableCredit?: number | string
   paymentTerms?: 'prepaid' | 'net_15' | 'net_30' | 'net_60'
   accountDiscountPercent?: number | string
   status?: string
+  rejectionReason?: string
 }
 
 export interface CreateAddressInput {
@@ -44,12 +51,12 @@ export class CustomersService {
     return customer
   }
 
-  async getCustomers(options: { q?: string; limit?: number; page?: number }) {
+  async getCustomers(options: { q?: string; status?: string; customerGroup?: string; limit?: number; page?: number }) {
     const limit = options.limit || 20
     const page = options.page || 1
     const offset = (page - 1) * limit
 
-    const conditions = []
+    const conditions: any[] = []
     if (options.q) {
       const searchPattern = `%${options.q}%`
       conditions.push(
@@ -57,15 +64,52 @@ export class CustomersService {
           ilike(customers.email, searchPattern),
           ilike(customers.firstName, searchPattern),
           ilike(customers.lastName, searchPattern),
-          ilike(customers.companyName, searchPattern)
+          ilike(customers.companyName, searchPattern),
+          ilike(customers.crNumber, searchPattern),
+          ilike(customers.companyTaxId, searchPattern)
         )
       )
     }
 
+    if (options.status && options.status !== 'all') {
+      conditions.push(eq(customers.status, options.status))
+    }
+
+    if (options.customerGroup && options.customerGroup !== 'all') {
+      if (options.customerGroup === 'corporate' || options.customerGroup === 'wholesale' || options.customerGroup === 'b2b') {
+        conditions.push(
+          or(
+            eq(customers.customerGroup, 'corporate'),
+            eq(customers.customerGroup, 'wholesale'),
+            sql`${customers.companyName} IS NOT NULL AND ${customers.companyName} != ''`,
+            sql`${customers.crNumber} IS NOT NULL AND ${customers.crNumber} != ''`
+          )
+        )
+      } else if (options.customerGroup === 'retail') {
+        conditions.push(
+          and(
+            or(eq(customers.customerGroup, 'retail'), sql`${customers.customerGroup} IS NULL`),
+            or(sql`${customers.companyName} IS NULL`, sql`${customers.companyName} = ''`)
+          )
+        )
+      } else {
+        conditions.push(eq(customers.customerGroup, options.customerGroup))
+      }
+    }
+
+    const whereClause = conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined
+
+    // Get total count
+    const [countResult] = await this.db
+      .select({ count: count() })
+      .from(customers)
+      .where(whereClause)
+    const total = Number(countResult?.count || 0)
+
     const rawItems = await this.db
       .select()
       .from(customers)
-      .where(conditions.length ? sql.join(conditions, sql` AND `) : undefined)
+      .where(whereClause)
       .limit(limit)
       .offset(offset)
 
@@ -80,9 +124,9 @@ export class CustomersService {
 
         return {
           ...c,
-          addressLine1: defaultAddress?.addressLine1 || null,
+          addressLine1: defaultAddress?.addressLine1 || c.deliveryAddress || null,
           addressLine2: defaultAddress?.addressLine2 || null,
-          city: defaultAddress?.city || null,
+          city: defaultAddress?.city || c.city || null,
           country: defaultAddress?.country || null,
           postalCode: defaultAddress?.postalCode || null,
           addresses: defaultAddress ? [defaultAddress] : [],
@@ -90,7 +134,7 @@ export class CustomersService {
       })
     )
 
-    return { items, page, limit }
+    return { items, page, limit, total }
   }
 
   async getCustomerById(id: string) {
@@ -143,6 +187,54 @@ export class CustomersService {
       .set(formattedInput)
       .where(eq(customers.id, id))
       .returning()
+    return updated
+  }
+
+  async updateCustomerStatus(
+    id: string,
+    input: {
+      status: 'pending' | 'approved' | 'active' | 'rejected' | 'suspended' | string
+      customerGroup?: 'retail' | 'wholesale' | 'corporate'
+      creditLimit?: number | string
+      paymentTerms?: 'prepaid' | 'net_15' | 'net_30' | 'net_60'
+      rejectionReason?: string
+    }
+  ) {
+    if (!id || typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return null
+    }
+
+    const formattedInput: any = {
+      status: input.status,
+      updatedAt: new Date(),
+    }
+    if (input.customerGroup) formattedInput.customerGroup = input.customerGroup
+    if (input.creditLimit !== undefined) {
+      formattedInput.creditLimit = String(input.creditLimit)
+      formattedInput.availableCredit = String(input.creditLimit)
+    }
+    if (input.paymentTerms) formattedInput.paymentTerms = input.paymentTerms
+    if (input.rejectionReason !== undefined) formattedInput.rejectionReason = input.rejectionReason
+
+    const [updated] = await this.db
+      .update(customers)
+      .set(formattedInput)
+      .where(eq(customers.id, id))
+      .returning()
+
+    // When admin approves a corporate account, fire-and-forget congratulations email!
+    if (updated && (input.status === 'approved' || input.status === 'active')) {
+      const displayName = `${updated.firstName || ''} ${updated.lastName || ''}`.trim() || updated.companyName || 'Corporate Partner'
+      notify('BUSINESS_ACCOUNT_APPROVED', {
+        companyName: updated.companyName || 'Corporate Account',
+        contactPerson: displayName,
+        email: updated.email,
+        customerGroup: updated.customerGroup,
+        creditLimit: updated.creditLimit,
+        paymentTerms: updated.paymentTerms,
+      })
+    }
+
     return updated
   }
 

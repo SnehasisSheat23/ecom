@@ -7,6 +7,8 @@ export type NotificationEvent =
   | 'B2B_QUOTATION_RESPONDED'
   | 'ADMIN_PASSWORD_RESET'
   | 'CUSTOMER_WELCOME'
+  | 'BUSINESS_REGISTRATION_SUBMITTED'
+  | 'BUSINESS_ACCOUNT_APPROVED'
 
 export interface OrderItemSummary {
   name: string
@@ -84,6 +86,26 @@ export interface CustomerWelcomePayload {
   companyName?: string
 }
 
+export interface BusinessRegistrationSubmittedPayload {
+  companyName: string
+  contactPerson: string
+  email: string
+  phone?: string | null
+  crNumber?: string | null
+  vatNumber?: string | null
+  businessType?: string | null
+  city?: string | null
+}
+
+export interface BusinessAccountApprovedPayload {
+  companyName: string
+  contactPerson: string
+  email: string
+  customerGroup?: string
+  creditLimit?: number | string
+  paymentTerms?: string
+}
+
 export type NotificationPayloadMap = {
   ORDER_PLACED: OrderPlacedPayload
   ORDER_STATUS_CHANGED: OrderStatusChangedPayload
@@ -91,6 +113,8 @@ export type NotificationPayloadMap = {
   B2B_QUOTATION_RESPONDED: QuotationRespondedPayload
   ADMIN_PASSWORD_RESET: AdminPasswordResetPayload
   CUSTOMER_WELCOME: CustomerWelcomePayload
+  BUSINESS_REGISTRATION_SUBMITTED: BusinessRegistrationSubmittedPayload
+  BUSINESS_ACCOUNT_APPROVED: BusinessAccountApprovedPayload
 }
 
 export interface OutgoingEmailMessage {

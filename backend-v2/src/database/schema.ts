@@ -73,12 +73,18 @@ export const customers = pgTable('v2_customers', {
   companyName: varchar('company_name', { length: 150 }),
   companyTaxId: varchar('company_tax_id', { length: 50 }),
   crNumber: varchar('cr_number', { length: 50 }),
+  businessType: varchar('business_type', { length: 100 }), // 'hotel' | 'restaurant' | 'cafe' | 'supermarket' | 'catering' | 'wholesaler' | 'other'
+  city: varchar('city', { length: 100 }),
+  deliveryAddress: text('delivery_address'),
+  crDocumentUrl: varchar('cr_document_url', { length: 500 }),
+  vatDocumentUrl: varchar('vat_document_url', { length: 500 }),
   customerGroup: varchar('customer_group', { length: 50 }).notNull().default('retail'), // 'retail' | 'wholesale' | 'corporate'
   creditLimit: numeric('credit_limit', { precision: 12, scale: 2 }).notNull().default('0.00'),
   availableCredit: numeric('available_credit', { precision: 12, scale: 2 }).notNull().default('0.00'),
   paymentTerms: varchar('payment_terms', { length: 50 }).notNull().default('prepaid'), // 'prepaid' | 'net_15' | 'net_30' | 'net_60'
   accountDiscountPercent: numeric('account_discount_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
-  status: varchar('status', { length: 20 }).notNull().default('active'),
+  status: varchar('status', { length: 20 }).notNull().default('active'), // 'pending' | 'active' | 'approved' | 'rejected' | 'suspended'
+  rejectionReason: text('rejection_reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
@@ -92,7 +98,7 @@ export const customerAddresses = pgTable('v2_customer_addresses', {
   addressLine1: varchar('address_line1', { length: 255 }).notNull(),
   addressLine2: varchar('address_line2', { length: 255 }),
   city: varchar('city', { length: 100 }).notNull(),
-  country: varchar('country', { length: 100 }).notNull().default('United Arab Emirates'),
+  country: varchar('country', { length: 100 }).notNull().default('Saudi Arabia'),
   postalCode: varchar('postal_code', { length: 50 }),
   isDefault: boolean('is_default').default(false).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -130,7 +136,7 @@ export const orders = pgTable('v2_orders', {
   orderNumber: varchar('order_number', { length: 100 }).notNull().unique(),
   customerId: uuid('customer_id').references(() => customers.id),
   status: varchar('status', { length: 50 }).notNull().default('pending'),
-  currency: varchar('currency', { length: 10 }).notNull().default('AED'),
+  currency: varchar('currency', { length: 10 }).notNull().default('SAR'),
   subtotal: numeric('subtotal', { precision: 12, scale: 2 }).notNull(),
   shippingCost: numeric('shipping_cost', { precision: 12, scale: 2 }).notNull().default('0.00'),
   taxAmount: numeric('tax_amount', { precision: 12, scale: 2 }).notNull().default('0.00'),

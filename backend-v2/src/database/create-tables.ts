@@ -107,6 +107,24 @@ async function createTables() {
       ) THEN
         ALTER TABLE v2_customers ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active';
       END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_customers' AND column_name='business_type') THEN
+        ALTER TABLE v2_customers ADD COLUMN business_type VARCHAR(100);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_customers' AND column_name='city') THEN
+        ALTER TABLE v2_customers ADD COLUMN city VARCHAR(100);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_customers' AND column_name='delivery_address') THEN
+        ALTER TABLE v2_customers ADD COLUMN delivery_address TEXT;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_customers' AND column_name='cr_document_url') THEN
+        ALTER TABLE v2_customers ADD COLUMN cr_document_url VARCHAR(500);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_customers' AND column_name='vat_document_url') THEN
+        ALTER TABLE v2_customers ADD COLUMN vat_document_url VARCHAR(500);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='v2_customers' AND column_name='rejection_reason') THEN
+        ALTER TABLE v2_customers ADD COLUMN rejection_reason TEXT;
+      END IF;
     END $$;
 
     CREATE TABLE IF NOT EXISTS v2_customer_addresses (
@@ -118,7 +136,7 @@ async function createTables() {
       address_line1 VARCHAR(255) NOT NULL,
       address_line2 VARCHAR(255),
       city VARCHAR(100) NOT NULL,
-      country VARCHAR(100) NOT NULL DEFAULT 'United Arab Emirates',
+      country VARCHAR(100) NOT NULL DEFAULT 'Saudi Arabia',
       postal_code VARCHAR(50),
       is_default BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -152,7 +170,7 @@ async function createTables() {
       order_number VARCHAR(100) NOT NULL UNIQUE,
       customer_id UUID REFERENCES v2_customers(id),
       status VARCHAR(50) NOT NULL DEFAULT 'pending',
-      currency VARCHAR(10) NOT NULL DEFAULT 'AED',
+      currency VARCHAR(10) NOT NULL DEFAULT 'SAR',
       subtotal NUMERIC(12, 2) NOT NULL,
       shipping_cost NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
       tax_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00,

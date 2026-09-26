@@ -353,7 +353,7 @@ export class OrdersService {
         let customerDetails: any = null
         let customerName = 'Guest Customer'
         let customerEmail = 'guest@example.com'
-        let customerCity = 'Dubai'
+        let customerCity = 'Riyadh'
 
         if (order.customerId) {
           const [cust] = await this.db.select().from(customers).where(eq(customers.id, order.customerId)).limit(1)

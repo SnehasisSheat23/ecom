@@ -463,7 +463,7 @@ export default function RfqRequestPage() {
                                             required 
                                             value={contactPhone}
                                             onChange={e => setContactPhone(e.target.value)}
-                                            placeholder="+971 50 123 4567"
+                                            placeholder="+966 50 123 4567"
                                             className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-md text-xs focus:bg-white focus:border-gray-400 focus:outline-none transition-colors"
                                         />
                                     </div>

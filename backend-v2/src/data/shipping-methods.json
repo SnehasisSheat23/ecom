@@ -9,10 +9,10 @@
     "arabicEstimatedDays": "٢ - ٤ أيام عمل",
     "isActive": true,
     "isDefault": true,
-    "freeAboveAED": null,
+    "freeAboveSAR": null,
     "rates": {
-      "AED": 110,
       "SAR": 112,
+      "AED": 110,
       "USD": 30,
       "EUR": 28,
       "INR": 2500

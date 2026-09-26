@@ -317,7 +317,7 @@ export function ShippingView() {
                 </th>
                 <th className="py-3 px-4 font-medium">Method</th>
                 <th className="py-3 px-4 font-medium">Delivery Time</th>
-                <th className="py-3 px-4 font-medium">Rates (AED / SAR / USD / EUR / INR)</th>
+                <th className="py-3 px-4 font-medium">Rates (SAR / AED / USD / EUR / INR)</th>
                 <th className="py-3 px-4 font-medium">Status</th>
                 <th className="py-3 px-4 text-right font-medium">Actions</th>
               </tr>
@@ -384,9 +384,9 @@ export function ShippingView() {
 
                       <td className="py-3.5 px-4">
                         <div className="font-mono text-xs text-foreground/90 flex items-center gap-1.5">
-                          <span className="font-semibold text-foreground">AED {rates.AED ?? 0}</span>
+                          <span className="font-semibold text-foreground">SAR {rates.SAR ?? 0}</span>
                           <span className="text-muted-foreground/60">·</span>
-                          <span className="text-muted-foreground">SAR {rates.SAR ?? 0}</span>
+                          <span className="text-muted-foreground">AED {rates.AED ?? 0}</span>
                           <span className="text-muted-foreground/60">·</span>
                           <span className="text-muted-foreground">${rates.USD ?? 0}</span>
                           <span className="text-muted-foreground/60">·</span>
@@ -517,19 +517,7 @@ export function ShippingView() {
               {/* Currency Rates */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-foreground">AED rate (Base)</label>
-                  <input
-                    required
-                    type="number"
-                    step="0.01"
-                    value={rateAED}
-                    onChange={(e) => setRateAED(e.target.value)}
-                    placeholder="110"
-                    className="w-full bg-background border border-input rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-foreground">SAR rate (Saudi)</label>
+                  <label className="text-xs font-medium text-foreground">SAR rate (Base / Saudi)</label>
                   <input
                     required
                     type="number"
@@ -537,6 +525,18 @@ export function ShippingView() {
                     value={rateSAR}
                     onChange={(e) => setRateSAR(e.target.value)}
                     placeholder="112"
+                    className="w-full bg-background border border-input rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">AED rate (UAE)</label>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    value={rateAED}
+                    onChange={(e) => setRateAED(e.target.value)}
+                    placeholder="110"
                     className="w-full bg-background border border-input rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                   />
                 </div>
