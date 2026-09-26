@@ -222,9 +222,9 @@ function RegisterForm() {
     }
 
     return (
-        <div className="min-h-screen bg-white flex">
+        <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-white flex">
             {/* Left Column - Form */}
-            <div className="w-full lg:w-1/2 flex flex-col pt-8 pb-12 px-6 sm:px-12 md:px-20 lg:px-24">
+            <div className="w-full lg:w-1/2 lg:h-screen lg:overflow-y-auto flex flex-col pt-8 pb-12 px-6 sm:px-12 md:px-20 lg:px-24">
                 
                 <button 
                     onClick={() => router.back()}
@@ -283,15 +283,6 @@ function RegisterForm() {
                             </>
                         )}
                     </div>
-
-                    {isCorporate && (
-                        <div className="mb-5 p-3.5 bg-amber-50/60 border border-amber-200/80 rounded-lg text-xs text-amber-900 leading-relaxed flex items-start gap-2.5">
-                            <Building2 className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                            <div>
-                                <span className="font-semibold text-amber-950">B2B Wholesale Onboarding:</span> Accounts are verified with Ministry of Commerce CR credentials to unlock wholesale volume tiering and commercial payment terms.
-                            </div>
-                        </div>
-                    )}
 
                     {errorMessage && (
                         <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-md">
@@ -353,29 +344,39 @@ function RegisterForm() {
                                         <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">
                                             BUSINESS TYPE <span className="text-red-500">*</span>
                                         </label>
-                                        <select
-                                            value={businessType}
-                                            onChange={(e) => setBusinessType(e.target.value)}
-                                            className="w-full bg-white border border-gray-200 rounded p-3 text-[14px] focus:outline-none focus:border-gray-400 transition-colors cursor-pointer"
-                                        >
-                                            {BUSINESS_TYPES.map((bt) => (
-                                                <option key={bt.id} value={bt.id}>{bt.label}</option>
-                                            ))}
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                value={businessType}
+                                                onChange={(e) => setBusinessType(e.target.value)}
+                                                className="w-full bg-white border border-gray-200 rounded p-3 pr-10 text-[14px] text-gray-900 focus:outline-none focus:border-gray-400 transition-colors cursor-pointer appearance-none"
+                                            >
+                                                {BUSINESS_TYPES.map((bt) => (
+                                                    <option key={bt.id} value={bt.id}>{bt.label}</option>
+                                                ))}
+                                            </select>
+                                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">
                                             CITY <span className="text-red-500">*</span>
                                         </label>
-                                        <select
-                                            value={city}
-                                            onChange={(e) => setCity(e.target.value)}
-                                            className="w-full bg-white border border-gray-200 rounded p-3 text-[14px] focus:outline-none focus:border-gray-400 transition-colors cursor-pointer"
-                                        >
-                                            {SAUDI_CITIES.map((c) => (
-                                                <option key={c} value={c}>{c}</option>
-                                            ))}
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                value={city}
+                                                onChange={(e) => setCity(e.target.value)}
+                                                className="w-full bg-white border border-gray-200 rounded p-3 pr-10 text-[14px] text-gray-900 focus:outline-none focus:border-gray-400 transition-colors cursor-pointer appearance-none"
+                                            >
+                                                {SAUDI_CITIES.map((c) => (
+                                                    <option key={c} value={c}>{c}</option>
+                                                ))}
+                                            </select>
+                                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -479,35 +480,19 @@ function RegisterForm() {
                             />
                         </div>
 
-                        {/* Mobile Number (+966 for Corporate) */}
+                        {/* Mobile Number */}
                         <div className="space-y-1.5">
                             <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">
-                                {isCorporate ? 'MOBILE (+966)' : 'PHONE NUMBER'} <span className="text-red-500">*</span>
+                                MOBILE NUMBER <span className="text-red-500">*</span>
                             </label>
-                            {isCorporate ? (
-                                <div className="flex rounded border border-gray-200 focus-within:border-gray-400 transition-colors">
-                                    <span className="inline-flex items-center px-3 bg-gray-50 border-r border-gray-200 text-xs font-semibold text-gray-600 select-none">
-                                        🇸🇦 +966
-                                    </span>
-                                    <input 
-                                        type="tel" 
-                                        required
-                                        maxLength={10}
-                                        value={phoneRaw}
-                                        onChange={(e) => setPhoneRaw(e.target.value.replace(/\D/g, ''))}
-                                        className="w-full bg-white p-3 text-[14px] focus:outline-none rounded-r"
-                                        placeholder="50 123 4567" 
-                                    />
-                                </div>
-                            ) : (
-                                <input 
-                                    type="tel" 
-                                    value={phoneRaw}
-                                    onChange={(e) => setPhoneRaw(e.target.value)}
-                                    className="w-full bg-white border border-gray-200 rounded p-3 text-[14px] focus:outline-none focus:border-gray-400 transition-colors"
-                                    placeholder="+966 50 123 4567" 
-                                />
-                            )}
+                            <input 
+                                type="tel" 
+                                required
+                                value={phoneRaw}
+                                onChange={(e) => setPhoneRaw(e.target.value)}
+                                className="w-full bg-white border border-gray-200 rounded p-3 text-[14px] focus:outline-none focus:border-gray-400 transition-colors"
+                                placeholder="+966 50 123 4567" 
+                            />
                         </div>
 
                         {/* Password & Confirm Password */}
@@ -580,22 +565,23 @@ function RegisterForm() {
                 </div>
             </div>
 
-            {/* Right Column - Visual Branding */}
-            <div className="hidden lg:block lg:w-1/2 relative bg-zinc-950 overflow-hidden">
+            {/* Right Column - Visual Branding (Saudi B2B Food Trading) */}
+            <div className="hidden lg:relative lg:flex lg:w-1/2 lg:h-screen items-end justify-start p-12 overflow-hidden bg-zinc-950">
                 <img 
-                    src="https://pub-2ba7d836ec824f9096f19eb3bcbaa81e.r2.dev/products/extra-virgin-olive-oil.jpg" 
-                    alt="Abdullah Bakheet Commercial Wholesale" 
-                    className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-luminosity filter contrast-125"
+                    src="/images/riyadh_hero_3.webp" 
+                    alt="Abdullah Bakheet Commercial Wholesale Saudi Arabia" 
+                    className="absolute inset-0 w-full h-full object-cover object-center opacity-85"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex flex-col justify-end p-16 text-white">
-                    <div className="bg-[#fbdc3c] text-black font-bold text-xs uppercase tracking-widest py-1 px-3 rounded w-fit mb-4">
-                        B2B Partner Portal
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
+                <div className="relative z-10 max-w-lg text-white space-y-3">
+                    <div className="bg-[#fbdc3c] text-black font-bold text-xs uppercase tracking-widest py-1 px-3 rounded w-fit">
+                        B2B Wholesale Portal
                     </div>
-                    <h3 className="font-heading text-4xl uppercase tracking-wide leading-tight mb-3">
-                        Wholesale Distribution Across Saudi Arabia & UAE
+                    <h3 className="font-heading text-3xl uppercase tracking-wide leading-tight text-white pt-1">
+                        Wholesale Food Distribution Across Saudi Arabia
                     </h3>
-                    <p className="text-gray-300 text-sm max-w-lg leading-relaxed">
-                        Supplying premium olive oils, dates, spices, and gourmet foods to leading hotels, restaurants, supermarkets, and corporate facilities.
+                    <p className="text-zinc-200 text-sm max-w-lg leading-relaxed font-normal">
+                        Supplying premium olive oils, dates, sauces, and gourmet essentials to leading restaurants, hotels, catering companies, and supermarkets across the Kingdom.
                     </p>
                 </div>
             </div>

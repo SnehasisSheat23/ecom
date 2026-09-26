@@ -10,8 +10,13 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "OpenShutter Admin",
-  description: "Admin Panel for OpenShutter",
+  title: "Abdullah Bakheet | Admin Portal",
+  description: "Enterprise Administrative Portal for Abdullah Bakheet Trading Co. - Saudi Arabia",
+  icons: {
+    icon: "/image.png",
+    shortcut: "/image.png",
+    apple: "/image.png",
+  },
 };
 
 export default function RootLayout({
