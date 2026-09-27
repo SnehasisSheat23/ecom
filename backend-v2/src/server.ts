@@ -44,6 +44,16 @@ app.use(
 )
 
 // Health check endpoint
+app.get('/', (c) => {
+  return c.json({
+    status: 'ok',
+    version: '2.0.0',
+    service: 'Abdullah Bakheet E-Commerce API',
+    message: 'Backend service is running smoothly.',
+    timestamp: new Date().toISOString(),
+  })
+})
+
 app.get('/health', (c) => {
   return c.json({
     status: 'ok',
