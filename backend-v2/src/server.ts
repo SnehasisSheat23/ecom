@@ -43,8 +43,13 @@ app.use(
   })
 )
 
-// Health check endpoint
+// Root and Health check endpoints
 app.get('/', (c) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://abdullahbakheetksa.com'
+  const accept = c.req.header('Accept') || ''
+  if (accept.includes('text/html')) {
+    return c.redirect(frontendUrl)
+  }
   return c.json({
     status: 'ok',
     version: '2.0.0',
