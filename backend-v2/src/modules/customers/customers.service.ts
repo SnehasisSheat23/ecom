@@ -1,4 +1,4 @@
-import { eq, ilike, or, and, sql, count } from 'drizzle-orm'
+import { eq, ilike, or, and, sql, count, inArray, desc } from 'drizzle-orm'
 import { getDatabase } from '../../lib/db.js'
 import { customers, customerAddresses } from '../../database/schema.js'
 import { notify } from '../notifications/index.js'
@@ -99,40 +99,51 @@ export class CustomersService {
 
     const whereClause = conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined
 
-    // Get total count
-    const [countResult] = await this.db
-      .select({ count: count() })
-      .from(customers)
-      .where(whereClause)
+    // Concurrently fetch total count and paginated items
+    const [[countResult], rawItems] = await Promise.all([
+      this.db
+        .select({ count: count() })
+        .from(customers)
+        .where(whereClause),
+      this.db
+        .select()
+        .from(customers)
+        .where(whereClause)
+        .orderBy(desc(customers.createdAt))
+        .limit(limit)
+        .offset(offset),
+    ])
     const total = Number(countResult?.count || 0)
 
-    const rawItems = await this.db
-      .select()
-      .from(customers)
-      .where(whereClause)
-      .limit(limit)
-      .offset(offset)
-
-    // Attach default address info for each customer
-    const items = await Promise.all(
-      rawItems.map(async (c) => {
-        const [defaultAddress] = await this.db
+    // Batch fetch default address info for all customers to eliminate N+1 queries
+    const customerIds = rawItems.map((c) => c.id)
+    const allAddresses = customerIds.length > 0
+      ? await this.db
           .select()
           .from(customerAddresses)
-          .where(eq(customerAddresses.customerId, c.id))
-          .limit(1)
+          .where(inArray(customerAddresses.customerId, customerIds))
+      : []
 
-        return {
-          ...c,
-          addressLine1: defaultAddress?.addressLine1 || c.deliveryAddress || null,
-          addressLine2: defaultAddress?.addressLine2 || null,
-          city: defaultAddress?.city || c.city || null,
-          country: defaultAddress?.country || null,
-          postalCode: defaultAddress?.postalCode || null,
-          addresses: defaultAddress ? [defaultAddress] : [],
-        }
-      })
-    )
+    const addressMap = new Map<string, (typeof allAddresses)[0]>()
+    for (const addr of allAddresses) {
+      if (!addressMap.has(addr.customerId) || addr.isDefault) {
+        addressMap.set(addr.customerId, addr)
+      }
+    }
+
+    const items = rawItems.map((c) => {
+      const defaultAddress = addressMap.get(c.id)
+
+      return {
+        ...c,
+        addressLine1: defaultAddress?.addressLine1 || c.deliveryAddress || null,
+        addressLine2: defaultAddress?.addressLine2 || null,
+        city: defaultAddress?.city || c.city || null,
+        country: defaultAddress?.country || null,
+        postalCode: defaultAddress?.postalCode || null,
+        addresses: defaultAddress ? [defaultAddress] : [],
+      }
+    })
 
     return { items, page, limit, total }
   }

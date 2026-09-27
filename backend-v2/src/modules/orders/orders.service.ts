@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import { eq, or, sql, desc, asc } from 'drizzle-orm'
+import { eq, or, sql, desc, asc, inArray } from 'drizzle-orm'
 import { getDatabase } from '../../lib/db.js'
 import { orders, orderItems, products, customers } from '../../database/schema.js'
 import { ProductsService } from '../products/products.service.js'
@@ -422,11 +422,6 @@ export class OrdersService {
 
     const whereClause = conditions.length ? sql.join(conditions, sql` AND `) : undefined
 
-    const [totalCountResult] = await this.db
-      .select({ count: sql<number>`cast(count(*) as integer)` })
-      .from(orders)
-      .where(whereClause)
-
     let orderExpr = sortOrder === 'asc' ? asc(orders.createdAt) : desc(orders.createdAt)
     if (sortBy === 'total') {
       orderExpr = sortOrder === 'asc' ? asc(orders.totalAmount) : desc(orders.totalAmount)
@@ -434,99 +429,126 @@ export class OrdersService {
       orderExpr = sortOrder === 'asc' ? asc(orders.orderNumber) : desc(orders.orderNumber)
     }
 
-    const items = await this.db
-      .select()
-      .from(orders)
-      .where(whereClause)
-      .orderBy(orderExpr)
-      .limit(limit)
-      .offset(offset)
-
-    const enriched = await Promise.all(
-      items.map(async (order) => {
-        const itemRecords = await this.db.select().from(orderItems).where(eq(orderItems.orderId, order.id))
-        
-        let customerDetails: any = null
-        let customerName = 'Guest Customer'
-        let customerEmail = 'guest@example.com'
-        let customerCity = 'Riyadh'
-
-        if (order.customerId) {
-          const [cust] = await this.db.select().from(customers).where(eq(customers.id, order.customerId)).limit(1)
-          if (cust) {
-            customerDetails = cust
-            customerName = `${cust.firstName || ''} ${cust.lastName || ''}`.trim() || cust.email
-            customerEmail = cust.email
-          }
-        } else if (order.shippingAddressSnapshot) {
-          const addr = order.shippingAddressSnapshot as any
-          if (addr.fullName || addr.recipientName) customerName = addr.fullName || addr.recipientName
-          if (addr.city) customerCity = addr.city
-          if (addr.email) customerEmail = addr.email
-        }
-
-        const totalNum = parseFloat(order.totalAmount || '0')
-        const subtotalNum = parseFloat(order.subtotal || '0')
-        const shippingNum = parseFloat(order.shippingCost || '0')
-
-        const parsedItems = itemRecords.map((i) => {
-          const snap = (i.productNameSnapshot || {}) as any
-          const title = typeof snap === 'string' ? snap : (snap.en || snap.title || snap.name || i.sku || 'Product')
-          const image = typeof snap === 'object' && snap !== null ? (snap.imageUrl || snap.image || snap.img || null) : null
-          const unitP = parseFloat(i.unitPrice || '0')
-          const totP = parseFloat(i.totalPrice || '0')
-
-          return {
-            id: i.id,
-            productId: i.productId,
-            name: title,
-            image: image,
-            sku: i.sku,
-            quantity: i.quantity,
-            unitPrice: unitP,
-            totalPrice: totP,
-            price: unitP,
-          }
+    // Execute count, paginated items, and stats concurrently
+    const [[totalCountResult], items, [statsResult]] = await Promise.all([
+      this.db
+        .select({ count: sql<number>`cast(count(*) as integer)` })
+        .from(orders)
+        .where(whereClause),
+      this.db
+        .select()
+        .from(orders)
+        .where(whereClause)
+        .orderBy(orderExpr)
+        .limit(limit)
+        .offset(offset),
+      this.db
+        .select({
+          totalRevenue: sql<number>`cast(coalesce(sum(cast(${orders.totalAmount} as numeric)), 0) as float)`,
+          deliveredOrders: sql<number>`cast(count(case when lower(${orders.status}) in ('delivered', 'shipped') then 1 end) as integer)`,
+          pendingOrders: sql<number>`cast(count(case when lower(${orders.status}) in ('pending', 'pending_payment', 'processing', 'confirmed') then 1 end) as integer)`,
+          cancelledOrders: sql<number>`cast(count(case when lower(${orders.status}) in ('cancelled', 'refunded') then 1 end) as integer)`,
         })
+        .from(orders),
+    ])
+
+    // Batch fetch orderItems and customers to eliminate N+1 queries
+    const orderIds = items.map((o) => o.id)
+    const customerIds = Array.from(new Set(items.map((o) => o.customerId).filter(Boolean))) as string[]
+
+    const [allOrderItems, allCustomers] = await Promise.all([
+      orderIds.length > 0
+        ? this.db.select().from(orderItems).where(inArray(orderItems.orderId, orderIds))
+        : Promise.resolve([]),
+      customerIds.length > 0
+        ? this.db.select().from(customers).where(inArray(customers.id, customerIds))
+        : Promise.resolve([]),
+    ])
+
+    const itemsByOrderId = new Map<string, typeof allOrderItems>()
+    for (const item of allOrderItems) {
+      const list = itemsByOrderId.get(item.orderId) || []
+      list.push(item)
+      itemsByOrderId.set(item.orderId, list)
+    }
+
+    const customerMap = new Map<string, (typeof allCustomers)[0]>()
+    for (const cust of allCustomers) {
+      customerMap.set(cust.id, cust)
+    }
+
+    const enriched = items.map((order) => {
+      const itemRecords = itemsByOrderId.get(order.id) || []
+      
+      let customerDetails: any = null
+      let customerName = 'Guest Customer'
+      let customerEmail = 'guest@example.com'
+      let customerCity = 'Riyadh'
+
+      if (order.customerId && customerMap.has(order.customerId)) {
+        const cust = customerMap.get(order.customerId)!
+        customerDetails = cust
+        customerName = `${cust.firstName || ''} ${cust.lastName || ''}`.trim() || cust.email
+        customerEmail = cust.email
+      } else if (order.shippingAddressSnapshot) {
+        const addr = order.shippingAddressSnapshot as any
+        if (addr.fullName || addr.recipientName) customerName = addr.fullName || addr.recipientName
+        if (addr.city) customerCity = addr.city
+        if (addr.email) customerEmail = addr.email
+      }
+
+      const totalNum = parseFloat(order.totalAmount || '0')
+      const subtotalNum = parseFloat(order.subtotal || '0')
+      const shippingNum = parseFloat(order.shippingCost || '0')
+
+      const parsedItems = itemRecords.map((i) => {
+        const snap = (i.productNameSnapshot || {}) as any
+        const title = typeof snap === 'string' ? snap : (snap.en || snap.title || snap.name || i.sku || 'Product')
+        const image = typeof snap === 'object' && snap !== null ? (snap.imageUrl || snap.image || snap.img || null) : null
+        const unitP = parseFloat(i.unitPrice || '0')
+        const totP = parseFloat(i.totalPrice || '0')
 
         return {
-          id: order.id,
-          orderNumber: order.orderNumber,
-          status: order.status.toUpperCase(),
-          currency: order.currency,
-          subtotal: subtotalNum,
-          shippingCost: shippingNum,
-          shippingAmount: shippingNum,
-          totalAmount: totalNum,
-          total: totalNum,
-          customerName,
-          customerEmail,
-          customerCity,
-          customer: customerDetails,
-          itemCount: parsedItems.length || 1,
-          items: parsedItems,
-          paymentMethodType: order.paymentMethodType,
-          paymentMethod: order.paymentMethodType,
-          poNumber: order.poNumber,
-          poDocumentUrl: order.poDocumentUrl,
-          paymentReceiptUrl: order.paymentReceiptUrl,
-          quotationId: order.quotationId,
-          shippingAddressSnapshot: order.shippingAddressSnapshot,
-          billingAddressSnapshot: order.billingAddressSnapshot,
-          createdAt: order.createdAt,
-          updatedAt: order.updatedAt,
+          id: i.id,
+          productId: i.productId,
+          name: title,
+          image: image,
+          sku: i.sku,
+          quantity: i.quantity,
+          unitPrice: unitP,
+          totalPrice: totP,
+          price: unitP,
         }
       })
-    )
 
-    const [statsResult] = await this.db
-      .select({
-        totalRevenue: sql<number>`cast(coalesce(sum(cast(${orders.totalAmount} as numeric)), 0) as float)`,
-        deliveredOrders: sql<number>`cast(count(case when lower(${orders.status}) in ('delivered', 'shipped') then 1 end) as integer)`,
-        pendingOrders: sql<number>`cast(count(case when lower(${orders.status}) in ('pending', 'pending_payment', 'processing', 'confirmed') then 1 end) as integer)`,
-        cancelledOrders: sql<number>`cast(count(case when lower(${orders.status}) in ('cancelled', 'refunded') then 1 end) as integer)`,
-      })
-      .from(orders)
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        status: order.status.toUpperCase(),
+        currency: order.currency,
+        subtotal: subtotalNum,
+        shippingCost: shippingNum,
+        shippingAmount: shippingNum,
+        totalAmount: totalNum,
+        total: totalNum,
+        customerName,
+        customerEmail,
+        customerCity,
+        customer: customerDetails,
+        itemCount: parsedItems.length || 1,
+        items: parsedItems,
+        paymentMethodType: order.paymentMethodType,
+        paymentMethod: order.paymentMethodType,
+        poNumber: order.poNumber,
+        poDocumentUrl: order.poDocumentUrl,
+        paymentReceiptUrl: order.paymentReceiptUrl,
+        quotationId: order.quotationId,
+        shippingAddressSnapshot: order.shippingAddressSnapshot,
+        billingAddressSnapshot: order.billingAddressSnapshot,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+      }
+    })
 
     const total = totalCountResult?.count ?? enriched.length
     return {

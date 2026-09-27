@@ -240,19 +240,20 @@ export class QuotationsService {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
-    const [countResult] = await this.db
-      .select({ count: sql<number>`cast(count(*) as integer)` })
-      .from(quotations)
-      .where(whereClause)
+    const [[countResult], quotes] = await Promise.all([
+      this.db
+        .select({ count: sql<number>`cast(count(*) as integer)` })
+        .from(quotations)
+        .where(whereClause),
+      this.db
+        .select()
+        .from(quotations)
+        .where(whereClause)
+        .orderBy(desc(quotations.createdAt))
+        .limit(limit)
+        .offset(offset),
+    ])
     const total = Number(countResult?.count || 0)
-
-    const quotes = await this.db
-      .select()
-      .from(quotations)
-      .where(whereClause)
-      .orderBy(desc(quotations.createdAt))
-      .limit(limit)
-      .offset(offset)
 
     return {
       items: quotes,
