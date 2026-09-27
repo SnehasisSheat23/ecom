@@ -14,6 +14,7 @@ export interface CreateCategoryInput {
     ar?: { name: string; description?: string; slug: string }
   }
   image?: string
+  imageUrl?: string
   displayOrder?: number
 }
 
@@ -23,6 +24,7 @@ export class CategoriesService {
   async createCategory(input: CreateCategoryInput) {
     const slug = input.slug || input.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `cat-${Date.now()}`
     const status = (input.status || (input.isActive !== undefined ? (input.isActive ? 'active' : 'draft') : 'active')).toLowerCase()
+    const parentId = input.parentId && input.parentId !== 'null' && input.parentId !== '' ? input.parentId : null
 
     const translations = {
       en: {
@@ -45,9 +47,9 @@ export class CategoriesService {
     const [cat] = await this.db
       .insert(categories)
       .values({
-        parentId: input.parentId || null,
+        parentId,
         translations,
-        image: input.image,
+        image: input.image || input.imageUrl || null,
         status,
         displayOrder: input.displayOrder ?? 0,
       })
@@ -149,13 +151,17 @@ export class CategoriesService {
     }
 
     const rawStatus = input.status || (input.isActive !== undefined ? (input.isActive ? 'active' : 'draft') : undefined)
+    const parentIdVal = input.parentId !== undefined 
+      ? (input.parentId && input.parentId !== 'null' && input.parentId !== '' ? input.parentId : null) 
+      : undefined
+    const imgVal = input.image !== undefined ? input.image : input.imageUrl
 
     const [updated] = await this.db
       .update(categories)
       .set({
-        ...(input.parentId !== undefined && { parentId: input.parentId }),
+        ...(parentIdVal !== undefined && { parentId: parentIdVal }),
         translations: updatedTranslations,
-        ...(input.image !== undefined && { image: input.image }),
+        ...(imgVal !== undefined && { image: imgVal }),
         ...(rawStatus !== undefined && { status: rawStatus.toLowerCase() }),
         ...(input.displayOrder !== undefined && { displayOrder: input.displayOrder }),
         updatedAt: new Date(),

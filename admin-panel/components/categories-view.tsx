@@ -180,15 +180,29 @@ export function CategoriesView() {
 
   // ── Process Categories response (Builds root categories & children mapping) ─────────
   const processCategoriesData = React.useCallback((items: BackendCategoryApiItem[]) => {
-    // 1. Separate roots vs children
+    // 1. Build an ID lookup map to accurately compute depths
+    const itemMap = new Map<string, BackendCategoryApiItem>()
+    items.forEach((item) => itemMap.set(item.id, item))
+
+    const getLevel = (item: BackendCategoryApiItem): number => {
+      let lvl = 0
+      let current = item
+      while (current.parentId && itemMap.has(current.parentId) && lvl < 5) {
+        lvl++
+        current = itemMap.get(current.parentId)!
+      }
+      return lvl
+    }
+
+    // 2. Separate roots vs children
     const roots = items.filter((c) => !c.parentId || c.parentId === null)
 
-    // 2. Pre-build children map for all categories
+    // 3. Pre-build children map for all categories
     const newChildrenMap = new Map<string, CategoryItem[]>()
     for (const item of items) {
       if (item.parentId) {
         const existing = newChildrenMap.get(item.parentId) || []
-        existing.push(mapApiToCategoryItem(item, 1))
+        existing.push(mapApiToCategoryItem(item, getLevel(item)))
         newChildrenMap.set(item.parentId, existing)
       }
     }
@@ -206,10 +220,10 @@ export function CategoriesView() {
     )
   }, [])
 
-  // ── Load Root Top-Level Categories (Level 0) on Mount ────────────────────
+  // ── Load All Categories & Tree on Mount and Updates ────────────────────
   const loadRootCategories = React.useCallback(async () => {
     try {
-      const res = await apiRequest("/categories?parentId=null&includeInactive=true")
+      const res = await apiRequest("/categories?includeInactive=true")
       if (res.ok) {
         const body = await res.json()
         const items: BackendCategoryApiItem[] = Array.isArray(body.data) ? body.data : body.data?.items ?? []
@@ -229,7 +243,7 @@ export function CategoriesView() {
     let isMounted = true
     const init = async () => {
       try {
-        const res = await apiRequest("/categories?parentId=null&includeInactive=true")
+        const res = await apiRequest("/categories?includeInactive=true")
         if (res.ok && isMounted) {
           const body = await res.json()
           const items: BackendCategoryApiItem[] = Array.isArray(body.data) ? body.data : body.data?.items ?? []
@@ -430,6 +444,7 @@ export function CategoriesView() {
         slug: finalSlug,
         description: formDescription || null,
         imageUrl: formImageUrl || null,
+        image: formImageUrl || null,
         parentId: formParentId ? formParentId : null,
         isActive: formIsActive,
         translations: {
@@ -456,6 +471,9 @@ export function CategoriesView() {
         if (res.ok) {
           toast.success("Category updated successfully")
           setIsAddOpen(false)
+          if (formParentId) {
+            setExpandedRows((prev) => new Set(prev).add(formParentId))
+          }
           loadRootCategories()
         } else {
           const errData = await res.json().catch(() => ({}))
@@ -469,6 +487,9 @@ export function CategoriesView() {
         if (res.ok) {
           toast.success("Category created successfully")
           setIsAddOpen(false)
+          if (formParentId) {
+            setExpandedRows((prev) => new Set(prev).add(formParentId))
+          }
           loadRootCategories()
         } else {
           const errData = await res.json().catch(() => ({}))
@@ -517,7 +538,7 @@ export function CategoriesView() {
     setSelectedRows(next)
   }
 
-  // ── Recursive Row Rendering ───────────────────────────────────────────────
+  // ── Recursive Row Rendering (Desktop) ───────────────────────────────────────
   const renderCategoryRow = (cat: CategoryItem, depth: number = 0) => {
     if (depth > 5) return null // Recursion safety guard
     if (activeTab === "Active" && !cat.isActive) return null
@@ -529,7 +550,7 @@ export function CategoriesView() {
     const isFetchingChildren = loadingParents.has(catId)
     const isSelected = selectedRows.has(catId)
     const indentPadding = depth * 24
-    const hasSubcategories = children.length > 0 || (depth === 0 && (childrenMap.get(catId)?.length ?? 0) > 0)
+    const hasSubcategories = children.length > 0
 
     return (
       <React.Fragment key={catId}>
@@ -555,7 +576,7 @@ export function CategoriesView() {
                   onClick={(e) => handleToggleExpand(cat, e)}
                   disabled={isFetchingChildren}
                   className="size-5 rounded hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer shrink-0 transition-transform disabled:opacity-50"
-                  title={isExpanded ? "Collapse" : "Expand subcategories"}
+                  title={isExpanded ? "Collapse subcategories" : "Expand subcategories"}
                 >
                   {isFetchingChildren ? (
                     <div className="size-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
@@ -594,7 +615,7 @@ export function CategoriesView() {
 
                 {children.length > 0 && (
                   <span className="text-[10px] font-mono text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-full shrink-0">
-                    {children.length} subcategories
+                    {children.length} {children.length === 1 ? "subcategory" : "subcategories"}
                   </span>
                 )}
               </div>
@@ -606,7 +627,7 @@ export function CategoriesView() {
           </td>
 
           <td className="px-3 py-2.5">
-            <LevelBadge level={cat.level} />
+            <LevelBadge level={cat.level ?? depth} />
           </td>
 
           <td className="px-3 py-2.5">
@@ -646,8 +667,101 @@ export function CategoriesView() {
           </td>
         </tr>
 
-        {/* Render Children On-Demand when Expanded */}
+        {/* Render Children When Expanded */}
         {isExpanded && children.filter((child) => child.id !== catId).map((child) => renderCategoryRow(child, depth + 1))}
+      </React.Fragment>
+    )
+  }
+
+  // ── Recursive Row Rendering (Mobile) ─────────────────────────────────────────
+  const renderMobileCategoryRow = (cat: CategoryItem, depth: number = 0): React.ReactNode => {
+    if (depth > 5) return null
+    if (activeTab === "Active" && !cat.isActive) return null
+    if (activeTab === "Draft" && cat.isActive) return null
+
+    const catId = cat.id
+    const children = childrenMap.get(catId) ?? []
+    const isExpanded = expandedRows.has(catId)
+    const hasSubcategories = children.length > 0
+
+    return (
+      <React.Fragment key={catId}>
+        <div
+          onClick={() => openEditDialog(cat)}
+          style={{ paddingLeft: `${Math.max(14, depth * 20 + 14)}px` }}
+          className={`py-3 pr-3.5 flex items-center gap-2.5 hover:bg-muted/30 active:bg-muted/50 transition-colors cursor-pointer ${
+            depth > 0 ? "bg-muted/15 border-l-2 border-border/70" : ""
+          }`}
+        >
+          {/* Chevron for expanding subcategories on mobile */}
+          {hasSubcategories ? (
+            <button
+              type="button"
+              onClick={(e) => handleToggleExpand(cat, e)}
+              className="size-7 rounded hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer shrink-0 transition-transform"
+              title={isExpanded ? "Collapse subcategories" : "Expand subcategories"}
+            >
+              <Icon
+                name={isExpanded ? "expand_more" : "chevron_right"}
+                size={18}
+                className="size-4.5!"
+              />
+            </button>
+          ) : depth > 0 ? (
+            <div className="size-5 shrink-0 flex items-center justify-center">
+              <div className="size-1 rounded-full bg-muted-foreground/30" />
+            </div>
+          ) : null}
+
+          {/* Thumbnail */}
+          {cat.imageUrl && cat.imageUrl.trim() ? (
+            <img
+              src={cat.imageUrl}
+              alt={cat.name}
+              className={`${depth > 0 ? "size-8 rounded-lg" : "size-10 rounded-xl"} object-cover border border-border/40 bg-muted/20 shadow-2xs shrink-0`}
+              onError={(e) => {
+                ;(e.currentTarget as HTMLImageElement).src = GALLERY_PRESETS[0]
+              }}
+            />
+          ) : (
+            <div className={`${depth > 0 ? "size-8 rounded-lg text-xs" : "size-10 rounded-xl text-sm"} bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold shrink-0`}>
+              {cat.name.charAt(0)}
+            </div>
+          )}
+
+          {/* Title & Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h2 className={`font-medium ${depth > 0 ? "text-xs" : "text-[13.5px]"} leading-snug text-foreground truncate`}>
+                {cat.name}
+              </h2>
+              {hasSubcategories && (
+                <span className="text-[9.5px] font-mono text-muted-foreground bg-muted/80 px-1 py-0.2 rounded-full shrink-0">
+                  {children.length}
+                </span>
+              )}
+              <StatusBadge isActive={cat.isActive} />
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/80 mt-0.5 truncate">
+              <span className="font-mono truncate">/{cat.slug}</span>
+              {cat.arabicName && (
+                <>
+                  <span>•</span>
+                  <span className="truncate">{cat.arabicName}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <Icon
+            name="edit"
+            size={15}
+            className="text-muted-foreground/40 size-4 shrink-0 hover:text-foreground"
+          />
+        </div>
+
+        {/* Mobile Children */}
+        {isExpanded && children.filter((child) => child.id !== catId).map((child) => renderMobileCategoryRow(child, depth + 1))}
       </React.Fragment>
     )
   }
@@ -749,6 +863,31 @@ export function CategoriesView() {
                 {tab}
               </Button>
             ))}
+
+            {/* Expand / Collapse All Toggle Button */}
+            {childrenMap.size > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-muted-foreground hover:text-foreground cursor-pointer shrink-0 font-medium ml-1 gap-1"
+                onClick={() => {
+                  if (expandedRows.size > 0) {
+                    setExpandedRows(new Set())
+                  } else {
+                    const allParentIds = Array.from(childrenMap.keys())
+                    setExpandedRows(new Set(allParentIds))
+                  }
+                }}
+                title={expandedRows.size > 0 ? "Collapse all subcategories" : "Expand all subcategories"}
+              >
+                <Icon
+                  name={expandedRows.size > 0 ? "unfold_less" : "unfold_more"}
+                  size={14}
+                  className="size-3.5!"
+                />
+                {expandedRows.size > 0 ? "Collapse all" : "Expand all"}
+              </Button>
+            )}
 
             {searchQuery && (
               <Button
@@ -995,8 +1134,8 @@ export function CategoriesView() {
             <div className="p-8 text-center text-muted-foreground font-ui text-xs">
               No categories found
             </div>
-          ) : (
-            (searchResults !== null ? searchResults : topLevelCategories).map((cat) => (
+          ) : searchResults !== null ? (
+            searchResults.map((cat) => (
               <div
                 key={cat.id}
                 onClick={() => openEditDialog(cat)}
@@ -1044,13 +1183,37 @@ export function CategoriesView() {
                 />
               </div>
             ))
+          ) : (
+            topLevelCategories.map((topCat) => renderMobileCategoryRow(topCat, 0))
           )}
         </div>
 
         {/* Desktop Table Footer */}
-        <div className="hidden md:flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 py-2 shrink-0 text-xs text-muted-foreground">
+        <div className="hidden md:flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 py-2.5 shrink-0 text-xs text-muted-foreground">
           <div>
-            Showing {topLevelCategories.length} top-level categories (subcategories loaded on-demand)
+            Showing <span className="font-semibold text-foreground">{topLevelCategories.length}</span> main categories and{" "}
+            <span className="font-semibold text-foreground">{Array.from(childrenMap.values()).flat().length}</span> subcategories{" "}
+            ({topLevelCategories.length + Array.from(childrenMap.values()).flat().length} total)
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const allParentIds = Array.from(childrenMap.keys())
+                setExpandedRows(new Set(allParentIds))
+              }}
+              className="hover:underline text-primary cursor-pointer font-medium"
+            >
+              Expand all
+            </button>
+            <span className="opacity-40">•</span>
+            <button
+              type="button"
+              onClick={() => setExpandedRows(new Set())}
+              className="hover:underline text-muted-foreground hover:text-foreground cursor-pointer font-medium"
+            >
+              Collapse all
+            </button>
           </div>
         </div>
       </div>

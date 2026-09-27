@@ -95,6 +95,7 @@ app.route('/api/v1/me', authRoutes)
 
 app.route('/api/v1/products', productsRoutes)
 app.route('/api/v1/categories', categoriesRoutes)
+app.route('/api/v1/admin/categories', categoriesRoutes)
 app.route('/api/v1/customers', customersRoutes)
 app.route('/api/v1/admin/customers', customersRoutes)
 app.route('/api/v1/orders', ordersRoutes)
