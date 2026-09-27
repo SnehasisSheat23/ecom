@@ -11,7 +11,15 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar"
-import { Icon } from "@/components/ui/icon"
+import {
+  Package,
+  LayoutGrid,
+  ShoppingBag,
+  FileText,
+  Users,
+  Building2,
+  Truck,
+} from "lucide-react"
 
 import { apiRequest } from "@/lib/api-client"
 
@@ -25,51 +33,37 @@ const data = {
     {
       title: "Products",
       url: "/dashboard/products",
-      icon: (
-        <Icon name="inventory_2" />
-      ),
+      icon: <Package className="size-4" />,
     },
     {
       title: "Category",
       url: "/dashboard/categories",
-      icon: (
-        <Icon name="category" />
-      ),
+      icon: <LayoutGrid className="size-4" />,
     },
     {
       title: "Orders",
       url: "/dashboard/orders",
-      icon: (
-        <Icon name="shopping_bag" />
-      ),
+      icon: <ShoppingBag className="size-4" />,
     },
     {
       title: "Quotations",
       url: "/dashboard/quotations",
-      icon: (
-        <Icon name="request_quote" />
-      ),
+      icon: <FileText className="size-4" />,
     },
     {
       title: "Customers",
       url: "/dashboard/customers",
-      icon: (
-        <Icon name="group" />
-      ),
+      icon: <Users className="size-4" />,
     },
     {
-      title: "Corporate Clients",
+      title: "Business",
       url: "/dashboard/customers/corporate",
-      icon: (
-        <Icon name="business" />
-      ),
+      icon: <Building2 className="size-4" />,
     },
     {
       title: "Shipping",
       url: "/dashboard/shipping",
-      icon: (
-        <Icon name="local_shipping" />
-      ),
+      icon: <Truck className="size-4" />,
     },
   ],
 }

@@ -54,7 +54,7 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
   const isCorporateView = filterGroup === "corporate"
   const [customers, setCustomers] = React.useState<Customer[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
-  const [activeTab, setActiveTab] = React.useState(isCorporateView ? "All Corporate" : "All")
+  const [activeTab, setActiveTab] = React.useState(isCorporateView ? "All Business" : "All")
   const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set())
   const router = useRouter()
 
@@ -331,13 +331,8 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
       <div className="flex items-center justify-between pb-2">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground select-none">
-            {isCorporateView ? "Corporate Accounts" : "Customers"}
+            {isCorporateView ? "Business Accounts" : "Customers"}
           </h1>
-          {isCorporateView && (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Verify B2B commercial registration (CR), tax numbers, approve wholesale access, and manage credit lines.
-            </p>
-          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" className="h-8 shadow-xs text-xs px-3 cursor-pointer">Export</Button>
@@ -345,7 +340,7 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
             className="h-8 shadow-xs text-xs px-4 bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer"
             onClick={() => router.push(`/dashboard/customers/new`)}
           >
-            {isCorporateView ? "Add Corporate Account" : "Add customer"}
+            {isCorporateView ? "Add Business Account" : "Add customer"}
           </Button>
         </div>
       </div>
@@ -358,17 +353,17 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar mask-fade-right pr-4 flex-1 min-w-0">
             {isCorporateView ? (
               <>
-                {/* 1. All Corporate Tab */}
+                {/* 1. All Business Tab */}
                 <Button
-                  variant={activeTab === "All Corporate" ? "secondary" : "ghost"}
+                  variant={activeTab === "All Business" ? "secondary" : "ghost"}
                   className={`h-8 rounded-md text-xs font-medium px-3 flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
-                    activeTab === "All Corporate"
+                    activeTab === "All Business"
                       ? "bg-muted text-foreground shadow-xs font-semibold"
                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                   }`}
-                  onClick={() => setActiveTab("All Corporate")}
+                  onClick={() => setActiveTab("All Business")}
                 >
-                  All Corporate
+                  All Business
                 </Button>
 
                 {/* 2. Pending Tab */}

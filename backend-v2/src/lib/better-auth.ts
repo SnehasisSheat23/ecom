@@ -15,6 +15,8 @@ export const getBetterAuth = () => {
     trustedOrigins: [
       process.env.FRONTEND_URL || 'http://localhost:3000',
       process.env.ADMIN_URL || 'http://localhost:3001',
+      'https://ecom-production-2b29.up.railway.app',
+      'https://ecom-production-7c66.up.railway.app',
       'https://abdullahbakheetksa.com',
       'https://www.abdullahbakheetksa.com',
       'https://api.abdullahbakheetksa.com',

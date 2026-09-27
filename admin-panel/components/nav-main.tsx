@@ -80,8 +80,8 @@ export function NavMain({
                       }}
                       className="flex items-center justify-between w-full"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="shrink-0 [&>span]:size-4 [&>span]:text-[17px]">{item.icon}</span>
+                      <div className="flex items-center gap-2.5">
+                        <span className="shrink-0 flex items-center justify-center text-muted-foreground group-hover/button:text-foreground">{item.icon}</span>
                         <span className="text-[13px]">{item.title}</span>
                       </div>
                       <span
@@ -128,10 +128,10 @@ export function NavMain({
                   asChild 
                   tooltip={item.title} 
                   isActive={isActive}
-                  className="h-8 text-[13px] font-medium px-2.5 rounded-md gap-2"
+                  className="h-8 text-[13px] font-medium px-2.5 rounded-md gap-2.5"
                 >
-                  <Link href={item.url} className="flex items-center gap-2 w-full">
-                    <span className="shrink-0 [&>span]:size-4 [&>span]:text-[17px]">{item.icon}</span>
+                  <Link href={item.url} className="flex items-center gap-2.5 w-full">
+                    <span className="shrink-0 flex items-center justify-center text-muted-foreground group-hover/button:text-foreground">{item.icon}</span>
                     <span className="text-[13px]">{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
