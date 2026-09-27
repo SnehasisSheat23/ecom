@@ -41,6 +41,10 @@ export const getBetterAuth = () => {
       database: {
         generateId: 'uuid',
       },
+      defaultCookieAttributes: {
+        sameSite: 'none',
+        secure: true,
+      },
     },
 
 
