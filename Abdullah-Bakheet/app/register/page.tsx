@@ -3,9 +3,12 @@
 import React, { useState, Suspense, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft, Eye, EyeOff, Building2, UploadCloud, CheckCircle2, Clock, FileText, X } from 'lucide-react';
+import { ChevronLeft, Eye, EyeOff, Building2, UploadCloud, CheckCircle2, FileText, X } from 'lucide-react';
 import { useShop } from '@/context/ShopContext';
-import { uploadStorefrontDocumentApi } from '@/lib/api';
+import { uploadStorefrontDocumentApi, completeCorporateProfileApi } from '@/lib/api';
+import { GoogleIcon } from '@/components/GoogleIcon';
+import { authClient } from '@/lib/auth-client';
+
 
 const SAUDI_CITIES = [
     'Riyadh',
@@ -73,7 +76,49 @@ function RegisterForm() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const router = useRouter();
-    const { register } = useShop();
+    const { register, user, accessToken } = useShop();
+    const session = authClient.useSession();
+    const googleUser = session?.data?.user || (user?.email ? user : null);
+    const isGoogleAuthenticated = Boolean(googleUser?.email);
+
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+    React.useEffect(() => {
+        if (googleUser?.email) {
+            setEmail(googleUser.email);
+            if (googleUser.name) {
+                const parts = googleUser.name.split(' ');
+                if (!firstName) setFirstName(parts[0] || '');
+                if (!lastName) setLastName(parts.slice(1).join(' ') || '');
+            }
+            if (isCorporate) {
+                // If user is already an approved corporate member, redirect to target or home
+                if (user?.customerGroup === 'corporate') {
+                    if (user.status === 'pending') {
+                        setIsSubmittedPending(true);
+                    } else if (user.status === 'active' || user.status === 'approved') {
+                        router.push(redirectUrl || '/');
+                    }
+                }
+            }
+        }
+    }, [googleUser, user, isCorporate, redirectUrl, router, firstName, lastName]);
+
+    const handleGoogleAuth = async () => {
+        setIsGoogleLoading(true);
+        setErrorMessage(null);
+        try {
+            const target = isCorporate ? '/register?type=corporate' : (redirectUrl || '/');
+            const callback = typeof window !== 'undefined' ? `${window.location.origin}${target}` : target;
+            await authClient.signIn.social({
+                provider: 'google',
+                callbackURL: callback,
+            });
+        } catch (err: any) {
+            setErrorMessage(err.message || 'Failed to connect with Google');
+            setIsGoogleLoading(false);
+        }
+    };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -99,9 +144,13 @@ function RegisterForm() {
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (password !== confirmPassword) {
-            setErrorMessage('Passwords do not match');
-            return;
+        
+        // If not authenticated via Google, validate password matching
+        if (!isGoogleAuthenticated) {
+            if (password !== confirmPassword) {
+                setErrorMessage('Passwords do not match');
+                return;
+            }
         }
 
         if (isCorporate) {
@@ -124,6 +173,27 @@ function RegisterForm() {
         try {
             const formattedPhone = isCorporate ? `+966${phoneRaw.replace(/^0+/, '').replace(/\s+/g, '')}` : phoneRaw;
 
+            // If user authenticated with Google and is completing corporate registration
+            if (isGoogleAuthenticated && isCorporate) {
+                await completeCorporateProfileApi({
+                    companyName,
+                    crNumber: crNumber || undefined,
+                    companyTaxId: companyTaxId || undefined,
+                    businessType,
+                    city,
+                    phone: formattedPhone,
+                    deliveryAddress,
+                    crDocumentUrl: crDocumentUrl || undefined,
+                    vatDocumentUrl: undefined,
+                    firstName,
+                    lastName,
+                }, accessToken || session?.data?.session?.token);
+
+                setIsSubmittedPending(true);
+                return;
+            }
+
+            // Standard registration
             const res = await register({ 
                 firstName, 
                 lastName, 
@@ -155,63 +225,60 @@ function RegisterForm() {
         }
     };
 
+
     // Pending Approval Screen
     if (isSubmittedPending) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-                <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-gray-200/80 p-8 text-center animate-in fade-in zoom-in-95 duration-300">
-                    <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-amber-200">
-                        <Clock className="w-8 h-8 text-amber-600" />
-                    </div>
-
-                    <div className="bg-[#fbdc3c] py-1.5 px-3 inline-block rounded mb-3">
+                <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-gray-200/80 p-8 text-left animate-in fade-in duration-300">
+                    <div className="bg-[#fbdc3c] py-1.5 px-3 inline-block rounded mb-4">
                         <span className="text-xs font-bold uppercase tracking-wider text-black">Application Under Review</span>
                     </div>
 
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Submitted!</h2>
                     
                     <p className="text-sm text-gray-600 leading-relaxed mb-6">
-                        Thank you for applying for a corporate wholesale account for <strong>{companyName}</strong>.
+                        Thank you for applying for a corporate wholesale account for <strong>{companyName || user?.companyName || 'your company'}</strong>.
                     </p>
 
                     <div className="bg-gray-50 border border-gray-100 rounded-lg p-4 text-left text-xs space-y-2 mb-6">
                         <div className="flex justify-between">
                             <span className="text-gray-500">Contact:</span>
-                            <span className="font-semibold text-gray-900">{firstName} {lastName}</span>
+                            <span className="font-semibold text-gray-900">{firstName || user?.firstName} {lastName || user?.lastName}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-500">Business Email:</span>
-                            <span className="font-semibold text-gray-900">{email}</span>
+                            <span className="font-semibold text-gray-900">{email || user?.email}</span>
                         </div>
-                        {crNumber && (
+                        {(crNumber || user?.crNumber) && (
                             <div className="flex justify-between">
                                 <span className="text-gray-500">CR Number:</span>
-                                <span className="font-mono font-semibold text-gray-900">{crNumber}</span>
+                                <span className="font-mono font-semibold text-gray-900">{crNumber || user?.crNumber}</span>
                             </div>
                         )}
                         <div className="flex justify-between">
                             <span className="text-gray-500">Review Status:</span>
-                            <span className="inline-flex items-center gap-1 text-amber-700 font-semibold">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                            <span className="inline-flex items-center gap-1.5 text-gray-700 font-semibold">
+                                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                                 Pending Verification
                             </span>
                         </div>
                     </div>
 
-                    <p className="text-xs text-gray-500 mb-6">
+                    <p className="text-xs text-gray-500 mb-6 leading-relaxed">
                         Our commercial compliance desk will verify your CR and VAT credentials. You will receive an automated email confirmation as soon as your wholesale tier is approved.
                     </p>
 
                     <div className="space-y-3">
                         <Link 
                             href="/"
-                            className="block w-full py-3 bg-black hover:bg-gray-800 text-white rounded font-medium text-sm transition-colors"
+                            className="block w-full py-3 bg-black hover:bg-gray-800 text-white text-center rounded font-medium text-sm transition-colors"
                         >
                             Return to Homepage
                         </Link>
                         <Link 
                             href="/products"
-                            className="block w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded font-medium text-xs transition-colors"
+                            className="block w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-center rounded font-medium text-xs transition-colors"
                         >
                             Browse Products as Guest
                         </Link>
@@ -290,7 +357,43 @@ function RegisterForm() {
                         </div>
                     )}
 
+                    {/* Google OAuth Minimal Indicator / Button */}
+                    {isGoogleAuthenticated ? (
+                        <div className="mb-5 flex items-center gap-2.5 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded text-xs">
+                            <GoogleIcon className="w-4 h-4 shrink-0" />
+                            <span className="font-medium text-gray-900 truncate">{email || googleUser?.email}</span>
+                        </div>
+                    ) : (
+                        <div className="mb-6">
+                            <button
+                                type="button"
+                                onClick={handleGoogleAuth}
+                                disabled={isGoogleLoading || isLoading}
+                                className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-white hover:bg-gray-50 border border-gray-300 hover:border-black rounded text-sm font-semibold text-gray-800 hover:text-black transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                            >
+                                <GoogleIcon className="w-5 h-5" />
+                                <span>
+                                    {isGoogleLoading
+                                        ? 'Connecting to Google...'
+                                        : (isCorporate
+                                            ? 'Sign up with Google for Business (Passwordless)'
+                                            : 'Sign up with Google'
+                                        )
+                                    }
+                                </span>
+                            </button>
+
+                            <div className="relative my-6 flex items-center justify-center">
+                                <div className="w-full border-t border-gray-200"></div>
+                                <span className="absolute bg-white px-3 text-[11px] text-gray-400 font-bold uppercase tracking-wider">
+                                    {isCorporate ? 'Or fill registration form' : 'Or register with email & password'}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
                     <form onSubmit={handleRegister} className="space-y-5">
+
                         {isCorporate && (
                             <div className="space-y-4 pt-1">
                                 {/* Company Name */}
@@ -465,20 +568,22 @@ function RegisterForm() {
                             </div>
                         </div>
 
-                        {/* Business Email */}
-                        <div className="space-y-1.5">
-                            <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">
-                                {isCorporate ? 'BUSINESS EMAIL' : 'EMAIL'} <span className="text-red-500">*</span>
-                            </label>
-                            <input 
-                                type="email" 
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-white border border-gray-200 rounded p-3 text-[14px] focus:outline-none focus:border-gray-400 transition-colors"
-                                placeholder={isCorporate ? "procurement@company.com" : "you@example.com"} 
-                            />
-                        </div>
+                        {/* Email Input (hidden if verified via Google) */}
+                        {!isGoogleAuthenticated && (
+                            <div className="space-y-1.5">
+                                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                                    {isCorporate ? 'BUSINESS EMAIL' : 'EMAIL'} <span className="text-red-500">*</span>
+                                </label>
+                                <input 
+                                    type="email" 
+                                    required
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full bg-white border border-gray-200 rounded p-3 text-[14px] focus:outline-none focus:border-gray-400 transition-colors"
+                                    placeholder={isCorporate ? "procurement@company.com" : "you@example.com"} 
+                                />
+                            </div>
+                        )}
 
                         {/* Mobile Number */}
                         <div className="space-y-1.5">
@@ -495,55 +600,58 @@ function RegisterForm() {
                             />
                         </div>
 
-                        {/* Password & Confirm Password */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">
-                                    PASSWORD <span className="text-red-500">*</span>
-                                </label>
-                                <div className="relative">
-                                    <input 
-                                        type={showPassword ? "text" : "password"} 
-                                        required
-                                        minLength={6}
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-white border border-gray-200 rounded p-3 text-[14px] focus:outline-none focus:border-gray-400 transition-colors pr-10"
-                                        placeholder="••••••••" 
-                                    />
-                                    <button 
-                                        type="button" 
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                    >
-                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                    </button>
+                        {/* Password & Confirm Password (stacked vertically one after another) */}
+                        {!isGoogleAuthenticated && (
+                            <div className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                                        PASSWORD <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <input 
+                                            type={showPassword ? "text" : "password"} 
+                                            required
+                                            minLength={6}
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className="w-full bg-white border border-gray-200 rounded p-3 text-[14px] focus:outline-none focus:border-gray-400 transition-colors pr-10"
+                                            placeholder="••••••••" 
+                                        />
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                                        >
+                                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                                        CONFIRM PASSWORD <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <input 
+                                            type={showConfirmPassword ? "text" : "password"} 
+                                            required
+                                            minLength={6}
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            className="w-full bg-white border border-gray-200 rounded p-3 text-[14px] focus:outline-none focus:border-gray-400 transition-colors pr-10"
+                                            placeholder="••••••••" 
+                                        />
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                                        >
+                                            {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="space-y-1.5">
-                                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">
-                                    CONFIRM PASSWORD <span className="text-red-500">*</span>
-                                </label>
-                                <div className="relative">
-                                    <input 
-                                        type={showConfirmPassword ? "text" : "password"} 
-                                        required
-                                        minLength={6}
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full bg-white border border-gray-200 rounded p-3 text-[14px] focus:outline-none focus:border-gray-400 transition-colors pr-10"
-                                        placeholder="••••••••" 
-                                    />
-                                    <button 
-                                        type="button" 
-                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                    >
-                                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        )}
+
 
                         {/* Submit Button */}
                         <button 

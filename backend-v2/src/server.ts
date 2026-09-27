@@ -14,12 +14,22 @@ import { quotationsRoutes } from './modules/quotations/quotations.routes.js'
 import { requireAdminAuth } from './middleware/auth.middleware.js'
 import { ProductsService } from './modules/products/products.service.js'
 import { storageService } from './lib/storage.js'
+import { auth } from './lib/better-auth.js'
 
 const app = new Hono()
 const productsService = new ProductsService()
 
 // Middleware
-app.use('*', cors())
+app.use(
+  '*',
+  cors({
+    origin: (origin) => origin || 'http://localhost:3000',
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Id', 'Cookie'],
+    exposeHeaders: ['Set-Cookie'],
+  })
+)
 
 // Health check endpoint
 app.get('/health', (c) => {
@@ -31,9 +41,31 @@ app.get('/health', (c) => {
   })
 })
 
+// Better Auth Routes Handler (/api/v1/auth/* and /api/auth/*)
+app.all('/api/v1/auth/*', async (c, next) => {
+  const path = c.req.path
+  if (
+    path === '/api/v1/auth/login' ||
+    path === '/api/v1/auth/register' ||
+    path === '/api/v1/auth/admin/login' ||
+    path === '/api/v1/auth/admin/me' ||
+    path === '/api/v1/auth/me' ||
+    path === '/api/v1/auth/corporate-profile'
+  ) {
+    return next()
+  }
+  const response = await auth.handler(c.req.raw)
+  if (response.status === 404) {
+    return next()
+  }
+  return response
+})
+app.all('/api/auth/*', async (c) => auth.handler(c.req.raw))
+
 // Mount Core Modules under /api/v1
 app.route('/api/v1/auth', authRoutes)
 app.route('/api/v1/me', authRoutes)
+
 app.route('/api/v1/products', productsRoutes)
 app.route('/api/v1/categories', categoriesRoutes)
 app.route('/api/v1/customers', customersRoutes)

@@ -355,6 +355,9 @@ export async function clearCartApi(accessToken?: string) {
     headers: buildHeaders(undefined, accessToken),
   })
   if (!res.ok) {
+    if (res.status === 401) {
+      return null
+    }
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error || err.message || 'Failed to clear cart')
   }
@@ -478,6 +481,38 @@ export async function registerApi(payload: {
   const json = await res.json()
   return json.data
 }
+
+export async function completeCorporateProfileApi(
+  payload: {
+    companyName: string;
+    crNumber?: string;
+    companyTaxId?: string;
+    businessType?: string;
+    city?: string;
+    phone?: string;
+    deliveryAddress?: string;
+    crDocumentUrl?: string;
+    vatDocumentUrl?: string;
+    firstName?: string;
+    lastName?: string;
+  },
+  accessToken?: string
+) {
+  const res = await fetch(`${API_BASE}/auth/corporate-profile`, {
+    method: 'POST',
+    headers: buildHeaders(undefined, accessToken),
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const details = err.details ? err.details.map((d: any) => `${d.path?.join('.')}: ${d.message}`).join('; ') : ''
+    throw new Error(details ? `${err.error}: ${details}` : (err.error || err.message || 'Failed to submit business details'))
+  }
+  const json = await res.json()
+  return json.data
+}
+
 
 export async function uploadStorefrontDocumentApi(file: File): Promise<{ url: string; filename: string }> {
   const formData = new FormData()

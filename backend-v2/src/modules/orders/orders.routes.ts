@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { OrdersService } from './orders.service.js'
+import { auth } from '../../lib/better-auth.js'
 
 const ordersService = new OrdersService()
 
@@ -16,21 +17,15 @@ const handleGetOrders = async (c: any) => {
   const sortOrder = c.req.query('sortOrder')
   const search = c.req.query('search') || c.req.query('q')
 
-  // Check Bearer token auth if customerId not explicitly provided in query
+  // Check Better Auth session if customerId not explicitly provided in query
   if (!customerId) {
-    const authHeader = c.req.header('Authorization')
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7).trim()
-      try {
-        const { verifyJwt } = await import('../../lib/auth-crypto.js')
-        const JWT_SECRET = process.env.APP_SECRET || process.env.JWT_SECRET || 'dubai-ecom-secure-jwt-secret-key-2026'
-        const payload = verifyJwt<any>(token, JWT_SECRET)
-        if (payload && payload.type === 'customer' && payload.sub) {
-          customerId = payload.sub
-        }
-      } catch (e) {
-        // invalid token
+    try {
+      const session = await auth.api.getSession({ headers: c.req.raw.headers })
+      if (session?.user?.id) {
+        customerId = session.user.id
       }
+    } catch {
+      // not logged in
     }
   }
 
@@ -47,16 +42,16 @@ ordersRoutes.post('/', async (c) => {
   try {
     const body = await c.req.json()
 
-    // 1. Check if customer is authenticated via Bearer token
+    // 1. Check if customer is authenticated via Better Auth session
     let customerId = body.customerId
-    const authHeader = c.req.header('Authorization')
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7).trim()
-      const { verifyJwt } = await import('../../lib/auth-crypto.js')
-      const JWT_SECRET = process.env.APP_SECRET || process.env.JWT_SECRET || 'dubai-ecom-secure-jwt-secret-key-2026'
-      const payload = verifyJwt<any>(token, JWT_SECRET)
-      if (payload && payload.type === 'customer' && payload.sub) {
-        customerId = payload.sub
+    if (!customerId) {
+      try {
+        const session = await auth.api.getSession({ headers: c.req.raw.headers })
+        if (session?.user?.id) {
+          customerId = session.user.id
+        }
+      } catch {
+        // not logged in
       }
     }
 

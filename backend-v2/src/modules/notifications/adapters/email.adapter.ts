@@ -4,26 +4,29 @@ export class EmailAdapter implements NotificationAdapter {
   readonly channel = 'email'
   readonly name = 'EmailAdapter'
 
-  private resendApiKey?: string
-  private fromEmail: string
+  get resendApiKey(): string | undefined {
+    return process.env.RESEND_API_KEY
+  }
 
-  constructor() {
-    this.resendApiKey = process.env.RESEND_API_KEY
-    this.fromEmail = process.env.EMAIL_FROM || 'Abdullah Bakheet <orders@abdullahbakheet.com>'
+  get fromEmail(): string {
+    return process.env.EMAIL_FROM || 'Abdullah Bakheet <orders@abdullahbakheetksa.com>'
   }
 
   async sendEmail(msg: OutgoingEmailMessage): Promise<AdapterResult> {
+    const apiKey = this.resendApiKey
+    const from = msg.from || this.fromEmail
+
     // 1. If Resend API Key is configured, send live email via Resend REST API
-    if (this.resendApiKey) {
+    if (apiKey) {
       try {
         const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${this.resendApiKey}`,
+            Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: msg.from || this.fromEmail,
+            from,
             to: [msg.to],
             subject: msg.subject,
             html: msg.html,

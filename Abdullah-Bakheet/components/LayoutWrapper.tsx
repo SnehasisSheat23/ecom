@@ -14,7 +14,10 @@ const INTRO_SEEN_KEY = 'ab_intro_seen';
 
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    const isAuthPage = pathname === '/login' || pathname === '/register';
+    const isAuthPage = pathname?.startsWith('/login') || 
+                       pathname?.startsWith('/register') || 
+                       pathname?.startsWith('/reset-password') || 
+                       pathname?.startsWith('/forgot-password');
     const contentRef = useRef<HTMLDivElement>(null);
     const { language } = useShop();
 

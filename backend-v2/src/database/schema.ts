@@ -83,11 +83,55 @@ export const customers = pgTable('v2_customers', {
   availableCredit: numeric('available_credit', { precision: 12, scale: 2 }).notNull().default('0.00'),
   paymentTerms: varchar('payment_terms', { length: 50 }).notNull().default('prepaid'), // 'prepaid' | 'net_15' | 'net_30' | 'net_60'
   accountDiscountPercent: numeric('account_discount_percent', { precision: 5, scale: 2 }).notNull().default('0.00'),
+  name: varchar('name', { length: 255 }),
+  emailVerified: boolean('email_verified').default(false).notNull(),
+  image: text('image'),
+  role: varchar('role', { length: 50 }).notNull().default('customer'), // 'customer' | 'admin' | 'superadmin' | 'staff'
   status: varchar('status', { length: 20 }).notNull().default('active'), // 'pending' | 'active' | 'approved' | 'rejected' | 'suspended'
   rejectionReason: text('rejection_reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
+
+// Better Auth Sessions Table
+export const betterSessions = pgTable('v2_better_sessions', {
+  id: text('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Better Auth Accounts Table (OAuth Providers like Google)
+export const betterAccounts = pgTable('v2_better_accounts', {
+  id: text('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at', { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { withTimezone: true }),
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Better Auth Verifications Table
+export const betterVerifications = pgTable('v2_better_verifications', {
+  id: text('id').primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
 
 export const customerAddresses = pgTable('v2_customer_addresses', {
   id: uuid('id').primaryKey().defaultRandom(),

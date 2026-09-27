@@ -24,9 +24,14 @@ export interface OrderPlacedPayload {
   customerName: string
   customerEmail: string
   customerPhone?: string | null
+  companyName?: string | null
+  poNumber?: string | null
+  vatNumber?: string | null
+  isCorporate?: boolean
   totalAmount: number | string
   subtotal?: number | string | null
   shippingCost?: number | string | null
+  vatAmount?: number | string | null
   currency: string
   paymentMethod?: string | null
   shippingAddress?: string | null

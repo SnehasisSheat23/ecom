@@ -1,58 +1,58 @@
 import type { Context, Next } from 'hono'
-import { verifyJwt, type JwtPayload } from '../lib/auth-crypto.js'
-
-const JWT_SECRET = process.env.APP_SECRET || process.env.JWT_SECRET || 'dubai-ecom-secure-jwt-secret-key-2026'
+import { auth } from '../lib/better-auth.js'
 
 export async function requireAdminAuth(c: Context, next: Next) {
-  const authHeader = c.req.header('Authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ success: false, error: 'Unauthorized: Admin authentication token required' }, 401)
+  try {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers })
+    if (session?.user) {
+      const user = session.user as any
+      if (user.role === 'admin' || user.role === 'superadmin') {
+        c.set('admin', user)
+        c.set('userId', user.id)
+        c.set('userRole', user.role)
+        return await next()
+      } else {
+        return c.json({ success: false, error: 'Forbidden: Admin privileges required' }, 403)
+      }
+    }
+  } catch (err) {
+    console.error('requireAdminAuth error:', err)
   }
 
-  const token = authHeader.substring(7).trim()
-  const payload = verifyJwt<JwtPayload>(token, JWT_SECRET)
-
-  if (!payload || payload.type !== 'admin') {
-    return c.json({ success: false, error: 'Unauthorized: Invalid or expired admin session' }, 401)
-  }
-
-  c.set('admin', payload)
-  c.set('userId', payload.sub)
-  c.set('userRole', payload.role || 'admin')
-  await next()
+  return c.json({ success: false, error: 'Unauthorized: Admin authentication session required' }, 401)
 }
 
 export async function requireCustomerAuth(c: Context, next: Next) {
-  const authHeader = c.req.header('Authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ success: false, error: 'Unauthorized: Customer sign-in required' }, 401)
+  try {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers })
+    if (session?.user?.id) {
+      c.set('customer', session.user)
+      c.set('customerId', session.user.id)
+      return await next()
+    }
+  } catch (err) {
+    console.error('requireCustomerAuth error:', err)
   }
 
-  const token = authHeader.substring(7).trim()
-  const payload = verifyJwt<JwtPayload>(token, JWT_SECRET)
-
-  if (!payload || payload.type !== 'customer') {
-    return c.json({ success: false, error: 'Unauthorized: Invalid or expired customer session' }, 401)
-  }
-
-  c.set('customer', payload)
-  c.set('customerId', payload.sub)
-  await next()
+  return c.json({ success: false, error: 'Unauthorized: Customer sign-in required' }, 401)
 }
 
 export async function optionalAuth(c: Context, next: Next) {
-  const authHeader = c.req.header('Authorization')
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7).trim()
-    const payload = verifyJwt<JwtPayload>(token, JWT_SECRET)
-    if (payload) {
-      if (payload.type === 'admin') {
-        c.set('admin', payload)
-      } else if (payload.type === 'customer') {
-        c.set('customer', payload)
+  try {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers })
+    if (session?.user?.id) {
+      const user = session.user as any
+      if (user.role === 'admin' || user.role === 'superadmin') {
+        c.set('admin', user)
       }
+      c.set('customer', user)
+      c.set('customerId', user.id)
+      c.set('userId', user.id)
     }
+  } catch {
+    // No active session
   }
+
   await next()
 }
 

@@ -1,11 +1,10 @@
 import { Hono } from 'hono'
 import { WishlistService } from './wishlist.service.js'
 import { requireCustomerAuth } from '../../middleware/auth.middleware.js'
-import type { JwtPayload } from '../../lib/auth-crypto.js'
 
 type Env = {
   Variables: {
-    customer: JwtPayload
+    customer: any
     customerId: string
   }
 }
@@ -19,8 +18,8 @@ wishlistRoutes.use('*', requireCustomerAuth)
 // GET /api/v1/wishlist - Get customer wishlist
 wishlistRoutes.get('/', async (c) => {
   try {
-    const customer = c.get('customer')
-    const result = await wishlistService.getWishlist(customer.sub)
+    const customerId = c.get('customerId')
+    const result = await wishlistService.getWishlist(customerId)
     return c.json({ success: true, data: result })
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Failed to fetch wishlist' }, 500)
@@ -30,38 +29,38 @@ wishlistRoutes.get('/', async (c) => {
 // POST /api/v1/wishlist/toggle - Toggle wishlist item
 wishlistRoutes.post('/toggle', async (c) => {
   try {
-    const customer = c.get('customer')
+    const customerId = c.get('customerId')
     const body = await c.req.json()
     const productId = body?.productId || body?.id
     if (!productId) {
       return c.json({ success: false, error: 'productId is required' }, 400)
     }
-    const result = await wishlistService.toggleWishlist(customer.sub, productId)
+    const result = await wishlistService.toggleWishlist(customerId, productId)
     return c.json({ success: true, data: result })
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Failed to toggle wishlist' }, 400)
   }
 })
 
-// POST /api/v1/wishlist/merge - Merge local guest wishlist into DB
+// POST /api/v1/wishlist/merge - Merge local storage guest wishlist into customer wishlist
 wishlistRoutes.post('/merge', async (c) => {
   try {
-    const customer = c.get('customer')
+    const customerId = c.get('customerId')
     const body = await c.req.json()
-    const productIds = Array.isArray(body?.productIds) ? body.productIds : (Array.isArray(body?.items) ? body.items.map((i: any) => i.id || i.productId) : [])
-    const result = await wishlistService.mergeWishlist(customer.sub, productIds)
+    const productIds = Array.isArray(body?.productIds) ? body.productIds : (Array.isArray(body) ? body : [])
+    const result = await wishlistService.mergeWishlist(customerId, productIds)
     return c.json({ success: true, data: result })
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Failed to merge wishlist' }, 400)
   }
 })
 
-// DELETE /api/v1/wishlist/:productId - Remove item from wishlist
+// DELETE /api/v1/wishlist/:productId - Remove specific product from wishlist
 wishlistRoutes.delete('/:productId', async (c) => {
   try {
-    const customer = c.get('customer')
+    const customerId = c.get('customerId')
     const productId = c.req.param('productId')
-    const result = await wishlistService.removeFromWishlist(customer.sub, productId)
+    const result = await wishlistService.removeFromWishlist(customerId, productId)
     return c.json({ success: true, data: result })
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Failed to remove from wishlist' }, 400)

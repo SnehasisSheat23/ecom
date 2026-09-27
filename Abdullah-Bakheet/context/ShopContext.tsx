@@ -18,6 +18,8 @@ import {
     fetchShippingMethodsApi,
     fetchProductsApi,
 } from '@/lib/api';
+import { authClient } from '@/lib/auth-client';
+
 
 export interface PriceTier {
     minQty: number;
@@ -78,6 +80,8 @@ export interface UserProfile {
     companyTaxId?: string;
     crNumber?: string;
     customerGroup?: 'retail' | 'wholesale' | 'corporate';
+    status?: 'active' | 'pending' | 'rejected' | 'approved' | string;
+    role?: string;
     creditLimit?: number;
     availableCredit?: number;
     paymentTerms?: string;
@@ -104,7 +108,7 @@ interface ShopContextType {
     removeFromCart: (id: string) => void;
     updateQuantity: (id: string, delta: number) => void;
     setQuantity: (id: string, qty: number) => void;
-    clearCart: () => void;
+    clearCart: (clearRemote?: boolean) => void;
     cartTotal: number;
     cartSavings: number;
     cartCount: number;
@@ -358,46 +362,88 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
             console.error('Failed to load local storage state:', e);
         }
 
-        const savedToken = localStorage.getItem('auth_access_token');
-        if (savedToken) {
-            setAccessToken(savedToken);
-            fetchMeApi(savedToken).then(profile => {
-                if (profile) {
-                    const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.email;
-                    setUser({
-                        id: profile.id,
-                        name: fullName,
-                        email: profile.email,
-                        firstName: profile.firstName,
-                        lastName: profile.lastName,
-                        phone: profile.phone,
-                        companyName: profile.companyName,
-                        companyTaxId: profile.companyTaxId,
-                        crNumber: profile.crNumber,
-                        customerGroup: profile.customerGroup || 'retail',
-                        creditLimit: profile.creditLimit ? Number(profile.creditLimit) : 0,
-                        availableCredit: profile.availableCredit ? Number(profile.availableCredit) : 0,
-                        paymentTerms: profile.paymentTerms || 'prepaid',
-                        accountDiscountPercent: profile.accountDiscountPercent ? Number(profile.accountDiscountPercent) : 0,
-                    });
-                    // Trigger DB sync for authenticated user
-                    syncWithBackendOnAuth(savedToken, initialCart, initialWishlist);
-                } else {
+        // 1. First check active Better Auth session (Google OAuth or email/password)
+        authClient.getSession().then((sessionRes: any) => {
+            if (sessionRes?.data?.user) {
+                const u = sessionRes.data.user;
+                const s = sessionRes.data.session;
+                const fullName = u.name || [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email;
+                const token = s?.token || null;
+                if (token) {
+                    setAccessToken(token);
+                    localStorage.setItem('auth_access_token', token);
+                }
+                setUser({
+                    id: u.id,
+                    name: fullName,
+                    email: u.email,
+                    firstName: u.firstName || (u.name ? u.name.split(' ')[0] : ''),
+                    lastName: u.lastName || (u.name ? u.name.split(' ').slice(1).join(' ') : ''),
+                    phone: u.phone,
+                    companyName: u.companyName,
+                    companyTaxId: u.companyTaxId,
+                    crNumber: u.crNumber,
+                    customerGroup: u.customerGroup || 'retail',
+                    status: u.status || 'active',
+                    role: u.role || 'customer',
+                    creditLimit: u.creditLimit ? Number(u.creditLimit) : 0,
+                    availableCredit: u.availableCredit ? Number(u.availableCredit) : 0,
+                    paymentTerms: u.paymentTerms || 'prepaid',
+                    accountDiscountPercent: u.accountDiscountPercent ? Number(u.accountDiscountPercent) : 0,
+                });
+                if (token) {
+                    syncWithBackendOnAuth(token, initialCart, initialWishlist);
+                }
+                setIsAuthLoading(false);
+                return;
+            }
+
+            // 2. Fallback to saved token check
+            const savedToken = localStorage.getItem('auth_access_token');
+            if (savedToken) {
+                setAccessToken(savedToken);
+                fetchMeApi(savedToken).then(profile => {
+                    if (profile) {
+                        const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.email;
+                        setUser({
+                            id: profile.id,
+                            name: fullName,
+                            email: profile.email,
+                            firstName: profile.firstName,
+                            lastName: profile.lastName,
+                            phone: profile.phone,
+                            companyName: profile.companyName,
+                            companyTaxId: profile.companyTaxId,
+                            crNumber: profile.crNumber,
+                            customerGroup: profile.customerGroup || 'retail',
+                            status: profile.status || 'active',
+                            role: profile.role || 'customer',
+                            creditLimit: profile.creditLimit ? Number(profile.creditLimit) : 0,
+                            availableCredit: profile.availableCredit ? Number(profile.availableCredit) : 0,
+                            paymentTerms: profile.paymentTerms || 'prepaid',
+                            accountDiscountPercent: profile.accountDiscountPercent ? Number(profile.accountDiscountPercent) : 0,
+                        });
+                        syncWithBackendOnAuth(savedToken, initialCart, initialWishlist);
+                    } else {
+                        localStorage.removeItem('auth_access_token');
+                        setAccessToken(null);
+                        setUser(null);
+                    }
+                }).catch(() => {
                     localStorage.removeItem('auth_access_token');
                     setAccessToken(null);
                     setUser(null);
-                }
-            }).catch(() => {
-                localStorage.removeItem('auth_access_token');
-                setAccessToken(null);
-                setUser(null);
-            }).finally(() => {
+                }).finally(() => {
+                    setIsAuthLoading(false);
+                });
+            } else {
                 setIsAuthLoading(false);
-            });
-        } else {
+            }
+        }).catch(() => {
             setIsAuthLoading(false);
-        }
+        });
     }, [syncWithBackendOnAuth]);
+
 
     // 2. Persist cart to localStorage whenever it changes
     useEffect(() => {
@@ -726,7 +772,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const clearCart = () => {
+    const clearCart = (clearRemote: boolean = true) => {
         setCart([]);
         try {
             localStorage.removeItem(LOCAL_STORAGE_CART_KEY);
@@ -734,8 +780,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
             console.error('Failed to clear cart storage:', e);
         }
 
-        if (accessToken) {
-            clearCartApi(accessToken).catch(err => console.error('Background clearCartApi failed:', err));
+        if (clearRemote && accessToken) {
+            clearCartApi(accessToken).catch(err => {
+                if (!err?.message?.includes('sign-in required')) {
+                    console.error('Background clearCartApi failed:', err);
+                }
+            });
         }
     };
 
@@ -771,6 +821,52 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const isInWishlist = (id: string) => wishlist.some(i => i.id === id);
 
     const login = async (email: string, password?: string, phone?: string) => {
+        if (password) {
+            try {
+                const res = await authClient.signIn.email({
+                    email: email.trim().toLowerCase(),
+                    password,
+                });
+                if (res.error) {
+                    throw new Error(res.error.message || 'Login failed');
+                }
+                const sessionRes = await authClient.getSession();
+                if (sessionRes?.data?.user) {
+                    const u = sessionRes.data.user as any;
+                    const token = sessionRes.data.session?.token;
+                    if (token) {
+                        setAccessToken(token);
+                        localStorage.setItem('auth_access_token', token);
+                    }
+                    const fullName = u.name || [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email;
+                    setUser({
+                        id: u.id,
+                        name: fullName,
+                        email: u.email,
+                        firstName: u.firstName,
+                        lastName: u.lastName,
+                        phone: u.phone,
+                        companyName: u.companyName,
+                        companyTaxId: u.companyTaxId,
+                        crNumber: u.crNumber,
+                        customerGroup: u.customerGroup || 'retail',
+                        status: u.status || 'active',
+                        role: u.role || 'customer',
+                        creditLimit: u.creditLimit ? Number(u.creditLimit) : 0,
+                        availableCredit: u.availableCredit ? Number(u.availableCredit) : 0,
+                        paymentTerms: u.paymentTerms || 'prepaid',
+                        accountDiscountPercent: u.accountDiscountPercent ? Number(u.accountDiscountPercent) : 0,
+                    });
+                    if (token) {
+                        await syncWithBackendOnAuth(token, cart, wishlist);
+                    }
+                    return sessionRes.data;
+                }
+            } catch (err: any) {
+                // If Better Auth throws, continue to fallback
+            }
+        }
+
         const data = await loginApi({ email, password, phone, guestSessionId });
         if (data?.accessToken) {
             setAccessToken(data.accessToken);
@@ -790,6 +886,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 companyTaxId: c.companyTaxId,
                 crNumber: c.crNumber,
                 customerGroup: c.customerGroup || 'retail',
+                status: c.status || 'active',
+                role: c.role || 'customer',
                 creditLimit: c.creditLimit ? Number(c.creditLimit) : 0,
                 availableCredit: c.availableCredit ? Number(c.availableCredit) : 0,
                 paymentTerms: c.paymentTerms || 'prepaid',
@@ -803,6 +901,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         }
         return data;
     };
+
 
     const register = async (payload: { 
         email: string; 
@@ -839,6 +938,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 companyTaxId: c.companyTaxId,
                 crNumber: c.crNumber,
                 customerGroup: c.customerGroup || 'retail',
+                status: c.status || 'active',
+                role: c.role || 'customer',
                 creditLimit: c.creditLimit ? Number(c.creditLimit) : 0,
                 availableCredit: c.availableCredit ? Number(c.availableCredit) : 0,
                 paymentTerms: c.paymentTerms || 'prepaid',
@@ -852,12 +953,26 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         return data;
     };
 
-    const logout = () => {
+    const logout = async () => {
+        try {
+            await authClient.signOut();
+        } catch (e) {
+            console.warn('Sign out warning:', e);
+        }
         setUser(null);
         setAccessToken(null);
         localStorage.removeItem('auth_access_token');
-        clearCart();
+        // Clear local shopping state without deleting customer's remote saved cart from database
+        setCart([]);
+        setWishlist([]);
+        try {
+            localStorage.removeItem(LOCAL_STORAGE_CART_KEY);
+            localStorage.removeItem(LOCAL_STORAGE_WISHLIST_KEY);
+        } catch (e) {
+            console.error('Failed to clear local cart/wishlist storage on logout:', e);
+        }
     };
+
 
     // Calculate cart totals (Base AED)
     const cartTotal = cart.reduce((sum, item) => {

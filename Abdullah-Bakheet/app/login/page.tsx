@@ -3,8 +3,10 @@
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft, Eye, EyeOff, ArrowUpRight } from 'lucide-react';
+import { ChevronLeft, Eye, EyeOff, ArrowUpRight, Building2 } from 'lucide-react';
 import { useShop } from '@/context/ShopContext';
+import { GoogleIcon } from '@/components/GoogleIcon';
+import { authClient } from '@/lib/auth-client';
 
 function LoginForm() {
     const searchParams = useSearchParams();
@@ -17,12 +19,32 @@ function LoginForm() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const router = useRouter();
 
     const { login, language } = useShop();
     const isArabic = language.startsWith('Arabic');
+
+    const handleGoogleSignIn = async () => {
+        setIsGoogleLoading(true);
+        setErrorMessage(null);
+        try {
+            const target = isCorporate
+                ? `/register?type=corporate${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}` : ''}`
+                : (redirectUrl ? redirectUrl : '/');
+            const callback = typeof window !== 'undefined' ? `${window.location.origin}${target}` : target;
+            await authClient.signIn.social({
+                provider: 'google',
+                callbackURL: callback,
+            });
+        } catch (err: any) {
+            setErrorMessage(err.message || 'Failed to initiate Google sign in');
+            setIsGoogleLoading(false);
+        }
+    };
+
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -37,11 +59,26 @@ function LoginForm() {
                 router.push('/');
             }
         } catch (err: any) {
-            setErrorMessage(err.message || 'Login failed. Please check your credentials.');
+            const msg = err?.message || '';
+            if (
+                msg.toLowerCase().includes('load failed') || 
+                msg.toLowerCase().includes('failed to fetch') || 
+                msg.toLowerCase().includes('user not found') || 
+                msg.toLowerCase().includes('invalid') ||
+                msg.toLowerCase().includes('unauthorized')
+            ) {
+                setErrorMessage('ACCOUNT_NOT_FOUND');
+            } else {
+                setErrorMessage(msg || 'ACCOUNT_NOT_FOUND');
+            }
         } finally {
             setIsLoading(false);
         }
     };
+
+    const registerHref = isCorporate
+        ? `/register?type=corporate${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}${action ? `&action=${action}` : ''}${itemId ? `&item=${itemId}` : ''}` : ''}`
+        : `/register${redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}${action ? `&action=${action}` : ''}${itemId ? `&item=${itemId}` : ''}` : ''}`;
 
     return (
         <div className="min-h-screen bg-white flex">
@@ -69,7 +106,7 @@ function LoginForm() {
                             <>
                                 {isArabic ? 'ليس لديك حساب تجاري؟ ' : "Don't have a business account? "}
                                 <Link 
-                                    href={`/register?type=corporate${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}${action ? `&action=${action}` : ''}${itemId ? `&item=${itemId}` : ''}` : ''}`} 
+                                    href={registerHref} 
                                     className="text-black font-bold hover:underline"
                                 >
                                     {isArabic ? 'سجل حساب شركة' : 'Register business account'}
@@ -79,7 +116,7 @@ function LoginForm() {
                             <>
                                 {isArabic ? 'ليس لديك حساب بعد؟ ' : "Don't have an account yet? "}
                                 <Link 
-                                    href={`/register${redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}${action ? `&action=${action}` : ''}${itemId ? `&item=${itemId}` : ''}` : ''}`} 
+                                    href={registerHref} 
                                     className="text-black font-bold hover:underline"
                                 >
                                     {isArabic ? 'سجل هنا' : 'Register here'}
@@ -127,10 +164,63 @@ function LoginForm() {
                     </div>
 
                     {errorMessage && (
-                        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-md">
-                            {errorMessage}
+                        <div className={`mb-6 p-4 bg-red-50 border border-red-200 text-red-900 rounded-lg text-xs space-y-1.5 ${isArabic ? 'text-right' : 'text-left'}`}>
+                            <p className="font-bold text-[13px] text-red-950">
+                                {isArabic ? 'لم يتم العثور على الحساب أو كلمة المرور غير صحيحة' : 'Account not found or incorrect password'}
+                            </p>
+                            <p className="text-red-800 text-[12px]">
+                                {isCorporate ? (
+                                    <>
+                                        {isArabic ? 'ليس لديك حساب شركة مسجل؟ ' : "Don't have a business account? "}
+                                        <Link 
+                                            href={registerHref}
+                                            className="font-bold underline text-red-950 hover:text-black ml-1"
+                                        >
+                                            {isArabic ? 'سجل حساب شركة جديد ←' : 'Create business account →'}
+                                        </Link>
+                                    </>
+                                ) : (
+                                    <>
+                                        {isArabic ? 'ليس لديك حساب بعد؟ ' : "Don't have an account yet? "}
+                                        <Link 
+                                            href={registerHref}
+                                            className="font-bold underline text-red-950 hover:text-black ml-1"
+                                        >
+                                            {isArabic ? 'إنشاء حساب جديد ←' : 'Create an account →'}
+                                        </Link>
+                                    </>
+                                )}
+                            </p>
                         </div>
                     )}
+
+                    {/* Google OAuth Button */}
+                    <div className="mb-6">
+                        <button
+                            type="button"
+                            onClick={handleGoogleSignIn}
+                            disabled={isGoogleLoading || isLoading}
+                            className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-white hover:bg-gray-50 border border-gray-300 hover:border-black rounded text-sm font-semibold text-gray-800 hover:text-black transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                        >
+                            <GoogleIcon className="w-5 h-5" />
+                            <span>
+                                {isGoogleLoading
+                                    ? (isArabic ? 'جاري الاتصال بـ Google...' : 'Connecting to Google...')
+                                    : (isCorporate
+                                        ? (isArabic ? 'المتابعة كشركة باستخدام Google' : 'Continue with Google for Business')
+                                        : (isArabic ? 'المتابعة باستخدام Google' : 'Continue with Google')
+                                    )
+                                }
+                            </span>
+                        </button>
+
+                        <div className="relative my-6 flex items-center justify-center">
+                            <div className="w-full border-t border-gray-200"></div>
+                            <span className="absolute bg-white px-3 text-[11px] text-gray-400 font-bold uppercase tracking-wider">
+                                {isArabic ? 'أو عبر البريد الإلكتروني' : 'Or continue with email'}
+                            </span>
+                        </div>
+                    </div>
 
                     <form onSubmit={handleLogin} className="space-y-6">
                         <div className="space-y-2">
@@ -169,11 +259,12 @@ function LoginForm() {
                                 </button>
                             </div>
                             <div className={isArabic ? 'text-left mt-2' : 'text-right mt-2'}>
-                                <Link href="#" className="text-red-500 text-[13px] hover:underline">
+                                <Link href="/forgot-password" className="text-red-500 text-[13px] hover:underline">
                                     {isArabic ? 'نسيت كلمة المرور؟' : 'Forgot password ?'}
                                 </Link>
                             </div>
                         </div>
+
 
                         <button 
                             type="submit"

@@ -189,11 +189,11 @@ export default function AccountPage() {
                                 </p>
                             </div>
                             <Link 
-                                href="/cart/rfq" 
+                                href="/register?type=corporate" 
                                 className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-black text-white text-xs font-semibold rounded-lg hover:bg-gray-800 transition-colors"
                             >
-                                <FileText size={14} />
-                                <span>{isArabic ? 'طلب تسعيرة خاصة (RFQ)' : 'Request Wholesale Quote'}</span>
+                                <Building2 size={14} />
+                                <span>{isArabic ? 'الترقية لحساب شركات معتمد' : 'Upgrade to Corporate Account'}</span>
                             </Link>
                         </div>
                     )}

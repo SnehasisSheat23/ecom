@@ -2,12 +2,10 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { getDatabase } from '../../lib/db.js'
-import { adminUsers, customers } from '../../database/schema.js'
-import { hashPassword, verifyPassword, signJwt } from '../../lib/auth-crypto.js'
+import { customers } from '../../database/schema.js'
 import { requireAdminAuth, requireCustomerAuth } from '../../middleware/auth.middleware.js'
 import { notify } from '../notifications/index.js'
-
-const JWT_SECRET = process.env.APP_SECRET || process.env.JWT_SECRET || 'dubai-ecom-secure-jwt-secret-key-2026'
+import { auth } from '../../lib/better-auth.js'
 
 export const authRoutes = new Hono()
 
@@ -35,7 +33,7 @@ const registerSchema = z.object({
 })
 
 // ==========================================
-// 1. ADMIN AUTH ENDPOINTS
+// 1. ADMIN AUTH ENDPOINTS (Clean Better Auth)
 // ==========================================
 
 // POST /api/v1/auth/admin/login
@@ -45,47 +43,38 @@ authRoutes.post('/admin/login', async (c) => {
     const parsed = loginSchema.parse(body)
     const normalizedEmail = parsed.email.trim().toLowerCase()
 
-    const db = getDatabase()
-    const users = await db.select().from(adminUsers).where(eq(adminUsers.email, normalizedEmail)).limit(1)
-
-    if (users.length === 0) {
-      return c.json({ success: false, error: 'Invalid admin email or password' }, 401)
-    }
-
-    const admin = users[0]
-    if (admin.status !== 'active') {
-      return c.json({ success: false, error: 'Admin account is deactivated' }, 403)
-    }
-
-    const isValid = await verifyPassword(parsed.password, admin.passwordHash)
-    if (!isValid) {
-      return c.json({ success: false, error: 'Invalid admin email or password' }, 401)
-    }
-
-    const displayName = `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || 'Admin User'
-    const accessToken = signJwt(
-      {
-        sub: admin.id,
-        email: admin.email,
-        name: displayName,
-        role: admin.role,
-        type: 'admin',
+    const betterRes: any = await auth.api.signInEmail({
+      body: {
+        email: normalizedEmail,
+        password: parsed.password,
       },
-      JWT_SECRET,
-      60 * 60 * 24 * 7 // 7 days
-    )
+    })
+
+    if (!betterRes || !betterRes.user) {
+      return c.json({ success: false, error: 'Invalid admin email or password' }, 401)
+    }
+
+    if (betterRes.user.role !== 'admin' && betterRes.user.role !== 'superadmin') {
+      return c.json({ success: false, error: 'Access denied: Administrator permissions required.' }, 403)
+    }
+
+    const displayName =
+      betterRes.user.name ||
+      `${betterRes.user.firstName || ''} ${betterRes.user.lastName || ''}`.trim() ||
+      betterRes.user.email.split('@')[0]
 
     return c.json({
       success: true,
       data: {
-        accessToken,
+        accessToken: betterRes.token,
+        token: betterRes.token,
         user: {
-          id: admin.id,
-          email: admin.email,
+          id: betterRes.user.id,
+          email: betterRes.user.email,
           name: displayName,
-          firstName: admin.firstName,
-          lastName: admin.lastName,
-          role: admin.role,
+          firstName: betterRes.user.firstName,
+          lastName: betterRes.user.lastName,
+          role: betterRes.user.role,
         },
       },
     })
@@ -93,32 +82,32 @@ authRoutes.post('/admin/login', async (c) => {
     if (err instanceof z.ZodError) {
       return c.json({ success: false, error: err.issues.map((e: any) => e.message).join(', ') }, 400)
     }
-    return c.json({ success: false, error: err.message || 'Admin login failed' }, 500)
+    return c.json({ success: false, error: err.body?.message || err.message || 'Invalid admin credentials' }, 401)
   }
 })
 
 // GET /api/v1/auth/admin/me
 authRoutes.get('/admin/me', requireAdminAuth, async (c) => {
   try {
-    const adminPayload = (c as any).get('admin')
+    const admin = (c as any).get('admin')
     const db = getDatabase()
-    const users = await db.select().from(adminUsers).where(eq(adminUsers.id, adminPayload.sub)).limit(1)
+    const customerAdmins = await db.select().from(customers).where(eq(customers.id, admin.id || admin.sub)).limit(1)
 
-    if (users.length === 0) {
+    if (customerAdmins.length === 0) {
       return c.json({ success: false, error: 'Admin user not found' }, 404)
     }
 
-    const admin = users[0]
+    const current = customerAdmins[0]
     return c.json({
       success: true,
       data: {
-        id: admin.id,
-        email: admin.email,
-        name: `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || 'Admin User',
-        firstName: admin.firstName,
-        lastName: admin.lastName,
-        role: admin.role,
-        status: admin.status,
+        id: current.id,
+        email: current.email,
+        name: current.name || `${current.firstName || ''} ${current.lastName || ''}`.trim() || 'Admin User',
+        firstName: current.firstName,
+        lastName: current.lastName,
+        role: current.role,
+        status: current.status,
       },
     })
   } catch (err: any) {
@@ -127,7 +116,7 @@ authRoutes.get('/admin/me', requireAdminAuth, async (c) => {
 })
 
 // ==========================================
-// 2. STOREFRONT CUSTOMER AUTH ENDPOINTS
+// 2. STOREFRONT CUSTOMER AUTH (Clean Better Auth)
 // ==========================================
 
 // POST /api/v1/auth/login (Customer Login)
@@ -137,74 +126,26 @@ authRoutes.post('/login', async (c) => {
     const parsed = loginSchema.parse(body)
     const normalizedEmail = parsed.email.trim().toLowerCase()
 
-    const db = getDatabase()
-    const customerList = await db.select().from(customers).where(eq(customers.email, normalizedEmail)).limit(1)
-
-    if (customerList.length === 0) {
-      // Also check if this is an admin logging into general login
-      const adminList = await db.select().from(adminUsers).where(eq(adminUsers.email, normalizedEmail)).limit(1)
-      if (adminList.length > 0) {
-        const admin = adminList[0]
-        const isValid = await verifyPassword(parsed.password, admin.passwordHash)
-        if (isValid) {
-          const displayName = `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || 'Admin User'
-          const accessToken = signJwt(
-            {
-              sub: admin.id,
-              email: admin.email,
-              name: displayName,
-              role: admin.role,
-              type: 'admin',
-            },
-            JWT_SECRET,
-            60 * 60 * 24 * 7
-          )
-          return c.json({
-            success: true,
-            data: {
-              accessToken,
-              user: {
-                id: admin.id,
-                email: admin.email,
-                name: displayName,
-                isAdmin: true,
-                role: admin.role,
-              },
-            },
-          })
-        } else {
-          return c.json({ success: false, error: 'Incorrect password. Please try again.' }, 401)
-        }
-      }
-      return c.json({ success: false, error: 'No account found with this email. Please register to create your account.' }, 404)
-    }
-
-    const customer = customerList[0]
-    if (!customer.passwordHash) {
-      return c.json({ success: false, error: 'No password set for this account. Please register to set up your password.' }, 400)
-    }
-
-    const isValid = await verifyPassword(parsed.password, customer.passwordHash)
-    if (!isValid) {
-      return c.json({ success: false, error: 'Incorrect password. Please try again.' }, 401)
-    }
-
-    const displayName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || customer.email.split('@')[0]
-    const accessToken = signJwt(
-      {
-        sub: customer.id,
-        email: customer.email,
-        name: displayName,
-        type: 'customer',
+    const betterRes: any = await auth.api.signInEmail({
+      body: {
+        email: normalizedEmail,
+        password: parsed.password,
       },
-      JWT_SECRET,
-      60 * 60 * 24 * 30 // 30 days
-    )
+    })
+
+    if (!betterRes || !betterRes.user) {
+      return c.json({ success: false, error: 'Invalid email or password' }, 401)
+    }
+
+    const db = getDatabase()
+    const custRows = await db.select().from(customers).where(eq(customers.id, betterRes.user.id)).limit(1)
+    const customer = custRows[0] || betterRes.user
 
     return c.json({
       success: true,
       data: {
-        accessToken,
+        accessToken: betterRes.token,
+        token: betterRes.token,
         customer: {
           id: customer.id,
           email: customer.email,
@@ -219,6 +160,7 @@ authRoutes.post('/login', async (c) => {
           availableCredit: parseFloat(customer.availableCredit || '0'),
           paymentTerms: customer.paymentTerms || 'prepaid',
           accountDiscountPercent: parseFloat(customer.accountDiscountPercent || '0'),
+          role: customer.role || 'customer',
         },
       },
     })
@@ -226,7 +168,7 @@ authRoutes.post('/login', async (c) => {
     if (err instanceof z.ZodError) {
       return c.json({ success: false, error: err.issues.map((e: any) => e.message).join(', ') }, 400)
     }
-    return c.json({ success: false, error: err.message || 'Login failed' }, 500)
+    return c.json({ success: false, error: err.body?.message || err.message || 'Login failed' }, 401)
   }
 })
 
@@ -237,72 +179,56 @@ authRoutes.post('/register', async (c) => {
     const parsed = registerSchema.parse(body)
     const normalizedEmail = parsed.email.trim().toLowerCase()
 
-    const db = getDatabase()
-    const existing = await db.select().from(customers).where(eq(customers.email, normalizedEmail)).limit(1)
-
-    const hashedPassword = await hashPassword(parsed.password)
-
-    const isCorporate = Boolean(parsed.companyName || parsed.companyTaxId || parsed.crNumber || parsed.customerGroup === 'corporate' || parsed.customerGroup === 'wholesale')
+    const isCorporate = Boolean(
+      parsed.companyName ||
+      parsed.companyTaxId ||
+      parsed.crNumber ||
+      parsed.customerGroup === 'corporate' ||
+      parsed.customerGroup === 'wholesale'
+    )
     const targetGroup = parsed.customerGroup || (isCorporate ? 'corporate' : 'retail')
     const initialStatus = isCorporate ? 'pending' : 'active'
+    const fullName = `${parsed.firstName || ''} ${parsed.lastName || ''}`.trim() || normalizedEmail.split('@')[0]
 
-    let customerRecord: any
+    // Create user via Better Auth
+    const betterRes: any = await auth.api.signUpEmail({
+      body: {
+        email: normalizedEmail,
+        password: parsed.password,
+        name: fullName,
+      },
+    })
 
-    if (existing.length > 0) {
-      const cust = existing[0]
-      if (cust.passwordHash) {
-        return c.json({ success: false, error: 'An account with this email already exists. Please log in.' }, 409)
-      }
-      // Update existing guest customer profile with password
-      const updated = await db
-        .update(customers)
-        .set({
-          passwordHash: hashedPassword,
-          firstName: parsed.firstName || cust.firstName,
-          lastName: parsed.lastName || cust.lastName,
-          phone: parsed.phone || cust.phone,
-          companyName: parsed.companyName || cust.companyName,
-          companyTaxId: parsed.companyTaxId || cust.companyTaxId,
-          crNumber: parsed.crNumber || cust.crNumber,
-          businessType: parsed.businessType || cust.businessType,
-          city: parsed.city || cust.city,
-          deliveryAddress: parsed.deliveryAddress || cust.deliveryAddress,
-          crDocumentUrl: parsed.crDocumentUrl || cust.crDocumentUrl,
-          vatDocumentUrl: parsed.vatDocumentUrl || cust.vatDocumentUrl,
-          customerGroup: cust.customerGroup === 'retail' ? targetGroup : cust.customerGroup,
-          status: isCorporate ? 'pending' : (cust.status || 'active'),
-          updatedAt: new Date(),
-        })
-        .where(eq(customers.id, cust.id))
-        .returning()
-      customerRecord = updated[0]
-    } else {
-      const inserted = await db
-        .insert(customers)
-        .values({
-          email: normalizedEmail,
-          passwordHash: hashedPassword,
-          firstName: parsed.firstName || '',
-          lastName: parsed.lastName || '',
-          phone: parsed.phone || '',
-          companyName: parsed.companyName || '',
-          companyTaxId: parsed.companyTaxId || '',
-          crNumber: parsed.crNumber || '',
-          businessType: parsed.businessType || null,
-          city: parsed.city || null,
-          deliveryAddress: parsed.deliveryAddress || null,
-          crDocumentUrl: parsed.crDocumentUrl || null,
-          vatDocumentUrl: parsed.vatDocumentUrl || null,
-          customerGroup: targetGroup,
-          status: initialStatus,
-        })
-        .returning()
-      customerRecord = inserted[0]
+    if (!betterRes || !betterRes.user) {
+      return c.json({ success: false, error: 'Registration failed. Email may already be in use.' }, 400)
     }
 
+    const db = getDatabase()
+    // Update additional customer profile fields
+    const updated = await db
+      .update(customers)
+      .set({
+        firstName: parsed.firstName || '',
+        lastName: parsed.lastName || '',
+        phone: parsed.phone || '',
+        companyName: parsed.companyName || '',
+        companyTaxId: parsed.companyTaxId || '',
+        crNumber: parsed.crNumber || '',
+        businessType: parsed.businessType || null,
+        city: parsed.city || null,
+        deliveryAddress: parsed.deliveryAddress || null,
+        crDocumentUrl: parsed.crDocumentUrl || null,
+        vatDocumentUrl: parsed.vatDocumentUrl || null,
+        customerGroup: targetGroup,
+        status: initialStatus,
+        updatedAt: new Date(),
+      })
+      .where(eq(customers.id, betterRes.user.id))
+      .returning()
+
+    const customerRecord = updated[0] || betterRes.user
     const displayName = `${customerRecord.firstName || ''} ${customerRecord.lastName || ''}`.trim() || customerRecord.email.split('@')[0]
-    
-    // Fire-and-forget notification dispatch
+
     if (isCorporate) {
       notify('BUSINESS_REGISTRATION_SUBMITTED', {
         companyName: customerRecord.companyName || 'Corporate Entity',
@@ -321,22 +247,12 @@ authRoutes.post('/register', async (c) => {
       })
     }
 
-    const accessToken = signJwt(
-      {
-        sub: customerRecord.id,
-        email: customerRecord.email,
-        name: displayName,
-        type: 'customer',
-      },
-      JWT_SECRET,
-      60 * 60 * 24 * 30
-    )
-
     return c.json(
       {
         success: true,
         data: {
-          accessToken,
+          accessToken: betterRes.token,
+          token: betterRes.token,
           customer: {
             id: customerRecord.id,
             email: customerRecord.email,
@@ -359,7 +275,7 @@ authRoutes.post('/register', async (c) => {
     if (err instanceof z.ZodError) {
       return c.json({ success: false, error: err.issues.map((e: any) => e.message).join(', ') }, 400)
     }
-    return c.json({ success: false, error: err.message || 'Registration failed' }, 500)
+    return c.json({ success: false, error: err.body?.message || err.message || 'Registration failed' }, 400)
   }
 })
 
@@ -367,8 +283,9 @@ authRoutes.post('/register', async (c) => {
 const handleGetCustomerMe = async (c: any) => {
   try {
     const customerPayload = c.get('customer')
+    const customerId = c.get('customerId') || customerPayload?.id || customerPayload?.sub
     const db = getDatabase()
-    const customerList = await db.select().from(customers).where(eq(customers.id, customerPayload.sub)).limit(1)
+    const customerList = await db.select().from(customers).where(eq(customers.id, customerId)).limit(1)
 
     if (customerList.length === 0) {
       return c.json({ success: false, error: 'Customer not found' }, 404)
@@ -380,12 +297,15 @@ const handleGetCustomerMe = async (c: any) => {
       data: {
         id: customer.id,
         email: customer.email,
+        name: customer.name || `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
         firstName: customer.firstName,
         lastName: customer.lastName,
         phone: customer.phone,
         companyName: customer.companyName,
         companyTaxId: customer.companyTaxId,
         crNumber: customer.crNumber,
+        businessType: customer.businessType,
+        city: customer.city,
         customerGroup: customer.customerGroup || 'retail',
         creditLimit: parseFloat(customer.creditLimit || '0'),
         availableCredit: parseFloat(customer.availableCredit || '0'),
@@ -402,3 +322,93 @@ const handleGetCustomerMe = async (c: any) => {
 authRoutes.get('/me', requireCustomerAuth, handleGetCustomerMe)
 authRoutes.get('/', requireCustomerAuth, handleGetCustomerMe)
 
+// POST /api/v1/auth/corporate-profile (Complete Business Details for Google OAuth / Logged-in Customer)
+const corporateProfileSchema = z.object({
+  companyName: z.string().min(2, 'Company name is required'),
+  crNumber: z.string().optional(),
+  companyTaxId: z.string().optional(),
+  businessType: z.string().optional(),
+  city: z.string().optional(),
+  phone: z.string().optional(),
+  deliveryAddress: z.string().optional(),
+  crDocumentUrl: z.string().optional(),
+  vatDocumentUrl: z.string().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+})
+
+authRoutes.post('/corporate-profile', requireCustomerAuth, async (c) => {
+  try {
+    const customerId = (c as any).get('customerId')
+    const body = await c.req.json()
+    const parsed = corporateProfileSchema.parse(body)
+
+    const db = getDatabase()
+    const existing = await db.select().from(customers).where(eq(customers.id, customerId)).limit(1)
+
+    if (existing.length === 0) {
+      return c.json({ success: false, error: 'Customer account not found' }, 404)
+    }
+
+    const current = existing[0]
+
+    const updated = await db
+      .update(customers)
+      .set({
+        companyName: parsed.companyName,
+        crNumber: parsed.crNumber || current.crNumber,
+        companyTaxId: parsed.companyTaxId || current.companyTaxId,
+        businessType: parsed.businessType || current.businessType,
+        city: parsed.city || current.city,
+        phone: parsed.phone || current.phone,
+        deliveryAddress: parsed.deliveryAddress || current.deliveryAddress,
+        crDocumentUrl: parsed.crDocumentUrl || current.crDocumentUrl,
+        vatDocumentUrl: parsed.vatDocumentUrl || current.vatDocumentUrl,
+        firstName: parsed.firstName || current.firstName,
+        lastName: parsed.lastName || current.lastName,
+        customerGroup: 'corporate',
+        status: 'pending',
+        updatedAt: new Date(),
+      })
+      .where(eq(customers.id, customerId))
+      .returning()
+
+    const customerRecord = updated[0]
+    const displayName = `${customerRecord.firstName || ''} ${customerRecord.lastName || ''}`.trim() || customerRecord.email.split('@')[0]
+
+    // Send admin notification
+    notify('BUSINESS_REGISTRATION_SUBMITTED', {
+      companyName: customerRecord.companyName || 'Corporate Entity',
+      contactPerson: displayName,
+      email: customerRecord.email,
+      phone: customerRecord.phone,
+      crNumber: customerRecord.crNumber,
+      vatNumber: customerRecord.companyTaxId,
+      businessType: customerRecord.businessType,
+      city: customerRecord.city,
+    })
+
+    return c.json({
+      success: true,
+      data: {
+        customer: {
+          id: customerRecord.id,
+          email: customerRecord.email,
+          firstName: customerRecord.firstName,
+          lastName: customerRecord.lastName,
+          phone: customerRecord.phone,
+          companyName: customerRecord.companyName,
+          customerGroup: customerRecord.customerGroup,
+          status: customerRecord.status,
+          isPendingApproval: customerRecord.status === 'pending',
+        },
+        message: 'Your corporate registration has been submitted and is currently under review.',
+      },
+    })
+  } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      return c.json({ success: false, error: err.issues.map((e: any) => e.message).join(', ') }, 400)
+    }
+    return c.json({ success: false, error: err.message || 'Failed to update business profile' }, 500)
+  }
+})

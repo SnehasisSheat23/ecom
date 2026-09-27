@@ -357,17 +357,18 @@ async function createTables() {
     ]
   )
 
-  // Safely seed default admin user if not exists (Zero impact on existing product/category data)
-  const defaultAdminPassword = 'password123'
-  const { hashPassword } = await import('../lib/auth-crypto.js')
-  const adminPasswordHash = await hashPassword(defaultAdminPassword)
+  // Safely seed default admin user via Better Auth if not exists
+  try {
+    const { auth } = await import('../lib/better-auth.js')
+    await auth.api.signUpEmail({
+      body: {
+        email: 'admin@abdullahbakheet.com',
+        password: 'AdminPassword123!',
+        name: 'Admin User',
+      },
+    }).catch(() => {})
+  } catch {}
 
-  await pool.query(
-    `INSERT INTO v2_admin_users (email, password_hash, first_name, last_name, role, status)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     ON CONFLICT (email) DO NOTHING;`,
-    ['admin@example.com', adminPasswordHash, 'Admin', 'User', 'admin', 'active']
-  )
 
   console.log('✅ All backend-v2 database tables, shipping methods & default admin user configured successfully!')
   process.exit(0)
