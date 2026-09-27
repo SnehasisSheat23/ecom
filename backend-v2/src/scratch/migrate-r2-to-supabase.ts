@@ -23,7 +23,7 @@ async function migrateImages() {
 
     for (let i = 0; i < rawImages.length; i++) {
       const imgObj = rawImages[i]
-      const oldUrl = typeof imgObj === 'string' ? imgObj : (imgObj?.url || imgObj?.src || '')
+      const oldUrl = typeof imgObj === 'string' ? imgObj : ((imgObj as any)?.url || (imgObj as any)?.src || '')
 
       if (!oldUrl || !oldUrl.startsWith('http')) {
         newImages.push(oldUrl)

@@ -33,7 +33,8 @@ cartRoutes.post('/merge', async (c) => {
     const customerId = c.get('customerId')
     const body = await c.req.json()
     const items = Array.isArray(body?.items) ? body.items : (Array.isArray(body) ? body : [])
-    const cart = await cartService.mergeCart(customerId, items)
+    const currency = c.req.query('currency') || (body as any)?.currency || 'SAR'
+    const cart = await cartService.mergeCart(customerId, items, { currency })
     return c.json({ success: true, data: cart })
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Failed to merge cart' }, 400)

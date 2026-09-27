@@ -211,40 +211,60 @@ export class CartService {
     }
   }
 
-  async mergeCart(customerId: string, guestItems: GuestCartItemPayload[]) {
+  async mergeCart(customerId: string, guestItems: GuestCartItemPayload[], options?: { currency?: string }) {
     const db = this.getDb()
     const cart = await this.getOrCreateCart(customerId)
+    const currency = (options?.currency || 'SAR').toUpperCase()
 
     if (!Array.isArray(guestItems) || guestItems.length === 0) {
-      return this.getCart(customerId)
+      return this.getCart(customerId, { currency })
     }
 
     // Fetch existing cart items from DB
     const existingItems = await db.select().from(cartItems).where(eq(cartItems.cartId, cart.id))
 
-    // Collect all referenced product IDs
+    // Collect all referenced product IDs, safely handling UUID vs slug/SKU lookups
+    const isUuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
     const guestProductIds = guestItems.map((g) => g.productId || g.id || '').filter(Boolean)
-    const productRecords = guestProductIds.length > 0
-      ? await db.select().from(products).where(inArray(products.id, guestProductIds))
-      : []
-    const productMap = new Map(productRecords.map((p) => [p.id, p]))
+    const validUuids = guestProductIds.filter(isUuid)
+    const nonUuids = guestProductIds.filter((id) => !isUuid(id))
+
+    const productRecords: any[] = []
+    if (validUuids.length > 0) {
+      const records = await db.select().from(products).where(inArray(products.id, validUuids))
+      productRecords.push(...records)
+    }
+    if (nonUuids.length > 0) {
+      const records = await db
+        .select()
+        .from(products)
+        .where(inArray(products.sku, nonUuids))
+      productRecords.push(...records)
+    }
+
+    const productMap = new Map<string, any>()
+    for (const p of productRecords) {
+      productMap.set(p.id, p)
+      if (p.sku) productMap.set(p.sku, p)
+    }
 
     for (const gItem of guestItems) {
-      const targetProductId = gItem.productId || gItem.id
-      if (!targetProductId) continue
+      const targetIdentifier = gItem.productId || gItem.id
+      if (!targetIdentifier) continue
 
-      const prod = productMap.get(targetProductId)
+      const prod = productMap.get(targetIdentifier)
       // If product does not exist or is inactive, skip it
       if (!prod || prod.status === 'inactive') continue
 
+      const resolvedDbProductId = prod.id
       const minMoq = Math.max(1, prod.moq || gItem.moq || 1)
       const step = Math.max(1, prod.moqStep || gItem.moqStep || 1)
       const initialAddQty = Math.max(minMoq, gItem.quantity || minMoq)
 
-      const rawLivePrice = prod.pricing?.AED?.price ?? gItem.price ?? 0
+      const rawLivePrice = (prod.pricing as any)?.[currency]?.price ?? prod.pricing?.SAR?.price ?? prod.pricing?.AED?.price ?? prod.price ?? gItem.price ?? 0
       const livePrice = Number(rawLivePrice || 0)
       const existingMatch = existingItems.find(
-        (e) => e.productId === targetProductId || (e.itemMetadata as any)?.variantId === gItem.variantId
+        (e) => e.productId === resolvedDbProductId || (e.itemMetadata as any)?.variantId === gItem.variantId
       )
 
       if (existingMatch) {
@@ -270,10 +290,10 @@ export class CartService {
           })
           .where(eq(cartItems.id, existingMatch.id))
       } else {
-        // Insert new item
+        // Insert new item with verified UUID foreign key
         await db.insert(cartItems).values({
           cartId: cart.id,
-          productId: targetProductId,
+          productId: resolvedDbProductId,
           sku: prod.sku || gItem.sku,
           quantity: initialAddQty,
           unitPrice: livePrice.toString(),
@@ -290,7 +310,7 @@ export class CartService {
       }
     }
 
-    return this.getCart(customerId)
+    return this.getCart(customerId, { currency })
   }
 
   async addItem(customerId: string, itemPayload: GuestCartItemPayload) {
