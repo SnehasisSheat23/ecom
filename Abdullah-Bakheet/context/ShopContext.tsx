@@ -206,7 +206,8 @@ const consolidateCartList = (items: CartItem[]): CartItem[] => {
     for (const item of items) {
         const idx = result.findIndex(c => isMatchingCartItem(c, item));
         if (idx > -1) {
-            const combinedQty = (result[idx].quantity || 0) + (item.quantity || 1);
+            // Prevent compounding / doubling on reload by taking maximum resolved quantity
+            const combinedQty = Math.max(result[idx].quantity || 1, item.quantity || 1);
             const catalogBase = Number(result[idx].catalogPrice ?? item.catalogPrice ?? result[idx].price ?? item.price ?? 0);
             result[idx] = {
                 ...result[idx],
@@ -225,8 +226,39 @@ const consolidateCartList = (items: CartItem[]): CartItem[] => {
 };
 
 export function ShopProvider({ children }: { children: React.ReactNode }) {
-    const [cart, setCart] = useState<CartItem[]>([]);
-    const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
+    const [cart, setCart] = useState<CartItem[]>(() => {
+        if (typeof window === 'undefined') return [];
+        try {
+            const savedCart = localStorage.getItem(LOCAL_STORAGE_CART_KEY);
+            if (savedCart) {
+                const parsed = JSON.parse(savedCart);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    return consolidateCartList(parsed.map(item => ({
+                        ...item,
+                        price: Number(item.price || 0),
+                    })));
+                }
+            }
+        } catch (e) {}
+        return [];
+    });
+
+    const [wishlist, setWishlist] = useState<WishlistItem[]>(() => {
+        if (typeof window === 'undefined') return [];
+        try {
+            const savedWishlist = localStorage.getItem(LOCAL_STORAGE_WISHLIST_KEY);
+            if (savedWishlist) {
+                const parsed = JSON.parse(savedWishlist);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    return parsed.map(item => ({
+                        ...item,
+                        price: Number(item.price || 0),
+                    }));
+                }
+            }
+        } catch (e) {}
+        return [];
+    });
     const [isMounted, setIsMounted] = useState(false);
 
     const [isCartOpen, setIsCartOpen] = useState(false);
@@ -273,42 +305,113 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         return () => { isMounted = false; };
     }, [currency]);
 
-    // Fetch remote Cart + Wishlist upon initial page mount / session restore (does not re-merge duplicates)
+    // Fetch remote Cart + Wishlist upon initial page mount / session restore (merges guest cart if present)
     const fetchBackendCartAndWishlist = useCallback(async (token: string) => {
         try {
-            const [remoteCart, remoteWishlist] = await Promise.all([
-                fetchCartApi(token).catch(() => null),
-                fetchWishlistApi(token).catch(() => null),
-            ]);
+            // Read whatever is in localStorage right now
+            let localCartSnapshot: CartItem[] = [];
+            try {
+                const saved = localStorage.getItem(LOCAL_STORAGE_CART_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        localCartSnapshot = parsed.map(item => ({
+                            ...item,
+                            price: Number(item.price || 0),
+                        }));
+                    }
+                }
+            } catch (e) {}
 
-            if (remoteCart?.items) {
-                const consolidated = consolidateCartList(remoteCart.items);
-                setCart(consolidated);
-                localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(consolidated));
+            let localWishlistSnapshot: WishlistItem[] = [];
+            try {
+                const savedWish = localStorage.getItem(LOCAL_STORAGE_WISHLIST_KEY);
+                if (savedWish) {
+                    const parsedWish = JSON.parse(savedWish);
+                    if (Array.isArray(parsedWish) && parsedWish.length > 0) {
+                        localWishlistSnapshot = parsedWish;
+                    }
+                }
+            } catch (e) {}
+
+            // 1. If guest cart has items, merge them with backend DB! Never overwrite with []
+            if (localCartSnapshot.length > 0) {
+                const mergedCart = await mergeCartApi(localCartSnapshot, token).catch(() => null);
+                if (mergedCart?.items && mergedCart.items.length > 0) {
+                    const consolidated = consolidateCartList(mergedCart.items);
+                    setCart(consolidated);
+                    localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(consolidated));
+                } else {
+                    // Merge returned empty or failed: preserve local cart! Never wipe it!
+                    const consolidated = consolidateCartList(localCartSnapshot);
+                    setCart(consolidated);
+                    localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(consolidated));
+                }
+            } else {
+                // No local cart items: load existing cart from backend account
+                const remoteCart = await fetchCartApi(token).catch(() => null);
+                if (remoteCart?.items && remoteCart.items.length > 0) {
+                    const consolidated = consolidateCartList(remoteCart.items);
+                    setCart(consolidated);
+                    localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(consolidated));
+                }
             }
-            if (remoteWishlist?.items) {
-                setWishlist(remoteWishlist.items);
-                localStorage.setItem(LOCAL_STORAGE_WISHLIST_KEY, JSON.stringify(remoteWishlist.items));
+
+            // 2. Wishlist sync
+            if (localWishlistSnapshot.length > 0) {
+                const productIds = localWishlistSnapshot.map(i => i.id);
+                const mergedWishlist = await mergeWishlistApi(productIds, token).catch(() => null);
+                if (mergedWishlist?.items && mergedWishlist.items.length > 0) {
+                    setWishlist(mergedWishlist.items);
+                    localStorage.setItem(LOCAL_STORAGE_WISHLIST_KEY, JSON.stringify(mergedWishlist.items));
+                } else {
+                    setWishlist(localWishlistSnapshot);
+                    localStorage.setItem(LOCAL_STORAGE_WISHLIST_KEY, JSON.stringify(localWishlistSnapshot));
+                }
+            } else {
+                const remoteWishlist = await fetchWishlistApi(token).catch(() => null);
+                if (remoteWishlist?.items && remoteWishlist.items.length > 0) {
+                    setWishlist(remoteWishlist.items);
+                    localStorage.setItem(LOCAL_STORAGE_WISHLIST_KEY, JSON.stringify(remoteWishlist.items));
+                }
             }
         } catch (err) {
             console.error('Failed to fetch remote state on mount:', err);
         }
     }, []);
 
-    // Synchronize & Merge Cart + Wishlist ONLY upon explicit login or registration
+    // Synchronize & Merge Cart + Wishlist upon explicit login or registration
     const syncWithBackendOnAuth = useCallback(async (token: string, localCartSnapshot: CartItem[], localWishlistSnapshot: WishlistItem[]) => {
         try {
+            // Always ensure we have the latest items from localStorage if passed array is empty
+            let itemsToMerge = localCartSnapshot;
+            if (!itemsToMerge || itemsToMerge.length === 0) {
+                try {
+                    const saved = localStorage.getItem(LOCAL_STORAGE_CART_KEY);
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            itemsToMerge = parsed;
+                        }
+                    }
+                } catch (e) {}
+            }
+
             // 1. Merge cart with backend DB
-            if (localCartSnapshot.length > 0) {
-                const mergedCart = await mergeCartApi(localCartSnapshot, token);
-                if (mergedCart?.items) {
+            if (itemsToMerge.length > 0) {
+                const mergedCart = await mergeCartApi(itemsToMerge, token).catch(() => null);
+                if (mergedCart?.items && mergedCart.items.length > 0) {
                     const consolidated = consolidateCartList(mergedCart.items);
+                    setCart(consolidated);
+                    localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(consolidated));
+                } else {
+                    const consolidated = consolidateCartList(itemsToMerge);
                     setCart(consolidated);
                     localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(consolidated));
                 }
             } else {
-                const remoteCart = await fetchCartApi(token);
-                if (remoteCart?.items) {
+                const remoteCart = await fetchCartApi(token).catch(() => null);
+                if (remoteCart?.items && remoteCart.items.length > 0) {
                     const consolidated = consolidateCartList(remoteCart.items);
                     setCart(consolidated);
                     localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(consolidated));
@@ -316,16 +419,29 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
             }
 
             // 2. Merge wishlist with backend DB
-            if (localWishlistSnapshot.length > 0) {
-                const productIds = localWishlistSnapshot.map(i => i.id);
-                const mergedWishlist = await mergeWishlistApi(productIds, token);
-                if (mergedWishlist?.items) {
+            let wishToMerge = localWishlistSnapshot;
+            if (!wishToMerge || wishToMerge.length === 0) {
+                try {
+                    const savedWish = localStorage.getItem(LOCAL_STORAGE_WISHLIST_KEY);
+                    if (savedWish) {
+                        const parsed = JSON.parse(savedWish);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            wishToMerge = parsed;
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            if (wishToMerge.length > 0) {
+                const productIds = wishToMerge.map(i => i.id);
+                const mergedWishlist = await mergeWishlistApi(productIds, token).catch(() => null);
+                if (mergedWishlist?.items && mergedWishlist.items.length > 0) {
                     setWishlist(mergedWishlist.items);
                     localStorage.setItem(LOCAL_STORAGE_WISHLIST_KEY, JSON.stringify(mergedWishlist.items));
                 }
             } else {
-                const remoteWishlist = await fetchWishlistApi(token);
-                if (remoteWishlist?.items) {
+                const remoteWishlist = await fetchWishlistApi(token).catch(() => null);
+                if (remoteWishlist?.items && remoteWishlist.items.length > 0) {
                     setWishlist(remoteWishlist.items);
                     localStorage.setItem(LOCAL_STORAGE_WISHLIST_KEY, JSON.stringify(remoteWishlist.items));
                 }
@@ -873,7 +989,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                         accountDiscountPercent: u.accountDiscountPercent ? Number(u.accountDiscountPercent) : 0,
                     });
                     if (token) {
-                        await syncWithBackendOnAuth(token, cart, wishlist);
+                        let currentLocalCart = cart;
+                        try {
+                            const raw = localStorage.getItem(LOCAL_STORAGE_CART_KEY);
+                            if (raw) {
+                                const parsed = JSON.parse(raw);
+                                if (Array.isArray(parsed) && parsed.length > 0) currentLocalCart = parsed;
+                            }
+                        } catch (e) {}
+                        await syncWithBackendOnAuth(token, currentLocalCart, wishlist);
                     }
                     return sessionRes.data;
                 }
@@ -911,7 +1035,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
             // Perform automatic Cart & Wishlist merge with backend upon login
             if (data.accessToken) {
-                await syncWithBackendOnAuth(data.accessToken, cart, wishlist);
+                let currentLocalCart = cart;
+                try {
+                    const raw = localStorage.getItem(LOCAL_STORAGE_CART_KEY);
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (Array.isArray(parsed) && parsed.length > 0) currentLocalCart = parsed;
+                    }
+                } catch (e) {}
+                await syncWithBackendOnAuth(data.accessToken, currentLocalCart, wishlist);
             }
         }
         return data;
