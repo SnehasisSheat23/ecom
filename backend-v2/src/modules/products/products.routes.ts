@@ -11,10 +11,12 @@ productsRoutes.get('/', async (c) => {
   const currency = c.req.query('currency') || 'SAR'
   const q = c.req.query('q') || c.req.query('search')
   const status = c.req.query('status')
+  const categoryId = c.req.query('categoryId') || c.req.query('category')
+  const sort = c.req.query('sort') || c.req.query('orderBy')
   const limit = c.req.query('perPage') ? parseInt(c.req.query('perPage')!) : (c.req.query('limit') ? parseInt(c.req.query('limit')!) : 50)
   const page = c.req.query('page') ? parseInt(c.req.query('page')!) : 1
 
-  const result = await productsService.getProducts({ lang, currency, q, status, limit, page })
+  const result = await productsService.getProducts({ lang, currency, q, status, categoryId, sort, limit, page })
   return c.json({ success: true, data: result })
 })
 

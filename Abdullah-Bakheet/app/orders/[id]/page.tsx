@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useShop } from '@/context/ShopContext';
-import { fetchOrderByIdApi } from '@/lib/api';
+import { fetchOrderByIdApi, verifyOrderPaymentApi } from '@/lib/api';
 import { 
     ChevronLeft, 
     Printer, 
@@ -105,6 +105,16 @@ export interface OrderDetail {
 function getStatusDetails(status: string) {
     const s = (status || '').toUpperCase();
     switch (s) {
+        case 'CHECKOUT_PENDING':
+            return {
+                titleEn: 'Awaiting NalPay Payment',
+                titleAr: 'في انتظار تسوية الدفع',
+                descEn: 'Payment has not been completed yet on NalPay gateway',
+                descAr: 'لم تكتمل تسوية الدفع بعد عبر بوابة نال باي',
+                barWidth: 'w-[15%]',
+                barColor: 'bg-amber-500',
+                badgeBg: 'bg-amber-100 border-amber-300 text-amber-900',
+            };
         case 'PENDING_PAYMENT':
             return {
                 titleEn: 'Payment Pending',
@@ -195,7 +205,7 @@ function getStatusDetails(status: string) {
 export default function OrderDetailsPage() {
     const params = useParams();
     const router = useRouter();
-    const { accessToken, formatPrice, language } = useShop();
+    const { accessToken, formatPrice, language, clearCart } = useShop();
     const isArabic = language.startsWith('Arabic') || language === 'ar' || language === 'العربية';
 
     const orderIdOrNumber = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
@@ -203,6 +213,30 @@ export default function OrderDetailsPage() {
     const [order, setOrder] = useState<OrderDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+    const [paymentVerifiedBanner, setPaymentVerifiedBanner] = useState(false);
+
+    const handleManualVerify = async () => {
+        if (!order) return;
+        setIsVerifyingPayment(true);
+        try {
+            const res = await verifyOrderPaymentApi(order.id, accessToken || undefined);
+            if (res?.paid && res?.order) {
+                setOrder(res.order);
+                setPaymentVerifiedBanner(true);
+                clearCart();
+                try {
+                    localStorage.removeItem('last_nalpay_checkout');
+                } catch (e) {}
+            } else {
+                alert(isArabic ? 'لم يتم العثور على تأكيد دفع بعد من نال باي. يرجى إكمال الدفع أولاً.' : 'Payment has not been settled on NalPay yet. Please complete payment first.');
+            }
+        } catch (err) {
+            console.error('Manual verify failed:', err);
+        } finally {
+            setIsVerifyingPayment(false);
+        }
+    };
 
     useEffect(() => {
         if (!orderIdOrNumber) return;
@@ -211,8 +245,29 @@ export default function OrderDetailsPage() {
         setErrorMessage(null);
 
         fetchOrderByIdApi(orderIdOrNumber, accessToken || undefined)
-            .then(data => {
+            .then(async (data) => {
                 if (data) {
+                    const statusLower = (data.status || '').toLowerCase();
+                    // If order is awaiting gateway settlement, verify with NalPay in real-time
+                    if (statusLower === 'checkout_pending') {
+                        setIsVerifyingPayment(true);
+                        try {
+                            const vRes = await verifyOrderPaymentApi(data.id, accessToken || undefined);
+                            if (vRes?.paid && vRes?.order) {
+                                setOrder(vRes.order);
+                                setPaymentVerifiedBanner(true);
+                                clearCart();
+                                try {
+                                    localStorage.removeItem('last_nalpay_checkout');
+                                } catch (e) {}
+                                return;
+                            }
+                        } catch (vErr) {
+                            console.warn('Real-time payment check:', vErr);
+                        } finally {
+                            setIsVerifyingPayment(false);
+                        }
+                    }
                     setOrder(data);
                 } else {
                     setErrorMessage(isArabic ? 'لم نتمكن من العثور على هذا الطلب.' : 'Order details not found.');
@@ -225,7 +280,7 @@ export default function OrderDetailsPage() {
             .finally(() => {
                 setLoading(false);
             });
-    }, [orderIdOrNumber, accessToken, isArabic]);
+    }, [orderIdOrNumber, accessToken, isArabic, clearCart]);
 
     if (loading) {
         return (
@@ -291,39 +346,102 @@ export default function OrderDetailsPage() {
             
             {/* Top Navigation Bar */}
             <div className="bg-white border-b border-gray-200/80 sticky top-0 z-30 shadow-2xs">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
                     <button
                         onClick={() => router.push('/track-order')}
-                        className="inline-flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-black transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 sm:gap-2 text-xs font-bold text-gray-700 hover:text-black transition-colors cursor-pointer shrink-0"
                     >
                         <ChevronLeft size={16} />
-                        <span>{isArabic ? 'العودة لصفحة التتبع' : 'Back to Orders List'}</span>
+                        <span className="hidden sm:inline">{isArabic ? 'العودة لصفحة التتبع' : 'Back to Orders List'}</span>
+                        <span className="inline sm:hidden">{isArabic ? 'الطلبات' : 'Orders'}</span>
                     </button>
 
-                    <div className="flex items-center gap-3">
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border ${statusInfo.badgeBg}`}>
-                            <span className="w-2 h-2 rounded-full bg-current animate-pulse"></span>
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <span className={`inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 rounded-full border ${statusInfo.badgeBg} shrink-0`}>
+                            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-current animate-pulse"></span>
                             {isArabic ? statusInfo.titleAr : statusInfo.titleEn}
                         </span>
 
                         <button
                             onClick={() => window.print()}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#1a2b25] hover:bg-black text-[#fbdc3c] rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 bg-[#1a2b25] hover:bg-black text-[#fbdc3c] rounded-lg text-[11px] sm:text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
                         >
                             <Printer size={13} />
-                            <span>{isArabic ? 'طباعة الفاتورة' : 'Print Invoice'}</span>
+                            <span className="hidden sm:inline">{isArabic ? 'طباعة الفاتورة' : 'Print Invoice'}</span>
+                            <span className="inline sm:hidden">{isArabic ? 'طباعة' : 'Print'}</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 space-y-6">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 space-y-5 sm:space-y-6">
                 
+                {/* 1. Payment Confirmed Luxury Celebration Banner */}
+                {paymentVerifiedBanner && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-emerald-900 shadow-sm animate-in fade-in duration-300">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                <CheckCircle2 size={22} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-sm sm:text-base text-emerald-950">
+                                    {isArabic ? 'تم تأكيد الدفع بنجاح عبر نال باي' : 'Payment Verified via NalPay'}
+                                </h3>
+                                <p className="text-xs text-emerald-700 mt-0.5">
+                                    {isArabic ? 'تم استلام المبلغ بنجاح وتأكيد طلبك وهو الآن قيد التجهيز في المستودع.' : 'Payment received. Your order is officially confirmed and being prepared for fulfillment.'}
+                                </p>
+                            </div>
+                        </div>
+                        <span className="text-[11px] font-bold bg-white text-emerald-800 px-3 py-1.5 rounded-full border border-emerald-300 shrink-0 shadow-2xs">
+                            Mada &middot; Visa &middot; Apple Pay ✓
+                        </span>
+                    </div>
+                )}
+
+                {/* 2. Unpaid Awaiting Settlement Banner (if still checkout_pending) */}
+                {order.status?.toLowerCase() === 'checkout_pending' && !paymentVerifiedBanner && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-amber-950 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                <Clock size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-sm sm:text-base">
+                                    {isArabic ? 'بانتظار إتمام الدفع على نال باي' : 'Awaiting Payment on NalPay'}
+                                </h3>
+                                <p className="text-xs text-amber-800 mt-0.5">
+                                    {isArabic ? 'لم تكتمل تسوية الدفع بعد. يمكنك إكمال الدفع أو إعادة التحقق من حالة السداد.' : 'Payment has not been completed yet for this order. You can resume payment or verify status.'}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                            <button 
+                                onClick={handleManualVerify}
+                                disabled={isVerifyingPayment}
+                                className="flex-1 sm:flex-none px-4 py-2 bg-white border border-amber-300 rounded-xl text-xs font-bold hover:bg-amber-100 text-amber-900 transition-colors cursor-pointer"
+                            >
+                                {isVerifyingPayment ? (isArabic ? 'جاري التحقق...' : 'Verifying...') : (isArabic ? 'إعادة التحقق ⟳' : 'Verify Status ⟳')}
+                            </button>
+                            {order.paymentReceiptUrl && (
+                                <a 
+                                    href={order.paymentReceiptUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#1a2b25] text-white rounded-xl text-xs font-bold hover:bg-black transition-colors"
+                                >
+                                    <span>{isArabic ? 'إتمام الدفع الآن' : 'Complete Payment'}</span>
+                                    <ArrowUpRight size={13} />
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Header Title Section */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1">
                     <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-2xl sm:text-3xl font-black font-mono text-gray-900 tracking-tight">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h1 className="text-xl sm:text-2xl md:text-3xl font-black font-mono text-gray-900 tracking-tight break-all">
                                 {order.orderNumber || order.id}
                             </h1>
                             {order.paymentMethodType === 'CREDIT_TERMS' && (
@@ -483,37 +601,46 @@ export default function OrderDetailsPage() {
                                 return (
                                     <div key={item.id || idx} className="py-3.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
                                         <div className="flex items-center gap-3 min-w-0">
-                                            {/* Image with Qty Badge */}
-                                            <div className="relative shrink-0">
-                                                <div className="w-13 h-13 bg-gray-50 border border-gray-200/80 rounded-xl p-1 flex items-center justify-center overflow-hidden">
-                                                    <img 
-                                                        src={itemImg} 
-                                                        alt={itemTitle} 
-                                                        className="w-full h-full object-contain"
-                                                        onError={(e) => {
-                                                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&auto=format&fit=crop&q=80';
-                                                        }}
-                                                    />
-                                                </div>
-                                                <span className="absolute -top-1.5 -right-1.5 bg-[#1a2b25] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
-                                                    {qty}
-                                                </span>
+                                            {/* Clean Product Thumbnail */}
+                                            <div className="w-12 h-12 min-w-12 min-h-12 bg-gray-50 border border-gray-200/80 rounded-xl p-1 flex items-center justify-center overflow-hidden shrink-0">
+                                                <img 
+                                                    src={itemImg} 
+                                                    alt={itemTitle} 
+                                                    className="w-full h-full object-contain"
+                                                    onError={(e) => {
+                                                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&auto=format&fit=crop&q=80';
+                                                    }}
+                                                />
                                             </div>
+
+                                            {/* Item Info + Quantity */}
                                             <div className="min-w-0">
                                                 <h5 className="text-xs font-semibold text-gray-900 leading-snug line-clamp-1">
                                                     {itemTitle}
                                                 </h5>
-                                                {item.sku && (
-                                                    <p className="text-[10px] font-mono text-gray-400 mt-0.5">
-                                                        SKU: {item.sku}
-                                                    </p>
-                                                )}
+                                                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-gray-500 mt-0.5">
+                                                    <span className="font-bold text-gray-800 bg-gray-100 px-1.5 py-0.2 rounded text-[10px]">
+                                                        {isArabic ? `الكمية: ${qty}` : `Qty: ${qty}`}
+                                                    </span>
+                                                    {item.sku && (
+                                                        <span className="text-[10px] font-mono text-gray-400">
+                                                            SKU: {item.sku}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="text-right shrink-0">
-                                            <span className="text-xs font-mono font-medium text-gray-900">
+
+                                        {/* Price & Unit Breakdown */}
+                                        <div className="text-right shrink-0 flex flex-col items-end">
+                                            <span className="text-xs font-mono font-bold text-gray-900">
                                                 {formatPrice(lineTot)}
                                             </span>
+                                            {qty > 1 && unitP > 0 && (
+                                                <span className="text-[10px] font-mono text-gray-400">
+                                                    {formatPrice(unitP)} / {isArabic ? 'وحدة' : 'unit'}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -540,6 +667,17 @@ export default function OrderDetailsPage() {
                                     <span>-{formatPrice(Number(order.discountAmount))}</span>
                                 </div>
                             )}
+                            <div className="flex justify-between text-gray-500">
+                                <span>{isArabic ? (order.currency === 'AED' ? 'ضريبة القيمة المضافة (5%)' : 'ضريبة القيمة المضافة (15%)') : (order.currency === 'AED' ? 'VAT (5%)' : 'VAT (15%)')}</span>
+                                <span className="font-mono font-medium text-gray-900">
+                                    {formatPrice(
+                                        Number(order.taxAmount !== undefined && order.taxAmount !== null && Number(order.taxAmount) > 0
+                                            ? order.taxAmount 
+                                            : Math.max(0, (Number(order.totalAmount || 0) - Number(order.subtotal || 0) - Number(order.shippingCost || order.shippingAmount || 0))) || (Number(order.subtotal || 0) * (order.currency === 'AED' ? 0.05 : 0.15))
+                                        )
+                                    )}
+                                </span>
+                            </div>
                             <div className="flex justify-between items-center pt-2 border-t border-gray-100 text-sm font-bold text-gray-900">
                                 <span>Total</span>
                                 <span className="font-mono text-lg font-black text-gray-900">

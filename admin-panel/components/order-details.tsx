@@ -53,6 +53,7 @@ interface Order {
   total: number
   subtotal: number
   shippingAmount: number
+  taxAmount?: number
   discountAmount: number
   notes?: string | null
   currency?: string
@@ -128,6 +129,7 @@ interface BackendOrder {
   shippingMethodSnapshot?: { name?: string; label?: string } | null
   subtotal?: number
   shippingAmount?: number
+  taxAmount?: number | string
   discountAmount?: number
   total?: number
   notes?: string | null
@@ -237,6 +239,7 @@ const mapBackendOrderToFrontend = (item: BackendOrder): Order => {
     fulfillmentStatus,
     subtotal: subtotalVal,
     shippingAmount: shippingVal,
+    taxAmount: Number(item.taxAmount || 0),
     discountAmount: Number(item.discountAmount || 0),
     total: totalVal,
     notes: item.notes || null,
@@ -518,18 +521,18 @@ export function OrderDetails({ id }: { id: string }) {
   return (
     <div className="flex flex-col h-full font-ui min-h-0">
       {/* Top Navigation / Header */}
-      <div className="bg-background/95 pt-6 pb-2.5 px-6 md:px-8 flex items-center gap-3.5 shrink-0">
+      <div className="bg-background/95 pt-3 pb-2 sm:pt-6 sm:pb-2.5 px-3 sm:px-6 md:px-8 flex items-center gap-2.5 sm:gap-3.5 shrink-0 border-b border-border/40">
         <Link
           href="/dashboard/orders"
-          className="text-muted-foreground hover:text-foreground duration-200 flex items-center justify-center size-8 rounded-lg hover:bg-muted/60 transition-colors"
+          className="text-muted-foreground hover:text-foreground duration-200 flex items-center justify-center size-8 rounded-lg hover:bg-muted/60 transition-colors shrink-0"
         >
           <Icon name="arrow_back" className="size-5 text-[20px]" />
         </Link>
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold font-heading text-foreground tracking-tight leading-none">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
+          <h2 className="text-base sm:text-xl font-bold font-heading text-foreground tracking-tight leading-none truncate">
             Order {formatHeaderOrderNum(order.orderNumber)}
           </h2>
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full select-none leading-none flex items-center justify-center ${
+          <span className={`text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full select-none leading-none flex items-center justify-center ${
             orderStatus === 'PENDING_PAYMENT' 
               ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
               : (orderStatus === 'CONFIRMED' || orderStatus === 'DELIVERED' 
@@ -544,26 +547,26 @@ export function OrderDetails({ id }: { id: string }) {
       </div>
 
       {/* Main Content (Scrollable) */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 md:px-8 md:pb-8 pt-1.5 flex flex-col lg:flex-row gap-6 items-start">
+      <div className="flex-1 overflow-y-auto px-3 pb-6 sm:px-6 md:px-8 md:pb-8 pt-3 sm:pt-1.5 flex flex-col lg:flex-row gap-4 sm:gap-6 items-start">
         {/* Left Column */}
-        <div className="flex-1 w-full flex flex-col gap-6">
+        <div className="flex-1 w-full flex flex-col gap-4 sm:gap-6">
           {/* Status Block */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-semibold font-heading text-foreground">
+              <CardTitle className="text-base sm:text-lg font-semibold font-heading text-foreground">
                 {getStatusCardText(orderStatus).title}
               </CardTitle>
               <CardDescription>{order.shippingMethodName}</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-5 py-2">
+            <CardContent className="flex flex-col gap-4 sm:gap-5 py-2">
               {/* Progress Bar */}
               <div className="h-2 w-full max-w-[280px] bg-muted rounded-full overflow-hidden">
                 <div className={`h-full ${getProgressBarProps(orderStatus).color} ${getProgressBarProps(orderStatus).width}`}></div>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-border/60">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-border/60">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-muted/50 rounded-lg">
+                  <div className="p-2 bg-muted/50 rounded-lg shrink-0">
                     <Icon name="local_shipping" className="text-muted-foreground size-5! shrink-0" />
                   </div>
                   <div className="flex flex-col">
@@ -576,7 +579,7 @@ export function OrderDetails({ id }: { id: string }) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {getStatusActions(orderStatus).map((action) => (
                     <Button
                       key={action.nextStatus}
@@ -779,6 +782,17 @@ export function OrderDetails({ id }: { id: string }) {
                     <span className="font-medium text-emerald-600 dark:text-emerald-400 font-mono">-{formatPrice(order.discountAmount, { currency: order.currency })}</span>
                   </div>
                 )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{order.currency === 'AED' ? 'VAT (5%)' : 'VAT (15%)'}</span>
+                  <span className="font-medium text-foreground font-mono">
+                    {formatPrice(
+                      order.taxAmount && order.taxAmount > 0 
+                        ? order.taxAmount 
+                        : Math.max(0, (order.total - order.subtotal - order.shippingAmount)) || (order.subtotal * (order.currency === 'AED' ? 0.05 : 0.15)),
+                      { currency: order.currency }
+                    )}
+                  </span>
+                </div>
               </div>
 
               <Separator className="bg-border/60" />

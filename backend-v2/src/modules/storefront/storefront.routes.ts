@@ -10,6 +10,7 @@ storefrontRoutes.get('/snapshot', async (c) => {
     const lang = (c.req.query('lang') || 'en') as 'en' | 'ar'
     const currency = c.req.query('currency') || 'SAR'
     const snapshot = await storefrontService.getCatalogSnapshot(lang, currency)
+    c.header('Cache-Control', 'public, max-age=30, s-maxage=60, stale-while-revalidate=120')
     return c.json({ success: true, data: snapshot })
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Failed to fetch catalog snapshot' }, 500)
@@ -22,6 +23,7 @@ storefrontRoutes.get('/categories', async (c) => {
     const lang = (c.req.query('lang') || 'en') as 'en' | 'ar'
     const tree = c.req.query('tree') !== 'false'
     const data = await storefrontService.getCategories({ lang, tree })
+    c.header('Cache-Control', 'public, max-age=60, s-maxage=120, stale-while-revalidate=300')
     return c.json({ success: true, data })
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Failed to fetch categories' }, 500)
@@ -39,6 +41,7 @@ storefrontRoutes.get('/categories/:idOrSlug', async (c) => {
       return c.json({ success: false, error: 'Category not found or inactive' }, 404)
     }
 
+    c.header('Cache-Control', 'public, max-age=60, s-maxage=120, stale-while-revalidate=300')
     return c.json({ success: true, data: category })
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Failed to fetch category details' }, 500)
@@ -68,6 +71,7 @@ storefrontRoutes.get('/products', async (c) => {
       sort,
     })
 
+    c.header('Cache-Control', 'public, max-age=30, s-maxage=60, stale-while-revalidate=120')
     return c.json({ success: true, data: result })
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Failed to fetch products' }, 500)

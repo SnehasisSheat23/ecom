@@ -534,6 +534,17 @@ export default function TrackOrderPage() {
                                                         <span>{isArabic ? 'الشحن' : 'Shipping'}</span>
                                                         <span className="font-mono text-emerald-700">{Number(order.shippingCost || 0) > 0 ? formatPrice(order.shippingCost) : 'Free'}</span>
                                                     </div>
+                                                    <div className="flex justify-between text-gray-500">
+                                                        <span>{isArabic ? (order.currency === 'AED' ? 'ضريبة القيمة المضافة (5%)' : 'ضريبة القيمة المضافة (15%)') : (order.currency === 'AED' ? 'VAT (5%)' : 'VAT (15%)')}</span>
+                                                        <span className="font-mono text-gray-800">
+                                                            {formatPrice(
+                                                                Number(order.taxAmount !== undefined && order.taxAmount !== null && Number(order.taxAmount) > 0
+                                                                    ? order.taxAmount 
+                                                                    : Math.max(0, (Number(order.totalAmount || 0) - Number(order.subtotal || 0) - Number(order.shippingCost || 0))) || (Number(order.subtotal || 0) * (order.currency === 'AED' ? 0.05 : 0.15))
+                                                                )
+                                                            )}
+                                                        </span>
+                                                    </div>
                                                     <div className="flex justify-between text-gray-900 font-bold text-sm pt-2 border-t border-gray-100">
                                                         <span>{isArabic ? 'المجموع الكلي' : 'Total'}</span>
                                                         <span className="font-mono font-bold text-gray-900">{formatPrice(order.totalAmount || order.total || 0)}</span>

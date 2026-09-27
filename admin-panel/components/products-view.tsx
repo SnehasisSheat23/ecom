@@ -3,12 +3,13 @@
 import * as React from "react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { apiRequest } from "@/lib/api-client"
 import { toast } from "sonner"
 import { ConfirmationModal } from "@/components/product-details/modals/confirmation-modal"
 import { formatPrice } from "@/lib/currency"
+import { cn } from "@/lib/utils"
+import { ResponsiveDataView, type ColumnDef, type SortOption } from "@/components/shared/responsive-data-view"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -31,47 +32,23 @@ interface Product {
   typeSlug: string
   productTypeId?: string
   vendor: string
-}
-
-interface ProductVariant {
-  isDefault?: boolean
-  sku?: string
-  price: number
-  compareAtPrice?: number | null
-  prices?: Array<{
-    currencyCode: string
-    price: number
-    compareAtPrice?: number | null
-  }>
-}
-
-interface APISalesChannel {
-  name: string
-  status: string
-  createdAt?: string
-}
-
-interface RawProduct {
-  id: string
-  title: string
-  status?: string
-  productType?: string
-  productTypeId?: string
-  images?: Array<{ url: string }>
-  categories?: Array<{ name: string }>
-  vendorName?: string
-  variants?: ProductVariant[]
-  salesChannels?: APISalesChannel[]
-  currency?: string
-  specifications?: Record<string, any>
+  stockQuantity?: number
 }
 
 const TABS = ["All", "Active", "Draft", "Archived"]
 
+const SORT_OPTIONS: SortOption[] = [
+  { label: "Product Title (A-Z)", value: "title_asc" },
+  { label: "Product Title (Z-A)", value: "title_desc" },
+  { label: "Price (Low to High)", value: "price_asc" },
+  { label: "Price (High to Low)", value: "price_desc" },
+  { label: "Status", value: "status_asc" },
+]
+
 function StatusBadge({ status }: { status: string }) {
   let bgColor = "bg-zinc-200/80 dark:bg-zinc-800"
   let textColor = "text-zinc-800 dark:text-zinc-300"
-  
+
   if (status === "Active") {
     bgColor = "bg-emerald-200/90 dark:bg-emerald-950/70"
     textColor = "text-emerald-900 dark:text-emerald-300"
@@ -84,7 +61,7 @@ function StatusBadge({ status }: { status: string }) {
   }
 
   return (
-    <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-medium text-xs ${bgColor} ${textColor}`}>
+    <div className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium text-[11px] ${bgColor} ${textColor}`}>
       {status}
     </div>
   )
@@ -126,18 +103,48 @@ export function ProductsView() {
   const [products, setProducts] = React.useState<Product[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [activeTab, setActiveTab] = React.useState("All")
-  const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set())
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const typeParam = searchParams.get("type")
   const [isCreating, setIsCreating] = React.useState(false)
 
-  // Search & Sort States
+  // Search & Filter States
   const [searchQuery, setSearchQuery] = React.useState("")
   const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState("")
-  const [isSearchVisible, setIsSearchVisible] = React.useState(false)
-  const [sortField, setSortField] = React.useState<keyof Product>("title")
-  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("asc")
+  const [categoryFilter, setCategoryFilter] = React.useState<string>("all")
+  const [stockFilter, setStockFilter] = React.useState<string>("all")
+  const [activeSort, setActiveSort] = React.useState<string>("title_asc")
+  const [categoriesList, setCategoriesList] = React.useState<Array<{ id: string; name: string }>>([])
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false)
+
+  // Fetch all categories for filter dropdown
+  React.useEffect(() => {
+    async function loadCategories() {
+      try {
+        const res = await apiRequest("/categories")
+        if (res.ok) {
+          const body = await res.json()
+          const raw = body.data || []
+          const list: Array<{ id: string; name: string }> = []
+          const extract = (items: any[]) => {
+            for (const item of items) {
+              const name = item.name || item.translations?.en?.name || item.slug || "Category"
+              if (!list.some((c) => c.id === item.id)) {
+                list.push({ id: item.id, name })
+              }
+              if (item.children && Array.isArray(item.children)) {
+                extract(item.children)
+              }
+            }
+          }
+          extract(Array.isArray(raw) ? raw : [])
+          setCategoriesList(list)
+        }
+      } catch (e) {
+        console.warn("Failed to load categories for filtering:", e)
+      }
+    }
+    loadCategories()
+  }, [])
 
   // Debounce search query by 300ms
   React.useEffect(() => {
@@ -147,16 +154,23 @@ export function ProductsView() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false)
-
   const loadProducts = React.useCallback(async () => {
     try {
       setIsLoading(true)
       const typeData = await getProductTypeData()
 
-      let url = "/products?limit=50&currency=SAR"
+      let url = `/products?limit=100&currency=SAR`
+      if (activeTab !== "All") {
+        url += `&status=${encodeURIComponent(activeTab.toLowerCase())}`
+      }
       if (debouncedSearchQuery.trim()) {
         url += `&q=${encodeURIComponent(debouncedSearchQuery.trim())}`
+      }
+      if (categoryFilter !== "all") {
+        url += `&categoryId=${encodeURIComponent(categoryFilter)}`
+      }
+      if (activeSort) {
+        url += `&sort=${encodeURIComponent(activeSort)}`
       }
 
       const res = await apiRequest(url)
@@ -168,7 +182,7 @@ export function ProductsView() {
           const mapped = itemsList.map((p: any) => {
             const rawStatus = p.status || "active"
             const capitalizedStatus = (rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1)) as "Active" | "Draft" | "Archived"
-            
+
             const typeInfo = p.productTypeId ? typeLookup[p.productTypeId] : null
             const typeName = typeInfo?.name || (p.productType ? p.productType.charAt(0).toUpperCase() + p.productType.slice(1) : "Physical")
             const typeSlug = typeInfo?.slug || (p.productType ? p.productType.toLowerCase() : "")
@@ -176,16 +190,16 @@ export function ProductsView() {
             const title = p.title || p.translations?.en?.title || p.sku || "Untitled Product"
             const numericPrice = typeof p.price === "number" ? p.price : (p.variants?.[0]?.price ?? 0)
             const activeCurrency = p.currency || "SAR"
-            
-            const priceFormatted = numericPrice > 0 
-              ? formatPrice(numericPrice, { currency: activeCurrency, isMinorUnit: false }) 
+
+            const priceFormatted = numericPrice > 0
+              ? formatPrice(numericPrice, { currency: activeCurrency, isMinorUnit: false })
               : "-"
             const rawCompareAt = p.compareAtPrice ?? p.variants?.[0]?.compareAtPrice
-            const compareAtFormatted = rawCompareAt 
-              ? formatPrice(rawCompareAt, { currency: activeCurrency, isMinorUnit: false }) 
+            const compareAtFormatted = rawCompareAt
+              ? formatPrice(rawCompareAt, { currency: activeCurrency, isMinorUnit: false })
               : null
 
-            const imageUrl = Array.isArray(p.images) && p.images.length > 0 
+            const imageUrl = Array.isArray(p.images) && p.images.length > 0
               ? (typeof p.images[0] === "string" ? p.images[0] : p.images[0]?.url)
               : "https://placehold.co/100x100?text=No+Image"
 
@@ -201,6 +215,7 @@ export function ProductsView() {
               typeSlug: typeSlug,
               productTypeId: p.productTypeId,
               vendor: p.vendorName || p.attributes?.origin || "Store",
+              stockQuantity: p.stockQuantity ?? 100,
             }
           })
           setProducts(mapped)
@@ -215,30 +230,27 @@ export function ProductsView() {
     } finally {
       setIsLoading(false)
     }
-  }, [typeParam, debouncedSearchQuery])
+  }, [debouncedSearchQuery, activeTab, categoryFilter, activeSort])
 
   React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadProducts()
   }, [loadProducts])
 
   const selectedProductTitles = React.useMemo(() => {
-    return products
-      .filter(p => selectedRows.has(p.id))
-      .map(p => p.title)
-  }, [products, selectedRows])
+    return products.filter((p) => selectedIds.has(p.id)).map((p) => p.title)
+  }, [products, selectedIds])
 
   const handleBulkDeleteConfirm = async () => {
     try {
-      const selectedIds = Array.from(selectedRows)
+      const ids = Array.from(selectedIds)
       const res = await apiRequest("/admin/products/bulk-delete", {
         method: "POST",
-        body: JSON.stringify({ ids: selectedIds })
+        body: JSON.stringify({ ids }),
       })
 
       if (res.ok) {
-        toast.success(`Successfully deleted ${selectedIds.length} products`)
-        setSelectedRows(new Set())
+        toast.success(`Successfully deleted ${ids.length} products`)
+        setSelectedIds(new Set())
         loadProducts()
       } else {
         toast.error("Failed to delete products")
@@ -251,84 +263,29 @@ export function ProductsView() {
     }
   }
 
-  // Dynamic Filtering & Sorting Logic
+  const combinedCategoryOptions = React.useMemo(() => {
+    const map = new Map<string, string>()
+    for (const cat of categoriesList) {
+      if (cat.id) map.set(cat.id, cat.name)
+    }
+    for (const p of products) {
+      if (p.category && p.category !== "-" && !map.has(p.category)) {
+        map.set(p.category, p.category)
+      }
+    }
+    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
+  }, [categoriesList, products])
+
+  // Client-side fallback filtering for stock
   const filteredProducts = React.useMemo(() => {
     let result = [...products]
-
-    // 1. Tab Filtering
-    if (activeTab !== "All") {
-      result = result.filter(p => p.status === activeTab)
+    if (stockFilter === "in_stock") {
+      result = result.filter((p) => (p.stockQuantity ?? 0) > 0)
+    } else if (stockFilter === "out_of_stock") {
+      result = result.filter((p) => (p.stockQuantity ?? 0) <= 0)
     }
-
-    // 2. Search Filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      result = result.filter(p => {
-        return p.title.toLowerCase().includes(query) || 
-               p.vendor.toLowerCase().includes(query) ||
-               p.type.toLowerCase().includes(query)
-      })
-    }
-
-    // 4. Sorting Logic
-    result.sort((a, b) => {
-      const valA = a[sortField]
-      const valB = b[sortField]
-
-      const strA = typeof valA === "string" ? valA.toLowerCase() : String(valA ?? "")
-      const strB = typeof valB === "string" ? valB.toLowerCase() : String(valB ?? "")
-
-      if (strA < strB) return sortOrder === "asc" ? -1 : 1
-      if (strA > strB) return sortOrder === "asc" ? 1 : -1
-      return 0
-    })
-
     return result
-  }, [products, activeTab, searchQuery, sortField, sortOrder, typeParam])
-
-  // Column Visibility Checkers
-  const hasPrice = isLoading || products.some(p => p.price && p.price.length > 0)
-  const hasCategory = isLoading || products.some(p => p.category && p.category.length > 0)
-  const hasMarkets = false
-  const hasVendor = false
-
-  // Row Selection Handlers
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      const allFilteredIds = filteredProducts.map(p => p.id)
-      setSelectedRows(new Set(allFilteredIds))
-    } else {
-      setSelectedRows(new Set())
-    }
-  }
-
-  const handleSelectRow = (productId: string, checked: boolean) => {
-    const newSelection = new Set(selectedRows)
-    if (checked) {
-      newSelection.add(productId)
-    } else {
-      newSelection.delete(productId)
-    }
-    setSelectedRows(newSelection)
-  }
-
-  const toggleSort = (field: keyof Product) => {
-    if (sortField === field) {
-      setSortOrder(prev => (prev === "asc" ? "desc" : "asc"))
-    } else {
-      setSortField(field)
-      setSortOrder("asc")
-    }
-  }
-
-  const renderSortIcon = (field: keyof Product) => {
-    if (sortField !== field) {
-      return <Icon name="swap_vert" size={14} className="size-3.5! text-muted-foreground opacity-30 hover:opacity-100 transition-opacity ml-0.5" />
-    }
-    return sortOrder === "asc"
-      ? <Icon name="arrow_upward" size={14} className="size-3.5! text-foreground font-semibold ml-0.5" />
-      : <Icon name="arrow_downward" size={14} className="size-3.5! text-foreground font-semibold ml-0.5" />
-  }
+  }, [products, stockFilter])
 
   const handleAddProduct = async () => {
     if (isCreating) return
@@ -344,10 +301,10 @@ export function ProductsView() {
             {
               sku: "AUTO",
               title: "Default",
-              price: 10 // Default to $10.00
-            }
-          ]
-        })
+              price: 10,
+            },
+          ],
+        }),
       })
 
       if (res.ok) {
@@ -369,304 +326,233 @@ export function ProductsView() {
     }
   }
 
+  // Desktop Table Column Definitions
+  const columns: ColumnDef<Product>[] = [
+    {
+      header: "Product",
+      accessor: (p) => (
+        <div className="flex items-center gap-3 min-w-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={p.image}
+            alt={p.title}
+            className="size-9 rounded-md object-cover border border-border/50 shrink-0"
+            onError={(e) => {
+              ;(e.currentTarget as HTMLImageElement).src = "https://placehold.co/100x100?text=No+Image"
+            }}
+          />
+          <span className="font-medium text-foreground truncate max-w-xs md:max-w-md block" title={p.title}>
+            {p.title}
+          </span>
+        </div>
+      ),
+    },
+    {
+      header: "Status",
+      accessor: (p) => <StatusBadge status={p.status} />,
+    },
+    {
+      header: "Price",
+      className: "text-foreground font-medium whitespace-nowrap",
+      accessor: (p) => (
+        <div className="flex items-center gap-1.5">
+          <span>{p.price}</span>
+          {p.compareAtPrice && (
+            <span className="text-xs text-muted-foreground line-through font-normal">
+              {p.compareAtPrice}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      header: "Category",
+      className: "text-muted-foreground whitespace-nowrap",
+      accessor: (p) => p.category,
+    },
+  ]
+
+  // Filter Dropdown Component
+  const filterDropdown = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-sm relative",
+            (categoryFilter !== "all" || stockFilter !== "all") && "text-emerald-700 dark:text-emerald-300 bg-emerald-500/10"
+          )}
+        >
+          <Icon name="filter_list" size={16} className="size-4!" />
+          {(categoryFilter !== "all" || stockFilter !== "all") && (
+            <span className="absolute top-1 right-1 size-1.5 rounded-full bg-emerald-500" />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56 max-h-80 overflow-y-auto">
+        <DropdownMenuLabel>Category</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={categoryFilter} onValueChange={setCategoryFilter}>
+          <DropdownMenuRadioItem value="all">All Categories</DropdownMenuRadioItem>
+          {combinedCategoryOptions.map((cat) => (
+            <DropdownMenuRadioItem key={cat.value} value={cat.value}>
+              {cat.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Stock Status</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={stockFilter} onValueChange={setStockFilter}>
+          <DropdownMenuRadioItem value="all">All Stock</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="in_stock">In Stock (&gt;0)</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="out_of_stock">Out of Stock (0)</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+
+        {(categoryFilter !== "all" || stockFilter !== "all") && (
+          <>
+            <DropdownMenuSeparator />
+            <button
+              type="button"
+              onClick={() => {
+                setCategoryFilter("all")
+                setStockFilter("all")
+              }}
+              className="w-full text-xs text-center py-1 text-red-600 dark:text-red-400 hover:underline cursor-pointer font-medium"
+            >
+              Clear All Filters
+            </button>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
+  // Active Filter Badges
+  const activeFilterBadges = (categoryFilter !== "all" || stockFilter !== "all" || searchQuery.trim()) && (
+    <div className="flex items-center flex-wrap gap-1.5 px-3.5 py-2 bg-primary/5 border-b border-border/60 text-xs">
+      <span className="text-muted-foreground font-medium mr-1 text-[11px]">Active Filters:</span>
+      {categoryFilter !== "all" && (
+        <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/25 px-2.5 py-0.5 rounded-full text-primary text-[11px] font-medium">
+          Category: <strong>{combinedCategoryOptions.find((c) => c.value === categoryFilter)?.label || categoryFilter}</strong>
+          <button type="button" onClick={() => setCategoryFilter("all")} className="hover:text-destructive cursor-pointer ml-0.5">
+            <Icon name="close" size={12} className="size-3" />
+          </button>
+        </span>
+      )}
+      {stockFilter !== "all" && (
+        <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/25 px-2.5 py-0.5 rounded-full text-primary text-[11px] font-medium">
+          Stock: <strong>{stockFilter === "in_stock" ? "In Stock" : "Out of Stock"}</strong>
+          <button type="button" onClick={() => setStockFilter("all")} className="hover:text-destructive cursor-pointer ml-0.5">
+            <Icon name="close" size={12} className="size-3" />
+          </button>
+        </span>
+      )}
+      {searchQuery.trim() && (
+        <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/25 px-2.5 py-0.5 rounded-full text-primary text-[11px] font-medium">
+          Search: &quot;{searchQuery}&quot;
+          <button type="button" onClick={() => setSearchQuery("")} className="hover:text-destructive cursor-pointer ml-0.5">
+            <Icon name="close" size={12} className="size-3" />
+          </button>
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={() => {
+          setCategoryFilter("all")
+          setStockFilter("all")
+          setSearchQuery("")
+        }}
+        className="text-[11px] text-primary hover:underline ml-1 cursor-pointer font-medium"
+      >
+        Clear all
+      </button>
+    </div>
+  )
+
   return (
-    <div className="flex flex-col gap-4 px-4 pt-4 lg:px-6 lg:pt-6 pb-0 max-w-full h-full min-h-0 font-ui">
-      
-      {/* Header section with title and actions */}
-      <div className="flex items-center justify-between pb-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground select-none">Products</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="h-8 shadow-xs text-xs px-3 cursor-pointer">Export</Button>
-          <Button variant="outline" className="h-8 shadow-xs text-xs px-3 cursor-pointer">Import</Button>
-          <Button 
-            className="h-8 shadow-xs text-xs px-4 bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer font-medium"
-            onClick={handleAddProduct}
-            disabled={isCreating}
+    <>
+      <ResponsiveDataView<Product>
+        title="Products"
+        primaryAction={{
+          label: "Add product",
+          onClick: handleAddProduct,
+          loading: isCreating,
+        }}
+        tabs={TABS}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        searchPlaceholder="Search products..."
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        filterDropdown={filterDropdown}
+        activeFilterBadges={activeFilterBadges}
+        sortOptions={SORT_OPTIONS}
+        activeSort={activeSort}
+        onSortChange={setActiveSort}
+        items={filteredProducts}
+        getItemId={(p) => p.id}
+        isLoading={isLoading}
+        emptyMessage="No products found"
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
+        bulkActions={
+          <Button
+            variant="ghost"
+            className="h-8 text-xs text-red-600 dark:text-red-400 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer ml-auto font-semibold"
+            onClick={() => setIsDeleteModalOpen(true)}
           >
-            {isCreating ? "Creating..." : "Add product"}
+            Delete
           </Button>
-        </div>
-      </div>
+        }
+        columns={columns}
+        renderMobileCard={(product) => (
+          <div className="py-3 px-3.5 flex items-center gap-3.5 hover:bg-muted/30 active:bg-muted/50 transition-colors">
+            {/* Thumbnail */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={product.image}
+              alt={product.title}
+              className="size-12 rounded-xl object-cover border border-border/40 bg-muted/20 shadow-2xs shrink-0"
+              onError={(e) => {
+                ;(e.currentTarget as HTMLImageElement).src = "https://placehold.co/100x100?text=No+Image"
+              }}
+            />
 
-      {/* Top Metrics Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 border border-border/80 bg-card rounded-xl shadow-xs divide-y md:divide-y-0 md:divide-x divide-border/60 overflow-hidden">
-        <div className="p-4 flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-            Products by sell-through rate
-          </span>
-          <div className="text-sm font-medium text-foreground flex items-center gap-1.5 mt-0.5">
-            <span>0%</span>
-            <span className="text-muted-foreground">—</span>
-          </div>
-        </div>
-        <div className="p-4 flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-            Products by days of inventory remaining
-          </span>
-          <div className="text-sm text-muted-foreground mt-0.5">
-            No data
-          </div>
-        </div>
-        <div className="p-4 flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-            ABC product analysis
-          </span>
-          <div className="text-sm text-muted-foreground mt-0.5">
-            No data
-          </div>
-        </div>
-      </div>
+            {/* Title & Category Info */}
+            <div className="flex-1 min-w-0">
+              <h2 className="font-medium text-[13.5px] leading-snug text-foreground line-clamp-2">
+                {product.title}
+              </h2>
+              {product.category && product.category !== "-" && (
+                <p className="text-[11.5px] text-muted-foreground/80 mt-0.5 truncate font-normal">
+                  {product.category}
+                </p>
+              )}
+            </div>
 
-      {/* Products Table Container */}
-      <div className="border-t border-x border-b-0 border-border/80 rounded-t-xl rounded-b-none overflow-hidden bg-card flex flex-col flex-1 min-h-0">
-        
-        {/* Toolbar & Filters */}
-        <div className="flex items-center justify-between border-b border-border/60 bg-card px-3 h-12 shrink-0">
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar mask-fade-right pr-4 flex-1 min-w-0">
-            {TABS.map(tab => (
-              <Button
-                key={tab}
-                variant={activeTab === tab ? "secondary" : "ghost"}
-                className={`h-8 rounded-md text-xs font-medium px-3 flex items-center gap-1 transition-colors cursor-pointer shrink-0 ${
-                  activeTab === tab ? "bg-muted text-foreground shadow-xs" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                }`}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </Button>
-            ))}
-            <Button 
-              variant="ghost" 
-              className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:bg-muted/50 cursor-pointer shrink-0 ml-1 rounded-md"
-            >
-              <Icon name="add" size={16} className="size-4!" />
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-1.5 pl-3 border-l border-border/60 ml-auto shrink-0">
-            {isSearchVisible ? (
-              <div className="flex items-center gap-1.5 h-8 bg-background border border-border rounded-md px-2.5 w-52 md:w-64 animate-in fade-in zoom-in-95 duration-200 shadow-xs">
-                <Icon name="search" size={16} className="size-4 text-muted-foreground shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent border-none outline-none focus:outline-none text-xs text-foreground placeholder:text-muted-foreground w-full h-full pl-1 ml-0.5 shrink min-w-0"
-                  autoFocus
-                />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery("")} className="hover:bg-muted p-0.5 rounded-full cursor-pointer shrink-0 flex items-center justify-center">
-                    <Icon name="close" size={14} className="size-3.5 text-muted-foreground" />
-                  </button>
+            {/* Price & Subtle Chevron */}
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="text-right">
+                <span className="font-semibold text-[13.5px] tracking-tight text-foreground block">
+                  {product.price}
+                </span>
+                {product.compareAtPrice && (
+                  <span className="text-[11px] text-muted-foreground/60 line-through block font-normal">
+                    {product.compareAtPrice}
+                  </span>
                 )}
-                <button 
-                  onClick={() => { setIsSearchVisible(false); setSearchQuery(""); }} 
-                  className="hover:bg-muted p-0.5 rounded-full cursor-pointer shrink-0 flex items-center justify-center"
-                >
-                  <Icon name="keyboard_double_arrow_right" size={16} className="size-4 text-muted-foreground" />
-                </button>
               </div>
-            ) : (
-              <div className="flex items-center bg-background border border-border rounded-md p-0.5 shadow-xs gap-0.5">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-sm"
-                  onClick={() => setIsSearchVisible(true)}
-                >
-                  <Icon name="search" size={16} className="size-4!" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-sm"
-                >
-                  <Icon name="filter_list" size={16} className="size-4!" />
-                </Button>
-              </div>
-            )}
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-8 w-8 bg-background shadow-xs cursor-pointer text-muted-foreground hover:text-foreground">
-                  <Icon name="swap_vert" size={16} className="size-4!" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup value={`${sortField}-${sortOrder}`} onValueChange={(val) => {
-                  const [field, order] = val.split("-")
-                  setSortField(field as keyof Product)
-                  setSortOrder(order as "asc" | "desc")
-                }}>
-                  <DropdownMenuRadioItem value="title-asc">Product Title (A-Z)</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="title-desc">Product Title (Z-A)</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="status-asc">Status</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="vendor-asc">Vendor</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        {/* Selected Rows Bulk Actions Bar Overlay */}
-        {selectedRows.size > 0 && (
-          <div className="flex items-center gap-2 bg-background border-b border-border/60 text-foreground px-4 h-12 shrink-0 animate-in slide-in-from-top-4 duration-300">
-            <span className="text-sm font-medium mr-2 text-muted-foreground">{selectedRows.size} selected</span>
-            <Button 
-              variant="ghost" 
-              className="h-8 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-              onClick={() => setSelectedRows(new Set())}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="ghost" 
-              className="h-8 text-xs text-red-600 dark:text-red-400 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer ml-auto font-semibold"
-              onClick={() => setIsDeleteModalOpen(true)}
-            >
-              Delete
-            </Button>
+              <Icon
+                name="chevron_right"
+                size={16}
+                className="text-muted-foreground/30 size-4"
+              />
+            </div>
           </div>
         )}
-
-        {/* Table */}
-        <div className="overflow-auto flex-1">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead className="sticky top-0 bg-card backdrop-blur-xs font-ui text-xs font-semibold text-muted-foreground border-b border-border/60 z-10">
-              <tr>
-                <th className="px-4 py-3 w-10 text-center">
-                  <Checkbox
-                    checked={
-                      filteredProducts.length > 0 &&
-                      filteredProducts.every(p => selectedRows.has(p.id))
-                    }
-                    onCheckedChange={(val) => handleSelectAll(!!val)}
-                    aria-label="Select all products"
-                  />
-                </th>
-                <th className="px-4 py-3 font-semibold text-foreground select-none">
-                  <div onClick={() => toggleSort("title")} className="flex items-center cursor-pointer hover:text-foreground">
-                    Product {renderSortIcon("title")}
-                  </div>
-                </th>
-                <th className="px-4 py-3 font-semibold text-foreground select-none">
-                  <div onClick={() => toggleSort("status")} className="flex items-center cursor-pointer hover:text-foreground">
-                    Status {renderSortIcon("status")}
-                  </div>
-                </th>
-                {hasPrice && (
-                  <th className="px-4 py-3 font-semibold text-foreground select-none">
-                    <div onClick={() => toggleSort("price" as keyof Product)} className="flex items-center cursor-pointer hover:text-foreground">
-                      Price {renderSortIcon("price" as keyof Product)}
-                    </div>
-                  </th>
-                )}
-                {hasCategory && (
-                  <th className="px-4 py-3 font-semibold text-foreground select-none">
-                    <div onClick={() => toggleSort("category")} className="flex items-center cursor-pointer hover:text-foreground">
-                      Category {renderSortIcon("category")}
-                    </div>
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {isLoading ? (
-                Array.from({ length: 6 }).map((_, idx) => (
-                  <tr key={idx} className="h-[68px] animate-pulse">
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="size-4 bg-muted/60 rounded mx-auto" />
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="size-10 bg-muted/60 rounded-md shrink-0" />
-                        <div className="h-4 w-36 bg-muted/60 rounded-full" />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="h-6 w-18 bg-muted/60 rounded-full" />
-                    </td>
-                    {hasPrice && (
-                      <td className="px-4 py-3.5">
-                        <div className="h-4 w-16 bg-muted/60 rounded-full" />
-                      </td>
-                    )}
-                    {hasCategory && (
-                      <td className="px-4 py-3.5">
-                        <div className="h-4 w-20 bg-muted/60 rounded-full" />
-                      </td>
-                    )}
-                  </tr>
-                ))
-              ) : filteredProducts.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-muted-foreground font-ui text-sm">
-                    No products found
-                  </td>
-                </tr>
-              ) : (
-                filteredProducts.map((product) => {
-                  const isSelected = selectedRows.has(product.id)
-                  
-                  return (
-                    <tr
-                      key={product.id}
-                      onClick={() => router.push(`/dashboard/products/${product.id}`)}
-                      className={`hover:bg-muted/30 cursor-pointer duration-150 text-sm ${
-                        isSelected ? "bg-muted/40" : "bg-card"
-                      }`}
-                    >
-                      <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={(val) => handleSelectRow(product.id, !!val)}
-                          aria-label={`Select product ${product.title}`}
-                        />
-                      </td>
-                      <td className="px-4 py-3.5 font-medium text-foreground">
-                        <div className="flex items-center gap-3">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img 
-                            src={product.image} 
-                            alt={product.title} 
-                            className="size-10 rounded-md object-cover border border-border/50 shrink-0"
-                          />
-                          <span className="font-medium text-foreground">{product.title}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <StatusBadge status={product.status} />
-                      </td>
-                      {hasPrice && (
-                        <td className="px-4 py-3.5 text-foreground font-medium whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <span>{product.price}</span>
-                            {product.compareAtPrice && (
-                              <span className="text-xs text-muted-foreground line-through font-normal">
-                                {product.compareAtPrice}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      )}
-                      {hasCategory && (
-                        <td className="px-4 py-3.5 text-muted-foreground whitespace-nowrap">
-                          {product.category}
-                        </td>
-                      )}
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-
+        onRowClick={(product) => router.push(`/dashboard/products/${product.id}`)}
+      />
 
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
@@ -674,10 +560,10 @@ export function ProductsView() {
         onConfirm={handleBulkDeleteConfirm}
         title="Delete Selected Products?"
         description="Are you sure you want to delete the selected products? This action is permanent and cannot be undone."
-        itemsCount={selectedRows.size}
+        itemsCount={selectedIds.size}
         itemsList={selectedProductTitles}
         confirmText="Delete"
       />
-    </div>
+    </>
   )
 }

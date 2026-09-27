@@ -45,36 +45,6 @@ export function GeneralInfoCard({
   const activeTab = externalActiveTab ?? internalActiveTab
   const setActiveTab = externalSetActiveTab ?? setInternalActiveTab
 
-  const handleAutoTranslate = () => {
-    setIsGeneratingDesc(true)
-    setTimeout(() => {
-      const title = product?.title || ""
-      let autoArTitle = "كاتشب طماطم فاخر مظاريف"
-      if (title.toLowerCase().includes("vinegar")) autoArTitle = "خل أبيض طبيعي فاخر"
-      else if (title.toLowerCase().includes("pickle")) autoArTitle = "مخلل خضار مشكل فاخر"
-      else if (title.toLowerCase().includes("olive")) autoArTitle = "زيت زيتون بكر ممتاز"
-      else if (title.toLowerCase().includes("fries")) autoArTitle = "بطاطس مقلية ممتازة"
-      else if (title.toLowerCase().includes("sauce") || title.toLowerCase().includes("barbecue")) autoArTitle = "صلصة باربيكيو فاخرة"
-      
-      const autoArDesc = `<p dir="rtl">منتج عالي الجودة مصمم خصيصاً للمطاعم والفنادق وشركات الإعاشة بالمملكة العربية السعودية.</p><ul><li dir="rtl">جودة ممتازة ومعايير قياسية</li><li dir="rtl">تغليف آمن ومناسب للتخزين</li></ul>`
-
-      setProduct(prev => prev ? {
-        ...prev,
-        arabicTitle: autoArTitle,
-        arabicDescription: autoArDesc,
-        translations: {
-          ...(prev.translations || {}),
-          ar: {
-            ...((prev.translations?.ar as Record<string, any>) || {}),
-            name: autoArTitle,
-            description: autoArDesc
-          }
-        }
-      } : null)
-      setActiveTab('ar')
-      setIsGeneratingDesc(false)
-    }, 1000)
-  }
 
   return (
     <Card>
@@ -114,20 +84,6 @@ export function GeneralInfoCard({
               />
             </button>
           </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs font-semibold border-emerald-600/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 gap-1.5 cursor-pointer"
-            disabled={isGeneratingDesc}
-            onClick={handleAutoTranslate}
-          >
-            <svg className="size-3.5 text-emerald-600 fill-current" viewBox="0 0 24 24">
-              <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
-            </svg>
-            {isGeneratingDesc ? "Translating..." : "Auto-Translate to Arabic"}
-          </Button>
         </div>
 
         {/* Content Container (Fixed structure prevents tab switch layout jitter) */}
@@ -140,7 +96,21 @@ export function GeneralInfoCard({
                 type="text"
                 className="w-full h-9 px-3 py-2 text-sm bg-background border border-border/60 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 value={product.title}
-                onChange={(e) => setProduct(prev => prev ? { ...prev, title: e.target.value } : null)}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setProduct(prev => prev ? {
+                    ...prev,
+                    title: val,
+                    translations: {
+                      ...(prev.translations || {}),
+                      en: {
+                        ...((prev.translations?.en as Record<string, any>) || {}),
+                        title: val,
+                        name: val,
+                      }
+                    }
+                  } : null)
+                }}
               />
             </div>
             
@@ -150,18 +120,18 @@ export function GeneralInfoCard({
                 value={description} 
                 onChange={(val) => {
                   setDescription(val)
-                  setProduct(prev => prev ? { ...prev, description: val } : null)
+                  setProduct(prev => prev ? {
+                    ...prev,
+                    description: val,
+                    translations: {
+                      ...(prev.translations || {}),
+                      en: {
+                        ...((prev.translations?.en as Record<string, any>) || {}),
+                        description: val,
+                      }
+                    }
+                  } : null)
                 }}
-                onGenerateAI={() => {
-                  setIsGeneratingDesc(true)
-                  setTimeout(() => {
-                    const newDesc = "<p>This magical <strong>AI-generated description</strong> highlights the best features of this product!</p>"
-                    setDescription(newDesc)
-                    setProduct(prev => prev ? { ...prev, description: newDesc } : null)
-                    setIsGeneratingDesc(false)
-                  }, 1500)
-                }}
-                isGenerating={isGeneratingDesc}
               />
             </div>
           </div>
@@ -212,8 +182,6 @@ export function GeneralInfoCard({
                       }
                     } : null)
                   }}
-                  onGenerateAI={handleAutoTranslate}
-                  isGenerating={isGeneratingDesc}
                 />
               </div>
             </div>

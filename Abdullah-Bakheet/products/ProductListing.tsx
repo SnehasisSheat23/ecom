@@ -33,14 +33,39 @@ export default function ProductListing() {
 
     const [isLoading, setIsLoading] = useState(true);
     const [products, setProducts] = useState<StorefrontProduct[]>([]);
-    const [categories, setCategories] = useState<Array<{ name: string; arabicName?: string; slug: string }>>([
-        { name: 'ALL', arabicName: 'الكل', slug: 'ALL' }
+    const [categories, setCategories] = useState<Array<{ name: string; arabicName?: string; slug: string; childrenSlugs?: string[] }>>([
+        { name: 'ALL', arabicName: 'الكل', slug: 'ALL', childrenSlugs: [] }
     ]);
     const [activeCategory, setActiveCategory] = useState<string>('ALL');
     const [priceRange, setPriceRange] = useState(2000);
     const [onSaleOnly, setOnSaleOnly] = useState(false);
     const [inStockOnly, setInStockOnly] = useState(false);
     const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+    const CATEGORY_ALIASES: Record<string, string[]> = {
+        'frenchfries': ['potatoesfries', 'frenchfries', 'frozenfoods'],
+        'potatoesfries': ['potatoesfries', 'frenchfries', 'frozenfoods'],
+        'drycondiments': ['drycondiments', 'saucescondiments'],
+        'frozenitems': ['frozenfoods', 'potatoesfries', 'frozenmeats', 'frozenpoultry', 'frozenseafood', 'asianfrozen'],
+        'frozenfoods': ['frozenfoods', 'potatoesfries', 'frozenmeats', 'frozenpoultry', 'frozenseafood', 'asianfrozen'],
+        'seasonings': ['seasoningblends', 'spicesseasonings', 'powderedspices', 'coarsespices', 'driedherbs', 'bulkspices'],
+        'spicesseasonings': ['spicesseasonings', 'powderedspices', 'coarsespices', 'driedherbs', 'seasoningblends', 'bulkspices'],
+        'powderedspices': ['powderedspices', 'spicesseasonings', 'seasoningblends'],
+        'seasoningblends': ['seasoningblends', 'spicesseasonings'],
+        'ketchup': ['ketchupcondiments', 'saucescondiments', 'ketchup'],
+        'ketchupcondiments': ['ketchupcondiments', 'ketchup', 'saucescondiments'],
+        'vinegar': ['vinegars', 'saucescondiments'],
+        'vinegars': ['vinegars', 'saucescondiments'],
+        'pickles': ['picklesrelishes', 'picklesolivescanned'],
+        'picklesrelishes': ['picklesrelishes', 'picklesolivescanned'],
+        'oils': ['cookingoils', 'oliveoil', 'sunflowercornoil', 'fryingoils'],
+        'cookingoils': ['cookingoils', 'oliveoil', 'sunflowercornoil', 'fryingoils'],
+        'sauces': ['saucescondiments', 'mayodressings', 'hotsauces', 'asiansauces', 'cheesesauces', 'ketchupcondiments'],
+        'saucesdressing': ['saucescondiments', 'mayodressings', 'hotsauces', 'asiansauces', 'cheesesauces', 'ketchupcondiments'],
+        'saucescondiments': ['saucescondiments', 'mayodressings', 'hotsauces', 'asiansauces', 'cheesesauces', 'ketchupcondiments', 'drycondiments'],
+        'cannedfruitsvegetables': ['cannedvegetables', 'cannedfruits', 'picklesolivescanned'],
+        'cannedvegetables': ['cannedvegetables', 'cannedfruits', 'picklesolivescanned'],
+    };
 
     const activeFiltersCount = useMemo(() => {
         let count = 0;
@@ -67,8 +92,9 @@ export default function ProductListing() {
                             name: c.name.toUpperCase(),
                             arabicName: c.arabicName || c.name,
                             slug: c.slug || c.id,
+                            childrenSlugs: c.childrenSlugs || [],
                         }));
-                        setCategories([{ name: 'ALL', arabicName: 'الكل', slug: 'ALL' }, ...formattedCats]);
+                        setCategories([{ name: 'ALL', arabicName: 'الكل', slug: 'ALL', childrenSlugs: [] }, ...formattedCats]);
                     }
                 }
             } catch (err) {
@@ -126,7 +152,7 @@ export default function ProductListing() {
                 return normCat === normParam || normSlug === normParam || normCat.includes(normParam) || normParam.includes(normCat);
             });
             if (matchedProd) {
-                setActiveCategory(matchedProd.category);
+                setActiveCategory(matchedProd.categorySlug || matchedProd.category);
             } else {
                 setActiveCategory(urlCategory);
             }
@@ -143,22 +169,23 @@ export default function ProductListing() {
         }
     }, [activeCategory, router]);
 
-    const isCatActive = useCallback((catObj: { name: string; slug: string }) => {
+    const isCatActive = useCallback((catObj: { name: string; slug: string; childrenSlugs?: string[] }) => {
         if (activeCategory === 'ALL' && (catObj.slug === 'ALL' || catObj.name === 'ALL')) return true;
-        if (activeCategory === 'ALL') return false;
+        if (activeCategory === 'ALL' || catObj.slug === 'ALL') return false;
 
         const normActive = normalizeStr(activeCategory);
         const normSlug = normalizeStr(catObj.slug);
         const normName = normalizeStr(catObj.name);
 
-        return (
-            activeCategory.toLowerCase() === catObj.slug.toLowerCase() ||
-            activeCategory.toUpperCase() === catObj.name.toUpperCase() ||
-            normActive === normSlug ||
-            normActive === normName ||
-            normName.includes(normActive) ||
-            normActive.includes(normName)
-        );
+        if (normActive === normSlug || normActive === normName) return true;
+        if (catObj.slug.toLowerCase() === activeCategory.toLowerCase()) return true;
+
+        const aliases = CATEGORY_ALIASES[normActive] || [];
+        if (aliases.includes(normSlug) || aliases.includes(normName)) return true;
+
+        if (catObj.childrenSlugs && catObj.childrenSlugs.some(cs => normalizeStr(cs) === normActive)) return true;
+
+        return false;
     }, [activeCategory]);
 
     const filteredProducts = useMemo(() => {
@@ -168,7 +195,14 @@ export default function ProductListing() {
                 const normProdCat = normalizeStr(product.category);
                 const normProdSlug = normalizeStr(product.categorySlug || '');
 
-                const isMatch = (
+                const matchedCat = categories.find(c =>
+                    c.slug.toLowerCase() === activeCategory.toLowerCase() ||
+                    c.name.toUpperCase() === activeCategory.toUpperCase() ||
+                    normalizeStr(c.slug) === normActive ||
+                    normalizeStr(c.name) === normActive
+                );
+
+                let isMatch = (
                     product.category.toUpperCase() === activeCategory.toUpperCase() ||
                     normProdCat === normActive ||
                     normProdSlug === normActive ||
@@ -176,6 +210,24 @@ export default function ProductListing() {
                     normActive.includes(normProdCat) ||
                     (normProdSlug && (normProdSlug.includes(normActive) || normActive.includes(normProdSlug)))
                 );
+
+                if (!isMatch && matchedCat?.childrenSlugs && matchedCat.childrenSlugs.length > 0) {
+                    const cleanChildren = matchedCat.childrenSlugs.map(normalizeStr);
+                    if (cleanChildren.includes(normProdSlug) || cleanChildren.includes(normProdCat)) {
+                        isMatch = true;
+                    }
+                }
+
+                if (!isMatch) {
+                    const aliases = CATEGORY_ALIASES[normActive] || [];
+                    if (
+                        aliases.includes(normProdSlug) ||
+                        aliases.includes(normProdCat) ||
+                        aliases.some(a => normProdSlug.includes(a) || normProdCat.includes(a))
+                    ) {
+                        isMatch = true;
+                    }
+                }
 
                 if (!isMatch) return false;
             }
@@ -190,7 +242,7 @@ export default function ProductListing() {
             }
             return true;
         });
-    }, [products, activeCategory, priceRange, onSaleOnly, inStockOnly]);
+    }, [products, activeCategory, categories, priceRange, onSaleOnly, inStockOnly]);
 
     return (
         <section className="w-full bg-brand-gray pt-4 md:pt-10 pb-16 font-sans">

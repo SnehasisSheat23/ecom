@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useRouter } from "next/navigation"
 import { apiRequest } from "@/lib/api-client"
 import { formatPrice } from "@/lib/currency"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
   DropdownMenu,
@@ -325,19 +326,18 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 pt-4 lg:px-6 lg:pt-6 pb-0 max-w-full h-full min-h-0 font-ui animate-in fade-in duration-300">
+    <div className="flex flex-col gap-3 sm:gap-4 px-3 pt-3 sm:px-4 sm:pt-4 lg:px-6 lg:pt-6 pb-0 max-w-full h-full min-h-0 font-ui animate-in fade-in duration-300">
       
-      {/* Header section with title and actions */}
-      <div className="flex items-center justify-between pb-2">
+      {/* Desktop Header */}
+      <div className="hidden md:flex items-center justify-between pb-1 sm:pb-2 gap-2 shrink-0">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground select-none">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground select-none">
             {isCorporateView ? "Business Accounts" : "Customers"}
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="h-8 shadow-xs text-xs px-3 cursor-pointer">Export</Button>
           <Button 
-            className="h-8 shadow-xs text-xs px-4 bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer"
+            className="h-8 shadow-xs text-xs px-3 sm:px-4 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer font-medium"
             onClick={() => router.push(`/dashboard/customers/new`)}
           >
             {isCorporateView ? "Add Business Account" : "Add customer"}
@@ -345,11 +345,81 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
         </div>
       </div>
 
+      {/* Mobile Header (Title, Search + Quick Action, Mobile Tabs) */}
+      <div className="flex md:hidden flex-col gap-3 pb-1.5 shrink-0">
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <h1 className="text-[26px] font-bold tracking-tight text-foreground select-none leading-tight">
+            {isCorporateView ? "Business Accounts" : "Customers"}
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-2 w-full">
+          <div className="relative flex-1">
+            <Icon
+              name="search"
+              size={18}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground size-4.5 pointer-events-none"
+            />
+            <input
+              type="text"
+              placeholder={isCorporateView ? "Search company, tax ID, email..." : "Search customers..."}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 pl-10 pr-9 rounded-xl bg-card border border-border/90 text-foreground placeholder:text-muted-foreground/75 text-sm font-normal focus:outline-hidden focus:border-foreground/40 focus:ring-2 focus:ring-foreground/10 shadow-2xs transition-all"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-1.5 rounded-full hover:bg-muted active:scale-95"
+              >
+                <Icon name="close" size={14} className="size-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Quick Primary Action Button (+) */}
+          <button
+            type="button"
+            className="size-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer font-semibold shrink-0 shadow-xs flex items-center justify-center active:scale-95 transition-all"
+            onClick={() => router.push(`/dashboard/customers/new`)}
+            title={isCorporateView ? "Add Business Account" : "Add customer"}
+            aria-label={isCorporateView ? "Add Business Account" : "Add customer"}
+          >
+            <Icon name="add" size={22} className="size-5.5" />
+          </button>
+        </div>
+
+        {/* Mobile Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 shrink-0">
+          {(isCorporateView ? ["All Business", "Pending"] : TABS).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={cn(
+                "h-8 px-3.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer select-none shrink-0 flex items-center gap-1.5",
+                activeTab === tab
+                  ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
+                  : "bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted active:bg-muted/90"
+              )}
+              onClick={() => setActiveTab(tab)}
+            >
+              <span>{tab}</span>
+              {tab === "Pending" && pendingCount > 0 && (
+                <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[10px] font-bold">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Customers Table Container */}
-      <div className="border border-border/80 rounded-lg overflow-hidden bg-card/40 shadow-xs flex flex-col flex-1 min-h-0 mt-2">
+      <div className="md:border md:border-border/80 md:rounded-lg overflow-hidden md:bg-card/40 md:shadow-xs flex flex-col flex-1 min-h-0 mt-1 sm:mt-2 bg-transparent">
         
-        {/* Toolbar & Filters */}
-        <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-2 h-12 shrink-0">
+        {/* Desktop Toolbar & Filters */}
+        <div className="hidden md:flex items-center justify-between border-b border-border/60 bg-muted/20 px-2 h-12 shrink-0">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar mask-fade-right pr-4 flex-1 min-w-0">
             {isCorporateView ? (
               <>
@@ -480,9 +550,9 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
           </div>
         )}
 
-        {/* Table Body */}
-        <div className="flex-1 overflow-auto min-h-0">
-          <table className="w-full border-collapse text-left text-sm relative font-ui">
+        {/* DESKTOP TABLE VIEW */}
+        <div className="hidden md:block flex-1 overflow-x-auto overflow-y-auto min-h-0 -webkit-overflow-scrolling-touch">
+          <table className="w-full border-collapse text-left text-sm relative font-ui min-w-[650px] sm:min-w-full">
             <thead className="sticky top-0 bg-card backdrop-blur-xs font-ui text-xs font-medium text-muted-foreground border-b border-border/60 z-10 select-none">
               <tr>
                 <th className="w-10 p-3 text-center">
@@ -763,8 +833,74 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
           </table>
         </div>
 
-        {/* Pagination Footer */}
-        <div className="flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 h-12 shrink-0 text-xs font-ui">
+        {/* MOBILE FLUID LIST VIEW */}
+        <div className="block md:hidden overflow-y-auto flex-1 divide-y divide-border/40 -webkit-overflow-scrolling-touch">
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, idx) => (
+              <div key={idx} className="py-3.5 px-3.5 flex items-center gap-3.5 animate-pulse">
+                <div className="size-11 bg-muted/60 rounded-xl shrink-0" />
+                <div className="flex-1 flex flex-col gap-2">
+                  <div className="h-4 w-36 bg-muted/60 rounded-full" />
+                  <div className="h-3 w-20 bg-muted/40 rounded-full" />
+                </div>
+              </div>
+            ))
+          ) : filteredCustomers.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground font-ui text-xs">
+              No accounts found
+            </div>
+          ) : (
+            filteredCustomers.map((customer) => (
+              <div
+                key={customer.id}
+                onClick={() => router.push(`/dashboard/customers/${customer.id}`)}
+                className="py-3 px-3.5 flex items-center gap-3.5 hover:bg-muted/30 active:bg-muted/50 transition-colors cursor-pointer"
+              >
+                {/* Initials Avatar */}
+                <div className="size-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                  {(customer.companyName || customer.name).charAt(0).toUpperCase()}
+                </div>
+
+                {/* Title & Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="font-medium text-[13.5px] leading-snug text-foreground truncate">
+                      {customer.companyName || customer.name}
+                    </h2>
+                    {customer.businessType && (
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase bg-secondary text-secondary-foreground border border-border/50 shrink-0">
+                        {customer.businessType}
+                      </span>
+                    )}
+                    {customer.status === "pending" && (
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 shrink-0">
+                        Pending
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-[11.5px] text-muted-foreground/80 mt-0.5 truncate">
+                    <span className="truncate">{customer.email}</span>
+                    {customer.city && customer.city !== "-" && (
+                      <>
+                        <span>•</span>
+                        <span className="truncate">{customer.city}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <Icon
+                  name="chevron_right"
+                  size={16}
+                  className="text-muted-foreground/30 size-4 shrink-0"
+                />
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Pagination Footer */}
+        <div className="hidden md:flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 h-12 shrink-0 text-xs font-ui">
           <div className="flex items-center gap-4 text-muted-foreground">
             <span>
               Showing {total > 0 ? (page - 1) * perPage + 1 : 0}–

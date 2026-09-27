@@ -44,9 +44,11 @@ export interface StorefrontProduct {
 
 export interface StorefrontCategory {
   id: string
+  parentId?: string | null
   name: string
   arabicName?: string
   slug: string
+  childrenSlugs?: string[]
 }
 
 export interface FetchProductsOptions {
@@ -133,30 +135,52 @@ export function parseStorefrontProducts(items: any[]): StorefrontProduct[] {
   })
 }
 
+const CLIENT_API_CACHE = new Map<string, { data: any; expiresAt: number }>()
+
+function getClientCache<T>(key: string): T | null {
+  const hit = CLIENT_API_CACHE.get(key)
+  if (hit && hit.expiresAt > Date.now()) {
+    return hit.data as T
+  }
+  return null
+}
+
+function setClientCache<T>(key: string, data: T, ttlMs = 120_000) {
+  CLIENT_API_CACHE.set(key, { data, expiresAt: Date.now() + ttlMs })
+}
+
 export async function fetchProductsApi(options?: FetchProductsOptions | number): Promise<{
   items: StorefrontProduct[]
   page: number
   limit: number
   hasMore: boolean
 }> {
-  try {
-    const opts: FetchProductsOptions = typeof options === 'number' ? { limit: options } : (options || {})
-    const page = opts.page || 1
-    const limit = opts.limit || 16
-    const currency = opts.currency || 'SAR'
-    const lang = opts.lang || 'en'
+  const opts: FetchProductsOptions = typeof options === 'number' ? { limit: options } : (options || {})
+  const page = opts.page || 1
+  const limit = opts.limit || 16
+  const currency = opts.currency || 'SAR'
+  const lang = opts.lang || 'en'
+  const categorySlug = opts.categorySlug || ''
+  const q = opts.q || ''
 
+  const cacheKey = `products_${page}_${limit}_${currency}_${lang}_${categorySlug}_${q}`
+  const cached = getClientCache<{ items: StorefrontProduct[]; page: number; limit: number; hasMore: boolean }>(cacheKey)
+  if (cached) {
+    return cached
+  }
+
+  try {
     let url = `${API_BASE}/storefront/products?page=${page}&limit=${limit}&currency=${currency}&lang=${lang}`
-    if (opts.categorySlug && opts.categorySlug !== 'ALL') {
-      url += `&categorySlug=${encodeURIComponent(opts.categorySlug.toLowerCase())}`
+    if (categorySlug && categorySlug !== 'ALL') {
+      url += `&categorySlug=${encodeURIComponent(categorySlug.toLowerCase())}`
     }
-    if (opts.q && opts.q.trim()) {
-      url += `&q=${encodeURIComponent(opts.q.trim())}`
+    if (q && q.trim()) {
+      url += `&q=${encodeURIComponent(q.trim())}`
     }
 
     const res = await fetch(url, {
       headers: buildHeaders(),
-      cache: 'no-store',
+      cache: 'default',
     })
 
     if (!res.ok) {
@@ -168,8 +192,10 @@ export async function fetchProductsApi(options?: FetchProductsOptions | number):
     const rawItems = json.data?.items || (Array.isArray(json.data) ? json.data : [])
     const items = parseStorefrontProducts(rawItems)
     const hasMore = rawItems.length >= limit
+    const result = { items, page, limit, hasMore }
 
-    return { items, page, limit, hasMore }
+    setClientCache(cacheKey, result, 120_000)
+    return result
   } catch (err) {
     console.error('Fetch products API error:', err)
     return { items: [], page: 1, limit: 16, hasMore: false }
@@ -177,10 +203,14 @@ export async function fetchProductsApi(options?: FetchProductsOptions | number):
 }
 
 export async function fetchProductBySlugApi(slugOrId: string, currency: string = 'SAR', lang: string = 'en'): Promise<StorefrontProduct | null> {
+  const cacheKey = `product_${slugOrId}_${currency}_${lang}`
+  const cached = getClientCache<StorefrontProduct>(cacheKey)
+  if (cached) return cached
+
   try {
     const res = await fetch(`${API_BASE}/storefront/products/${slugOrId}?currency=${currency}&lang=${lang}`, {
       headers: buildHeaders(),
-      cache: 'no-store',
+      cache: 'default',
     })
     if (!res.ok) {
       console.error('Backend /storefront/products/:slug request failed:', res.status)
@@ -190,6 +220,9 @@ export async function fetchProductBySlugApi(slugOrId: string, currency: string =
     const item = json.data
     if (!item) return null
     const [parsed] = parseStorefrontProducts([item])
+    if (parsed) {
+      setClientCache(cacheKey, parsed, 120_000)
+    }
     return parsed || null
   } catch (err) {
     console.error('Fetch single product API error:', err)
@@ -199,10 +232,14 @@ export async function fetchProductBySlugApi(slugOrId: string, currency: string =
 
 export async function fetchCategoriesApi(langOrLimit?: string | number): Promise<StorefrontCategory[]> {
   const lang = typeof langOrLimit === 'string' ? langOrLimit : 'en'
+  const cacheKey = `categories_${lang}`
+  const cached = getClientCache<StorefrontCategory[]>(cacheKey)
+  if (cached) return cached
+
   try {
     const res = await fetch(`${API_BASE}/storefront/categories?tree=true&lang=${lang}`, {
       headers: buildHeaders(),
-      cache: 'no-store',
+      cache: 'default',
     })
     if (!res.ok) {
       console.error('Backend /storefront/categories request failed:', res.status)
@@ -214,11 +251,19 @@ export async function fetchCategoriesApi(langOrLimit?: string | number): Promise
     const flatten = (nodes: any[]): StorefrontCategory[] => {
       let acc: StorefrontCategory[] = []
       nodes.forEach((c) => {
+        const childrenSlugs: string[] = []
+        if (c.children && Array.isArray(c.children)) {
+          c.children.forEach((ch: any) => {
+            if (ch.slug) childrenSlugs.push(ch.slug.toLowerCase())
+          })
+        }
         acc.push({
           id: c.id,
+          parentId: c.parentId || null,
           name: c.name,
           arabicName: c.arabicName || c.name,
           slug: c.slug || c.id,
+          childrenSlugs,
         })
         if (c.children && Array.isArray(c.children)) {
           acc = acc.concat(flatten(c.children))
@@ -227,7 +272,9 @@ export async function fetchCategoriesApi(langOrLimit?: string | number): Promise
       return acc
     }
 
-    return flatten(rawItems)
+    const result = flatten(rawItems)
+    setClientCache(cacheKey, result, 300_000)
+    return result
   } catch (err) {
     console.error('Fetch categories API error:', err)
     return []
@@ -717,6 +764,21 @@ export async function fetchOrderByIdApi(idOrNumber: string, accessToken?: string
     return json.data || null
   } catch (e) {
     console.error('fetchOrderByIdApi error:', e)
+    return null
+  }
+}
+
+export async function verifyOrderPaymentApi(orderId: string, accessToken?: string) {
+  try {
+    const res = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderId)}/verify-payment`, {
+      headers: buildHeaders(undefined, accessToken),
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    return json || null
+  } catch (e) {
+    console.error('verifyOrderPaymentApi error:', e)
     return null
   }
 }

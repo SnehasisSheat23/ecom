@@ -99,14 +99,14 @@ export default function Footer() {
                         <div className={`flex-1 ${isArabic ? 'text-right' : 'text-left'}`}>
                             <h4 className="font-medium text-lg mb-6">{t.categoriesTitle}</h4>
                             <ul className="flex flex-col gap-4 text-[15px] text-gray-400">
-                                <li><Link href="/products?category=KETCHUP" className="hover:text-white transition-colors">{tCat.ketchup}</Link></li>
-                                <li><Link href="/products?category=FRENCH+FRIES" className="hover:text-white transition-colors">{tCards.frenchFriesTitle}</Link></li>
-                                <li><Link href="/products?category=VINEGAR" className="hover:text-white transition-colors">{tCat.vinegar}</Link></li>
-                                <li><Link href="/products?category=PICKLES" className="hover:text-white transition-colors">{tCards.frozenItemsTitle}</Link></li>
-                                <li><Link href="/products?category=PICKLES" className="hover:text-white transition-colors">{tCat.pickles}</Link></li>
-                                <li><Link href="/products?category=SAUCES+%26+DRESSING" className="hover:text-white transition-colors">{tCards.seasoningsTitle}</Link></li>
-                                <li><Link href="/products?category=SAUCES+%26+DRESSING" className="hover:text-white transition-colors">{tCat.sauces}</Link></li>
-                                <li><Link href="/products?category=OILS" className="hover:text-white transition-colors">{tCat.oils}</Link></li>
+                                <li><Link href="/products?category=ketchup-condiments" className="hover:text-white transition-colors">{tCat.ketchup}</Link></li>
+                                <li><Link href="/products?category=potatoes-fries" className="hover:text-white transition-colors">{tCards.frenchFriesTitle}</Link></li>
+                                <li><Link href="/products?category=vinegars" className="hover:text-white transition-colors">{tCat.vinegar}</Link></li>
+                                <li><Link href="/products?category=frozen-foods" className="hover:text-white transition-colors">{tCards.frozenItemsTitle}</Link></li>
+                                <li><Link href="/products?category=pickles-relishes" className="hover:text-white transition-colors">{tCat.pickles}</Link></li>
+                                <li><Link href="/products?category=seasoning-blends" className="hover:text-white transition-colors">{tCards.seasoningsTitle}</Link></li>
+                                <li><Link href="/products?category=sauces-condiments" className="hover:text-white transition-colors">{tCat.sauces}</Link></li>
+                                <li><Link href="/products?category=cooking-oils" className="hover:text-white transition-colors">{tCat.oils}</Link></li>
                             </ul>
                         </div>
                     </div>

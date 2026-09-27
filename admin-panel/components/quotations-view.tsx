@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { apiRequest } from "@/lib/api-client"
 import { toast } from "sonner"
 import { formatPrice } from "@/lib/currency"
+import { cn } from "@/lib/utils"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -267,17 +268,71 @@ export function QuotationsView() {
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 pt-4 lg:px-6 lg:pt-6 pb-0 max-w-full h-full min-h-0 font-ui animate-in fade-in duration-300">
+    <div className="flex flex-col gap-3 sm:gap-4 px-3 pt-3 sm:px-4 sm:pt-4 lg:px-6 lg:pt-6 pb-0 max-w-full h-full min-h-0 font-ui animate-in fade-in duration-300">
       
-      {/* Header section with title and actions */}
-      <div className="flex items-center justify-between pb-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground select-none">Quotations</h1>
+      {/* Desktop Header */}
+      <div className="hidden md:flex items-center justify-between pb-1 sm:pb-2 gap-2 shrink-0">
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground select-none">Quotations</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="h-8 shadow-xs text-xs px-3 cursor-pointer" onClick={fetchQuotations}>
+          <Button variant="outline" className="h-8 shadow-xs text-xs px-2.5 sm:px-3 cursor-pointer" onClick={fetchQuotations}>
             <Icon name="refresh" size={14} className="size-3.5 mr-1" />
             Refresh
           </Button>
-          <Button variant="outline" className="h-8 shadow-xs text-xs px-3 cursor-pointer">Export</Button>
+        </div>
+      </div>
+
+      {/* Mobile Header (Title, Search + Quick Action, Mobile Tabs) */}
+      <div className="flex md:hidden flex-col gap-3 pb-1.5 shrink-0">
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <h1 className="text-[26px] font-bold tracking-tight text-foreground select-none leading-tight">Quotations</h1>
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground cursor-pointer" onClick={fetchQuotations}>
+            <Icon name="refresh" size={18} className="size-4.5" />
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-2 w-full">
+          <div className="relative flex-1">
+            <Icon
+              name="search"
+              size={18}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground size-4.5 pointer-events-none"
+            />
+            <input
+              type="text"
+              placeholder="Search quote #, company..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 pl-10 pr-9 rounded-xl bg-card border border-border/90 text-foreground placeholder:text-muted-foreground/75 text-sm font-normal focus:outline-hidden focus:border-foreground/40 focus:ring-2 focus:ring-foreground/10 shadow-2xs transition-all"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-1.5 rounded-full hover:bg-muted active:scale-95"
+              >
+                <Icon name="close" size={14} className="size-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 shrink-0">
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={cn(
+                "h-8 px-3.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer select-none shrink-0",
+                activeTab === tab
+                  ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
+                  : "bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted active:bg-muted/90"
+              )}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -347,11 +402,11 @@ export function QuotationsView() {
         </div>
       </div>
 
-      {/* Main Table Container */}
-      <div className="border border-border/80 rounded-lg overflow-hidden bg-card/40 shadow-xs flex flex-col flex-1 min-h-0 mt-2">
+      {/* Main Table Container (Clean list on mobile, table card on desktop) */}
+      <div className="md:border md:border-border/80 md:rounded-lg overflow-hidden md:bg-card/40 md:shadow-xs flex flex-col flex-1 min-h-0 mt-2 bg-transparent">
         
-        {/* Toolbar & Filter Tabs */}
-        <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-2 h-12 shrink-0">
+        {/* Desktop Toolbar & Filter Tabs */}
+        <div className="hidden md:flex items-center justify-between border-b border-border/60 bg-muted/20 px-2 h-12 shrink-0">
           <div className="flex items-center gap-1 overflow-x-auto no-scrollbar mask-fade-right pr-4 flex-1 min-w-0">
             {TABS.map((tab) => (
               <Button
@@ -442,9 +497,9 @@ export function QuotationsView() {
           </div>
         )}
 
-        {/* Table Body */}
-        <div className="flex-1 overflow-auto min-h-0">
-          <table className="w-full border-collapse text-left text-sm relative font-ui">
+        {/* DESKTOP TABLE VIEW */}
+        <div className="hidden md:block flex-1 overflow-x-auto overflow-y-auto min-h-0 -webkit-overflow-scrolling-touch">
+          <table className="w-full border-collapse text-left text-sm relative font-ui min-w-[650px] sm:min-w-full">
             <thead className="sticky top-0 bg-card backdrop-blur-xs font-ui text-xs font-medium text-muted-foreground border-b border-border/60 z-10 select-none">
               <tr>
                 <th className="w-10 p-3 text-center">
@@ -569,8 +624,62 @@ export function QuotationsView() {
           </table>
         </div>
 
-        {/* Pagination Footer */}
-        <div className="flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 h-12 shrink-0 text-xs font-ui">
+        {/* MOBILE FLUID LIST VIEW */}
+        <div className="block md:hidden overflow-y-auto flex-1 divide-y divide-border/40 -webkit-overflow-scrolling-touch">
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, idx) => (
+              <div key={idx} className="py-3.5 px-3.5 flex items-center gap-3.5 animate-pulse">
+                <div className="size-11 bg-muted/60 rounded-xl shrink-0" />
+                <div className="flex-1 flex flex-col gap-2">
+                  <div className="h-4 w-36 bg-muted/60 rounded-full" />
+                  <div className="h-3 w-20 bg-muted/40 rounded-full" />
+                </div>
+              </div>
+            ))
+          ) : paginatedQuotations.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground font-ui text-xs">
+              No quotations found
+            </div>
+          ) : (
+            paginatedQuotations.map((q) => {
+              const createdDate = new Date(q.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+
+              return (
+                <div
+                  key={q.id}
+                  onClick={() => router.push(`/dashboard/quotations/${q.id}`)}
+                  className="py-3 px-3.5 flex items-center justify-between gap-3 hover:bg-muted/30 active:bg-muted/50 transition-colors cursor-pointer"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono font-bold text-[13.5px] text-foreground tracking-tight">
+                        {q.quoteNumber}
+                      </span>
+                      <QuotationStatusBadge status={q.status} />
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 truncate">
+                      <span className="font-medium text-foreground/90 truncate max-w-[140px]">
+                        {q.companyName || q.customerName}
+                      </span>
+                      <span>•</span>
+                      <span className="shrink-0">{createdDate}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-mono font-bold text-[13.5px] text-foreground">
+                      {formatPrice(Number(q.totalAmount || 0), { currency: q.currency || "SAR" })}
+                    </span>
+                    <Icon name="chevron_right" size={16} className="text-muted-foreground/30 size-4" />
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Desktop Pagination Footer */}
+        <div className="hidden md:flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 h-12 shrink-0 text-xs font-ui">
           <div className="flex items-center gap-4 text-muted-foreground">
             <span>
               Showing {filteredQuotations.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}–

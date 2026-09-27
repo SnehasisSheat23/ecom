@@ -116,4 +116,36 @@ describe('Backend V2 4-Module Architecture Tests', () => {
     const updated = await ordersService.updateOrderStatus(order!.id, 'shipped')
     expect(updated?.status).toBe('shipped')
   })
+
+  it('should create product, update title, and persist title changes accurately', async () => {
+    const created = await productsService.createProduct({
+      title: 'Initial Product Title',
+      price: 25,
+      currency: 'SAR',
+    })
+    expect(created.id).toBeDefined()
+    expect(created.title).toBe('Initial Product Title')
+
+    // Update the title
+    const updated = await productsService.updateProduct(created.id, {
+      title: 'Updated Brand New Product Title',
+      translations: {
+        en: {
+          title: 'Initial Product Title', // Simulate stale translations in payload
+          description: '',
+          slug: 'initial-product-title',
+        },
+      },
+    })
+    expect(updated).not.toBeNull()
+    expect(updated?.title).toBe('Updated Brand New Product Title')
+
+    // Fetch by ID to confirm database persistence
+    const fetched = await productsService.getProductByIdOrSlug(created.id, 'en', 'SAR')
+    expect(fetched).not.toBeNull()
+    expect(fetched?.title).toBe('Updated Brand New Product Title')
+
+    // Cleanup
+    await productsService.deleteProduct(created.id)
+  })
 })

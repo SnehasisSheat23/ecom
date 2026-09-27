@@ -273,7 +273,29 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         return () => { isMounted = false; };
     }, [currency]);
 
-    // Synchronize & Merge Cart + Wishlist upon login or restore
+    // Fetch remote Cart + Wishlist upon initial page mount / session restore (does not re-merge duplicates)
+    const fetchBackendCartAndWishlist = useCallback(async (token: string) => {
+        try {
+            const [remoteCart, remoteWishlist] = await Promise.all([
+                fetchCartApi(token).catch(() => null),
+                fetchWishlistApi(token).catch(() => null),
+            ]);
+
+            if (remoteCart?.items) {
+                const consolidated = consolidateCartList(remoteCart.items);
+                setCart(consolidated);
+                localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(consolidated));
+            }
+            if (remoteWishlist?.items) {
+                setWishlist(remoteWishlist.items);
+                localStorage.setItem(LOCAL_STORAGE_WISHLIST_KEY, JSON.stringify(remoteWishlist.items));
+            }
+        } catch (err) {
+            console.error('Failed to fetch remote state on mount:', err);
+        }
+    }, []);
+
+    // Synchronize & Merge Cart + Wishlist ONLY upon explicit login or registration
     const syncWithBackendOnAuth = useCallback(async (token: string, localCartSnapshot: CartItem[], localWishlistSnapshot: WishlistItem[]) => {
         try {
             // 1. Merge cart with backend DB
@@ -319,9 +341,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         const sid = getOrCreateGuestSessionId();
         setGuestSessionId(sid);
 
-        let initialCart: CartItem[] = [];
-        let initialWishlist: WishlistItem[] = [];
-
         try {
             const savedCurrency = localStorage.getItem('abdullah_bakheet_currency');
             if (savedCurrency) {
@@ -341,7 +360,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                         price: Number(item.price || 0),
                     }));
                     const consolidated = consolidateCartList(normalized);
-                    initialCart = consolidated;
                     setCart(consolidated);
                 }
             }
@@ -354,7 +372,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                         ...item,
                         price: Number(item.price || 0),
                     }));
-                    initialWishlist = normalized;
                     setWishlist(normalized);
                 }
             }
@@ -392,7 +409,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                     accountDiscountPercent: u.accountDiscountPercent ? Number(u.accountDiscountPercent) : 0,
                 });
                 if (token) {
-                    syncWithBackendOnAuth(token, initialCart, initialWishlist);
+                    fetchBackendCartAndWishlist(token);
                 }
                 setIsAuthLoading(false);
                 return;
@@ -423,7 +440,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                             paymentTerms: profile.paymentTerms || 'prepaid',
                             accountDiscountPercent: profile.accountDiscountPercent ? Number(profile.accountDiscountPercent) : 0,
                         });
-                        syncWithBackendOnAuth(savedToken, initialCart, initialWishlist);
+                        fetchBackendCartAndWishlist(savedToken);
                     } else {
                         localStorage.removeItem('auth_access_token');
                         setAccessToken(null);
@@ -442,7 +459,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         }).catch(() => {
             setIsAuthLoading(false);
         });
-    }, [syncWithBackendOnAuth]);
+    }, [fetchBackendCartAndWishlist]);
 
 
     // 2. Persist cart to localStorage whenever it changes
@@ -781,10 +798,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (clearRemote && accessToken) {
-            clearCartApi(accessToken).catch(err => {
-                if (!err?.message?.includes('sign-in required')) {
-                    console.error('Background clearCartApi failed:', err);
-                }
+            clearCartApi(accessToken).catch(() => {
+                // Silently ignore background cart sync during page redirect / navigation
             });
         }
     };

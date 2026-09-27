@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useShop } from '@/context/ShopContext';
 import ConnectCTA from '@/components/ConnectCTA';
@@ -10,6 +10,11 @@ import { Minus } from 'lucide-react';
 export default function CartPage() {
     const { cart, removeFromCart, updateQuantity, setQuantity, cartTotal, cartSavings, isCorporateUser, user, language, currency, formatPrice } = useShop();
     const isArabic = language.startsWith('Arabic');
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
     
     const subtotalFormatted = formatPrice(cartTotal);
     const savingsFormatted = formatPrice(cartSavings);
@@ -20,15 +25,15 @@ export default function CartPage() {
         <div className="flex flex-col w-full bg-brand-gray min-h-screen font-sans">
             
             {/* Header Section */}
-            <div className="pt-20 pb-12 flex justify-center items-center px-4">
-                <h1 className={`font-heading text-4xl md:text-6xl lg:text-8xl uppercase text-[#1a2b25] tracking-wider flex flex-wrap justify-center items-center gap-3 md:gap-4 text-center ${isArabic ? 'font-sans font-black tracking-tight' : ''}`}>
-                    {isArabic ? 'سلة' : 'MY'}
-                    <span className="px-4 pt-2 pb-1 text-[#1a2b25]">{isArabic ? 'المشتريات' : 'CART'}</span>
+            <div className="pt-8 pb-6 md:pt-20 md:pb-12 flex justify-center items-center px-4">
+                <h1 className={`font-heading text-3xl sm:text-5xl md:text-6xl lg:text-8xl uppercase text-[#1a2b25] tracking-normal md:tracking-wider flex items-center justify-center gap-2 md:gap-4 text-center ${isArabic ? 'font-sans font-black tracking-tight' : ''}`}>
+                    <span>{isArabic ? 'سلة' : 'MY'}</span>
+                    <span className="text-[#1a2b25]">{isArabic ? 'المشتريات' : 'CART'}</span>
                 </h1>
             </div>
 
             {/* Corporate Banner if logged in */}
-            {isCorporateUser && (
+            {isCorporateUser && mounted && (
                 <div className="max-w-[1200px] mx-auto w-full px-4 mb-6">
                     <div className="bg-gray-50 border border-gray-200/80 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
                         <div>
@@ -50,7 +55,14 @@ export default function CartPage() {
 
             {/* Main Content Area */}
             <div className="px-4 pb-20 w-full max-w-[1200px] mx-auto">
-                {cart.length === 0 ? (
+                {!mounted ? (
+                    <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl shadow-sm border border-gray-100 animate-pulse">
+                        <div className="w-8 h-8 rounded-full border-2 border-gray-300 border-t-[#1a2b25] animate-spin mb-4" />
+                        <p className="text-gray-400 text-sm font-medium">
+                            {isArabic ? 'جاري تحميل السلة...' : 'Loading your cart...'}
+                        </p>
+                    </div>
+                ) : cart.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl shadow-sm border border-gray-100">
                         <p className="text-gray-500 text-lg mb-6 font-medium">
                             {isArabic ? 'سلة المشتريات فارغة حالياً' : 'Your cart is currently empty.'}
@@ -64,7 +76,9 @@ export default function CartPage() {
                         
                         {/* Cart Table Container */}
                         <div className="w-full lg:w-2/3 bg-white shadow-[0_4px_30px_-10px_rgba(0,0,0,0.08)] border border-gray-50 rounded-xl overflow-hidden">
-                            <div className="overflow-x-auto">
+                            
+                            {/* Desktop Table View */}
+                            <div className="hidden md:block overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50">
@@ -190,6 +204,119 @@ export default function CartPage() {
                                         })}
                                     </tbody>
                                 </table>
+                            </div>
+
+                            {/* Mobile Card List View */}
+                            <div className="block md:hidden divide-y divide-gray-100">
+                                {cart.map((item, index) => {
+                                    const minMoq = Math.max(1, item.moq || 1);
+                                    const isAtMoq = item.quantity <= minMoq;
+                                    const catalogBase = Number(item.catalogPrice || item.tieredPricing?.[0]?.price || item.price || 0);
+                                    const hasVolumeDiscount = item.price < catalogBase;
+                                    const itemSavings = Math.max(0, (catalogBase - item.price) * item.quantity);
+
+                                    return (
+                                        <div key={item.itemId || `${item.id}-${item.variantId || ''}-${index}`} className="p-4 flex flex-col gap-3">
+                                            {/* Top Row: Image + Details + Remove */}
+                                            <div className={`flex items-start gap-3 w-full ${isArabic ? 'flex-row-reverse text-right' : ''}`}>
+                                                <div className="w-16 h-16 sm:w-20 sm:h-20 min-w-16 min-h-16 bg-gray-50 rounded-lg p-1.5 flex items-center justify-center border border-gray-100 shrink-0">
+                                                    <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <div className={`flex items-start justify-between gap-2 ${isArabic ? 'flex-row-reverse' : ''}`}>
+                                                        <p className="font-semibold text-gray-800 text-[13px] sm:text-[14px] uppercase tracking-wide leading-snug">
+                                                            {item.name}
+                                                        </p>
+                                                        <button 
+                                                            onClick={() => removeFromCart(item.id)}
+                                                            className="text-gray-400 hover:text-red-500 transition-colors p-1 shrink-0 cursor-pointer"
+                                                            title={isArabic ? 'إزالة العنصر' : 'Remove item'}
+                                                        >
+                                                            <DeleteIcon size={16} />
+                                                        </button>
+                                                    </div>
+
+                                                    {(item.specifications?.packSize || item.specifications?.netWeight) && (
+                                                        <p className="text-[11px] text-gray-500 font-mono mt-0.5 mb-1">
+                                                            {item.specifications?.packSize || item.specifications?.netWeight}
+                                                        </p>
+                                                    )}
+
+                                                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                                        {hasVolumeDiscount ? (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="font-bold text-gray-900 text-[13px]">
+                                                                    {formatPrice(item.price)}
+                                                                </span>
+                                                                <span className="text-gray-400 line-through text-[11px]">
+                                                                    {formatPrice(catalogBase)}
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-gray-500 text-[12px]">
+                                                                {formatPrice(item.price)} / {isArabic ? 'وحدة' : 'unit'}
+                                                            </p>
+                                                        )}
+                                                        {hasVolumeDiscount && (
+                                                            <span className="text-[10px] text-gray-600 bg-gray-100 font-medium px-2 py-0.5 rounded">
+                                                                {isArabic ? 'خصم الكمية' : 'Bulk Tier'}
+                                                            </span>
+                                                        )}
+                                                        {item.moq && item.moq > 1 && (
+                                                            <span className="text-[10px] text-gray-600 bg-gray-100 font-medium px-2 py-0.5 rounded">
+                                                                {isArabic ? `الحد الأدنى: ${item.moq}` : `MOQ: ${item.moq}`}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Bottom Row: Quantity Controls + Item Total Price */}
+                                            <div className={`flex items-center justify-between pt-2 border-t border-gray-50 ${isArabic ? 'flex-row-reverse' : ''}`}>
+                                                <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50/70 p-0.5">
+                                                    <button 
+                                                        onClick={() => updateQuantity(item.id, -1)}
+                                                        disabled={isAtMoq}
+                                                        className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-black hover:bg-white rounded-md transition-all shadow-xs disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer"
+                                                        title={isAtMoq ? `Minimum order quantity is ${minMoq}` : undefined}
+                                                    >
+                                                        <Minus size={14} />
+                                                    </button>
+                                                    <input
+                                                        type="number"
+                                                        min={minMoq}
+                                                        value={item.quantity}
+                                                        onChange={(e) => {
+                                                            const val = parseInt(e.target.value, 10);
+                                                            if (!isNaN(val)) {
+                                                                setQuantity(item.id, val);
+                                                            }
+                                                        }}
+                                                        className="w-12 text-center font-semibold text-gray-900 text-[13px] bg-white border border-gray-200 rounded py-0.5 px-1 mx-1 focus:outline-none focus:border-gray-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                    />
+                                                    <button 
+                                                        onClick={() => updateQuantity(item.id, 1)}
+                                                        className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-black hover:bg-white rounded-md transition-all shadow-xs cursor-pointer"
+                                                    >
+                                                        <PlusIcon size={14} />
+                                                    </button>
+                                                </div>
+
+                                                <div className={`flex flex-col ${isArabic ? 'items-start' : 'items-end'}`}>
+                                                    <span className="font-bold text-gray-900 text-[15px]">
+                                                        {formatPrice(item.price * item.quantity)}
+                                                    </span>
+                                                    {itemSavings > 0 && (
+                                                        <span className="text-[10px] text-green-700 font-medium">
+                                                            {isArabic ? `وفرت ${formatPrice(itemSavings)}` : `Saved ${formatPrice(itemSavings)}`}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
 

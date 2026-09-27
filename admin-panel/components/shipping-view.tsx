@@ -5,6 +5,7 @@ import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { apiRequest } from "@/lib/api-client"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
   DropdownMenu,
@@ -216,19 +217,19 @@ export function ShippingView() {
   })
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="flex flex-col gap-3 sm:gap-4 px-3 pt-3 sm:px-4 sm:pt-4 lg:px-6 lg:pt-6 pb-0 max-w-full h-full min-h-0 font-ui">
+      {/* Desktop Header */}
+      <div className="hidden md:flex items-center justify-between pb-1 sm:pb-2 gap-2 shrink-0">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Shipping</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground select-none">Shipping</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             Manage delivery options, timelines, and rates across currencies.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
-            className="h-9 text-sm px-4 shadow-xs bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer font-medium"
+            className="h-8 text-xs px-3 sm:px-4 shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer font-medium"
             onClick={handleOpenAddModal}
           >
             <Icon name="add" className="size-4 mr-1.5" />
@@ -237,10 +238,73 @@ export function ShippingView() {
         </div>
       </div>
 
+      {/* Mobile Header (Title, Search + Quick Action, Mobile Tabs) */}
+      <div className="flex md:hidden flex-col gap-3 pb-1.5 shrink-0">
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <h1 className="text-[26px] font-bold tracking-tight text-foreground select-none leading-tight">Shipping</h1>
+        </div>
+
+        <div className="flex items-center gap-2 w-full">
+          <div className="relative flex-1">
+            <Icon
+              name="search"
+              size={18}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground size-4.5 pointer-events-none"
+            />
+            <input
+              type="text"
+              placeholder="Search methods..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 pl-10 pr-9 rounded-xl bg-card border border-border/90 text-foreground placeholder:text-muted-foreground/75 text-sm font-normal focus:outline-hidden focus:border-foreground/40 focus:ring-2 focus:ring-foreground/10 shadow-2xs transition-all"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-1.5 rounded-full hover:bg-muted active:scale-95"
+              >
+                <Icon name="close" size={14} className="size-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Quick Primary Action Button (+) */}
+          <button
+            type="button"
+            className="size-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer font-semibold shrink-0 shadow-xs flex items-center justify-center active:scale-95 transition-all"
+            onClick={handleOpenAddModal}
+            title="Add method"
+            aria-label="Add method"
+          >
+            <Icon name="add" size={22} className="size-5.5" />
+          </button>
+        </div>
+
+        {/* Mobile Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 shrink-0">
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={cn(
+                "h-8 px-3.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer select-none shrink-0",
+                activeTab === tab
+                  ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
+                  : "bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted active:bg-muted/90"
+              )}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Table Container */}
-      <div className="border border-border/80 rounded-xl overflow-hidden bg-card flex flex-col flex-1 shadow-xs">
-        {/* Toolbar & Filters */}
-        <div className="flex items-center justify-between border-b border-border/60 bg-card px-3 h-12 shrink-0">
+      <div className="md:border md:border-border/80 md:rounded-lg overflow-hidden md:bg-card/40 md:shadow-xs flex flex-col flex-1 min-h-0 mt-1 sm:mt-2 bg-transparent">
+        {/* Desktop Toolbar & Filters */}
+        <div className="hidden md:flex items-center justify-between border-b border-border/60 bg-muted/20 px-2 h-12 shrink-0">
           <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pr-4 flex-1 min-w-0">
             {TABS.map((tab) => (
               <Button
@@ -298,9 +362,9 @@ export function ShippingView() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+        {/* DESKTOP TABLE */}
+        <div className="hidden md:block overflow-x-auto overflow-y-auto flex-1 -webkit-overflow-scrolling-touch">
+          <table className="w-full text-left text-xs border-collapse min-w-[580px] sm:min-w-full">
             <thead>
               <tr className="border-b border-border/60 text-muted-foreground bg-muted/20 font-medium select-none">
                 <th className="py-3 px-4 w-10">
@@ -436,6 +500,66 @@ export function ShippingView() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* MOBILE FLUID LIST VIEW */}
+        <div className="block md:hidden overflow-y-auto flex-1 divide-y divide-border/40 -webkit-overflow-scrolling-touch">
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, idx) => (
+              <div key={idx} className="py-3.5 px-3.5 flex items-center gap-3.5 animate-pulse">
+                <div className="size-11 bg-muted/60 rounded-xl shrink-0" />
+                <div className="flex-1 flex flex-col gap-2">
+                  <div className="h-4 w-36 bg-muted/60 rounded-full" />
+                  <div className="h-3 w-20 bg-muted/40 rounded-full" />
+                </div>
+              </div>
+            ))
+          ) : filteredMethods.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground font-ui text-xs">
+              No shipping methods found
+            </div>
+          ) : (
+            filteredMethods.map((method) => {
+              const rates = method.rates || {}
+
+              return (
+                <div
+                  key={method.id}
+                  onClick={() => handleOpenEditModal(method)}
+                  className="py-3 px-3.5 flex items-center gap-3.5 hover:bg-muted/30 active:bg-muted/50 transition-colors cursor-pointer"
+                >
+                  <div className="size-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                    <Icon name="local_shipping" size={20} className="size-5 text-primary" />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h2 className="font-medium text-[13.5px] leading-snug text-foreground truncate">
+                        {method.name}
+                      </h2>
+                      {method.isDefault && (
+                        <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.2 rounded font-medium shrink-0">
+                          Default
+                        </span>
+                      )}
+                      <StatusBadge isActive={method.isActive} />
+                    </div>
+                    <div className="flex items-center gap-2 text-[11.5px] text-muted-foreground/80 mt-0.5 truncate">
+                      <span>{method.estimatedDays}</span>
+                      <span>•</span>
+                      <span className="font-mono font-medium text-foreground/80">SAR {rates.SAR ?? 0}</span>
+                    </div>
+                  </div>
+
+                  <Icon
+                    name="chevron_right"
+                    size={16}
+                    className="text-muted-foreground/30 size-4 shrink-0"
+                  />
+                </div>
+              )
+            })
+          )}
         </div>
       </div>
 

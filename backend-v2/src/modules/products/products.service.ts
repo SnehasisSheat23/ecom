@@ -82,16 +82,28 @@ export class ProductsService {
 
   async createProduct(input: CreateProductInput) {
     const sku = input.sku || `SKU-${Date.now()}`
-    const title = input.title || sku
-    const description = input.description || ''
-    const slug = input.slug || (input.translations?.en?.slug) || sku.toLowerCase()
+    const title = input.title || input.translations?.en?.title || sku
+    const description = input.description || input.translations?.en?.description || ''
+    const slug = input.slug || input.translations?.en?.slug || (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : sku.toLowerCase())
 
-    const translations = input.translations || {
+    const translations = {
+      ...(input.translations || {}),
       en: {
+        ...(input.translations?.en || {}),
         title,
+        name: title,
         description,
         slug,
       },
+      ...(input.translations?.ar ? {
+        ar: {
+          ...input.translations.ar,
+          title: (input.translations.ar as any).title || (input.translations.ar as any).name || '',
+          name: (input.translations.ar as any).name || (input.translations.ar as any).title || '',
+          description: (input.translations.ar as any).description || '',
+          slug: (input.translations.ar as any).slug || slug,
+        }
+      } : {}),
     }
 
     const pricing = this.formatPricingMap(
@@ -122,7 +134,7 @@ export class ProductsService {
         images,
       })
       .returning()
-    return this.formatProduct(product, 'en', 'AED')
+    return this.formatProduct(product, 'en', 'SAR')
   }
 
   async getProducts(options: {
@@ -130,22 +142,28 @@ export class ProductsService {
     currency?: 'AED' | 'SAR' | 'INR' | 'GBP' | 'USD' | 'EUR' | string
     q?: string
     status?: string
+    categoryId?: string
+    sort?: string
     limit?: number
     page?: number
   }) {
     const lang = options.lang || 'en'
-    const currency = options.currency || 'AED'
+    const currency = options.currency || 'SAR'
     const limit = options.limit || 50
     const page = options.page || 1
     const offset = (page - 1) * limit
 
     const conditions = []
-    if (options.status) {
+    if (options.status && options.status.toLowerCase() !== 'all') {
       conditions.push(eq(products.status, options.status.toLowerCase()))
     }
 
+    if (options.categoryId && options.categoryId.toLowerCase() !== 'all') {
+      conditions.push(eq(products.categoryId, options.categoryId))
+    }
+
     if (options.q) {
-      const searchPattern = `%${options.q}%`
+      const searchPattern = `%${options.q.trim()}%`
       conditions.push(
         or(
           ilike(products.sku, searchPattern),
@@ -155,15 +173,40 @@ export class ProductsService {
       )
     }
 
-    const items = await this.db
-      .select()
-      .from(products)
-      .where(conditions.length ? sql.join(conditions, sql` AND `) : undefined)
-      .limit(limit)
-      .offset(offset)
+    const whereClause = conditions.length ? sql.join(conditions, sql` AND `) : undefined
 
+    let orderByClause = sql`v2_products.created_at DESC`
+    if (options.sort === 'title_asc' || options.sort === 'title-asc') {
+      orderByClause = sql`COALESCE(v2_products.translations->'en'->>'title', v2_products.sku) ASC`
+    } else if (options.sort === 'title_desc' || options.sort === 'title-desc') {
+      orderByClause = sql`COALESCE(v2_products.translations->'en'->>'title', v2_products.sku) DESC`
+    } else if (options.sort === 'price_asc' || options.sort === 'price-asc') {
+      orderByClause = sql`CAST(COALESCE(v2_products.pricing->${currency}->>'price', '0') AS NUMERIC) ASC`
+    } else if (options.sort === 'price_desc' || options.sort === 'price-desc') {
+      orderByClause = sql`CAST(COALESCE(v2_products.pricing->${currency}->>'price', '0') AS NUMERIC) DESC`
+    } else if (options.sort === 'status_asc' || options.sort === 'status-asc') {
+      orderByClause = sql`v2_products.status ASC`
+    } else if (options.sort === 'status_desc' || options.sort === 'status-desc') {
+      orderByClause = sql`v2_products.status DESC`
+    }
+
+    const [items, [countRes]] = await Promise.all([
+      this.db
+        .select()
+        .from(products)
+        .where(whereClause)
+        .orderBy(orderByClause)
+        .limit(limit)
+        .offset(offset),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(products)
+        .where(whereClause),
+    ])
+
+    const total = Number(countRes?.count || 0)
     const formatted = await Promise.all(items.map((p) => this.formatProduct(p, lang, currency)))
-    return { items: formatted, page, limit, total: formatted.length }
+    return { items: formatted, page, limit, total }
   }
 
   async getProductByIdOrSlug(idOrSlug: string, lang: 'en' | 'ar' = 'en', currency: string = 'SAR') {
@@ -189,31 +232,40 @@ export class ProductsService {
     return this.formatProduct(item[0], lang, currency)
   }
 
-  async updateProduct(id: string, input: Partial<CreateProductInput> & { variants?: any[]; metaTitle?: string; metaDescription?: string }) {
+  async updateProduct(id: string, input: Partial<CreateProductInput> & { variants?: any[]; metaTitle?: string; metaDescription?: string; arabicTitle?: string; arabicDescription?: string }) {
     const [existing] = await this.db.select().from(products).where(eq(products.id, id)).limit(1)
     if (!existing) return null
 
-    const updatedTranslations = existing.translations || {}
-    if (input.title || input.description || input.slug) {
-      updatedTranslations.en = {
-        title: input.title || updatedTranslations.en?.title || existing.sku,
-        description: input.description || updatedTranslations.en?.description || '',
-        slug: input.slug || updatedTranslations.en?.slug || existing.sku.toLowerCase(),
-      }
+    const updatedTranslations = JSON.parse(JSON.stringify(existing.translations || {}))
+    const existingEn = (updatedTranslations.en || {}) as any
+    const existingAr = (updatedTranslations.ar || {}) as any
+
+    const titleEn = input.title !== undefined ? input.title : ((input.translations?.en as any)?.title || (input.translations?.en as any)?.name || existingEn.title || existingEn.name || existing.sku)
+    const descEn = input.description !== undefined ? input.description : (input.translations?.en?.description !== undefined ? input.translations?.en?.description : (existingEn.description || ''))
+    const slugEn = input.slug || input.translations?.en?.slug || existingEn.slug || (titleEn ? titleEn.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : existing.sku.toLowerCase())
+
+    updatedTranslations.en = {
+      ...existingEn,
+      ...(input.translations?.en || {}),
+      title: titleEn,
+      name: titleEn,
+      description: descEn,
+      slug: slugEn,
     }
-    if (input.translations) {
-      Object.assign(updatedTranslations, input.translations)
-      if (input.translations.ar) {
-        const arData = input.translations.ar as any
-        const existingAr = (updatedTranslations.ar || {}) as any
-        updatedTranslations.ar = {
-          ...existingAr,
-          ...arData,
-          title: arData.title || arData.name || existingAr.title || '',
-          name: arData.name || arData.title || existingAr.name || '',
-          description: arData.description !== undefined ? arData.description : (existingAr.description || ''),
-          slug: arData.slug || existingAr.slug || existing.sku.toLowerCase(),
-        }
+
+    if (input.translations?.ar || input.arabicTitle !== undefined || input.arabicDescription !== undefined) {
+      const arData = (input.translations?.ar || {}) as any
+      const titleAr = input.arabicTitle !== undefined ? input.arabicTitle : (arData.title || arData.name || existingAr.title || existingAr.name || '')
+      const descAr = input.arabicDescription !== undefined ? input.arabicDescription : (arData.description !== undefined ? arData.description : (existingAr.description || ''))
+      const slugAr = arData.slug || existingAr.slug || slugEn
+
+      updatedTranslations.ar = {
+        ...existingAr,
+        ...arData,
+        title: titleAr,
+        name: titleAr,
+        description: descAr,
+        slug: slugAr,
       }
     }
 

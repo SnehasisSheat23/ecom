@@ -109,3 +109,79 @@ ordersRoutes.patch('/:id/status', async (c) => {
     return c.json({ success: false, error: err.message || 'Failed to update order status' }, 400)
   }
 })
+
+// GET /api/v1/orders/:id/verify-payment - Real-time settlement verification with NalPay
+ordersRoutes.get('/:id/verify-payment', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const result = await ordersService.verifyNalPayPayment(id)
+    return c.json({ success: true, ...result })
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message || 'Payment verification failed' }, 400)
+  }
+})
+
+// POST /api/v1/orders/webhook/nalpay - Asynchronous NalPay gateway webhook
+ordersRoutes.post('/webhook/nalpay', async (c) => {
+  try {
+    const rawBody = await c.req.text()
+    const signatureHeader = c.req.header('Nalpay-Signature') || ''
+    const webhookSecret = process.env.NALPAY_WEBHOOK_SECRET
+
+    // Signature verification (when secret is configured in environment)
+    if (webhookSecret) {
+      const parts = Object.fromEntries(
+        signatureHeader.split(',').map((p) => p.split('=', 2))
+      )
+      const t = Number(parts.t)
+      if (!t || !parts.v1) {
+        return c.text('Missing signature parameters', 400)
+      }
+      if (Math.abs(Math.floor(Date.now() / 1000) - t) > 300) {
+        return c.text('Signature timestamp expired', 400)
+      }
+      const crypto = await import('crypto')
+      const expected = crypto.default
+        .createHmac('sha256', webhookSecret)
+        .update(`${t}.${rawBody}`, 'utf8')
+        .digest('hex')
+
+      const a = Buffer.from(expected, 'utf8')
+      const b = Buffer.from(parts.v1, 'utf8')
+      if (a.length !== b.length || !crypto.default.timingSafeEqual(a, b)) {
+        return c.text('Invalid signature', 400)
+      }
+    }
+
+    const event = JSON.parse(rawBody)
+    console.log(`[NalPay Webhook] Received event: ${event.type}`, event.id)
+
+    if (event.type === 'payment_paid') {
+      const paymentData = event.data || {}
+      const orderId = paymentData.metadata?.orderId
+      const plinkId = paymentData.payment_link
+
+      if (orderId) {
+        await ordersService.confirmPaidOrder(orderId, paymentData)
+      } else if (plinkId) {
+        const db = (await import('../../lib/db.js')).getDatabase()
+        const { orders } = await import('../../database/schema.js')
+        const { sql } = await import('drizzle-orm')
+        const [matchedOrder] = await db
+          .select()
+          .from(orders)
+          .where(sql`(${orders.shippingAddressSnapshot}->>'nalpayPaymentLinkId') = ${plinkId}`)
+          .limit(1)
+
+        if (matchedOrder) {
+          await ordersService.confirmPaidOrder(matchedOrder.id, paymentData)
+        }
+      }
+    }
+
+    return c.json({ received: true })
+  } catch (err: any) {
+    console.error('[NalPay Webhook Error]:', err.message)
+    return c.json({ error: err.message }, 400)
+  }
+})

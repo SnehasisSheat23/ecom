@@ -379,19 +379,19 @@ export function CustomerDetails({ id }: { id: string }) {
   return (
     <div className="flex flex-col h-full font-ui min-h-0">
       {/* Top Navigation / Header */}
-      <div className="bg-background/95 pt-6 pb-2.5 px-6 md:px-8 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3.5">
+      <div className="bg-background/95 pt-3 pb-2 sm:pt-6 sm:pb-2.5 px-3 sm:px-6 md:px-8 flex items-center justify-between shrink-0 border-b border-border/40">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
           <Link
             href={isCorporate ? "/dashboard/customers/corporate" : "/dashboard/customers"}
-            className="text-muted-foreground hover:text-foreground duration-200 flex items-center justify-center size-8 rounded-lg hover:bg-muted/60 transition-colors"
+            className="text-muted-foreground hover:text-foreground duration-200 flex items-center justify-center size-8 rounded-lg hover:bg-muted/60 transition-colors shrink-0"
           >
             <Icon name="arrow_back" className="size-5 text-[20px]" />
           </Link>
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold font-heading text-foreground tracking-tight leading-none">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
+            <h2 className="text-base sm:text-xl font-bold font-heading text-foreground tracking-tight leading-none truncate max-w-[140px] sm:max-w-md">
               {customer.companyName || customer.name}
             </h2>
-            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider ${
+            <span className={`text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider ${
               customer.customerGroup === "corporate" 
                 ? "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
                 : customer.customerGroup === "wholesale"
@@ -401,7 +401,7 @@ export function CustomerDetails({ id }: { id: string }) {
               {customer.customerGroup || "retail"}
             </span>
             {customer.status === "suspended" && (
-              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+              <span className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
                 Suspended
               </span>
             )}
@@ -462,10 +462,10 @@ export function CustomerDetails({ id }: { id: string }) {
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 md:px-8 md:pb-8 pt-1.5 flex flex-col lg:flex-row gap-6 items-start">
+      <div className="flex-1 overflow-y-auto px-3 pb-6 sm:px-6 md:px-8 md:pb-8 pt-3 sm:pt-1.5 flex flex-col lg:flex-row gap-4 sm:gap-6 items-start">
         
         {/* Left Column */}
-        <div className="flex-1 w-full flex flex-col gap-6">
+        <div className="flex-1 w-full flex flex-col gap-4 sm:gap-6">
           
           {/* General Information Card */}
           <Card>

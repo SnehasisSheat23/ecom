@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { eq, or, sql, desc, asc } from 'drizzle-orm'
 import { getDatabase } from '../../lib/db.js'
 import { orders, orderItems, products, customers } from '../../database/schema.js'
@@ -56,7 +57,7 @@ export class OrdersService {
     }
   }
 
-  async createOrder(input: CreateOrderInput) {
+  async createOrder(input: CreateOrderInput): Promise<any> {
     const currency = (input.currency || 'SAR').toUpperCase()
 
     if (!input.items || input.items.length === 0) {
@@ -203,9 +204,17 @@ export class OrdersService {
     const nextSeq = await this.getNextOrderSequence()
     const isB2BQuote = Boolean(input.quotationId)
     const orderNumber = isB2BQuote ? `ORD-Q-${nextSeq}` : `ORD-${nextSeq}`
-    const initialStatus = paymentMethodType === 'CREDIT_TERMS' || paymentMethodType === 'PURCHASE_ORDER'
-      ? 'processing'
-      : (paymentMethodType === 'BANK_TRANSFER' ? 'pending_payment' : 'pending')
+
+    const isOnlinePayment = paymentMethodType === 'CARD' || 
+                            paymentMethodType === 'MADA' || 
+                            paymentMethodType === 'APPLE_PAY' || 
+                            (input.paymentMethod && input.paymentMethod.toUpperCase() === 'NALPAY')
+
+    const initialStatus = isOnlinePayment 
+      ? 'checkout_pending' 
+      : (paymentMethodType === 'CREDIT_TERMS' || paymentMethodType === 'PURCHASE_ORDER'
+          ? 'processing'
+          : (paymentMethodType === 'BANK_TRANSFER' ? 'pending_payment' : 'pending'))
 
     const shippingSnapshot = {
       ...(input.shippingAddressSnapshot || {}),
@@ -251,12 +260,14 @@ export class OrdersService {
         totalPrice: item.totalPrice.toFixed(2),
       })
 
-      if (item.productId && item.productId !== '00000000-0000-0000-0000-000000000000') {
+      // ONLY deduct stock immediately if NOT an unconfirmed online checkout!
+      // (For online payments, stock is safely deducted once payment is confirmed)
+      if (initialStatus !== 'checkout_pending' && item.productId && item.productId !== '00000000-0000-0000-0000-000000000000') {
         try {
           await this.db
             .update(products)
             .set({
-              stockQuantity: sql`${products.stockQuantity} - ${item.quantity}`,
+              stockQuantity: sql`GREATEST(0, ${products.stockQuantity} - ${item.quantity})`,
               updatedAt: new Date(),
             })
             .where(eq(products.id, item.productId))
@@ -266,10 +277,64 @@ export class OrdersService {
       }
     }
 
+    // Generate NalPay payment link if online card payment
+    let paymentLinkUrl: string | null = null
+    let nalpayPaymentLinkId: string | null = null
+
+    if (isOnlinePayment) {
+      try {
+        const nalpayKey = process.env.NALPAY_SECRET_KEY || 'sk_test_lRKb9Q1jp6pjmxOHE5IFP5oPXd1YdE3r'
+        const nalpayAmountHalalas = Math.round(totalAmount * 100)
+        const nalpayRes = await fetch('https://nalpay.io/v1/payment_links', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${nalpayKey}`,
+            'Content-Type': 'application/json',
+            'Idempotency-Key': crypto.randomUUID(),
+          },
+          body: JSON.stringify({
+            amount: nalpayAmountHalalas,
+            currency: (currency || 'SAR').toUpperCase(),
+            description: `Order #${orderNumber}`,
+            metadata: {
+              orderNumber,
+              orderId: newOrder.id,
+              customerId: input.customerId || null,
+            },
+          }),
+        })
+
+        if (nalpayRes.ok) {
+          const nalpayData: any = await nalpayRes.json()
+          paymentLinkUrl = nalpayData.url || null
+          nalpayPaymentLinkId = nalpayData.id || null
+          
+          const updatedSnapshot = {
+            ...shippingSnapshot,
+            nalpayPaymentLinkId,
+            nalpayUrl: paymentLinkUrl,
+          }
+
+          await this.db
+            .update(orders)
+            .set({ 
+              paymentReceiptUrl: paymentLinkUrl,
+              shippingAddressSnapshot: updatedSnapshot,
+            })
+            .where(eq(orders.id, newOrder.id))
+        } else {
+          const errText = await nalpayRes.text()
+          console.error('[NalPay] Link creation failed:', nalpayRes.status, errText)
+        }
+      } catch (err: any) {
+        console.error('[NalPay] Error communicating with NalPay API:', err.message)
+      }
+    }
+
     const createdOrder = await this.getOrderById(newOrder.id)
 
-    // Fire-and-forget notification dispatch
-    if (createdOrder) {
+    // Fire-and-forget notification dispatch (only for non-pending checkouts)
+    if (createdOrder && initialStatus !== 'checkout_pending') {
       const custObj = (createdOrder as any).customer
       const shipSnap = (createdOrder.shippingAddressSnapshot as any) || {}
       const customerName = custObj?.firstName
@@ -306,7 +371,11 @@ export class OrdersService {
       })
     }
 
-    return createdOrder
+    return {
+      ...(createdOrder || newOrder),
+      paymentUrl: paymentLinkUrl,
+      nalpayPaymentLinkId,
+    }
   }
 
   async getOrders(options: {
@@ -333,6 +402,9 @@ export class OrdersService {
       } else {
         conditions.push(sql`${orders.status} IN (${sql.join(statuses.map((s) => sql`${s}`), sql`, `)})`)
       }
+    } else {
+      // By default, exclude uncommitted checkout pending attempts from standard order queues
+      conditions.push(sql`lower(${orders.status}) != 'checkout_pending'`)
     }
     if (options.customerId && options.email) {
       const em = options.email.trim().toLowerCase()
@@ -576,5 +648,162 @@ export class OrdersService {
     }
 
     return updated
+  }
+
+  /**
+   * Idempotently confirm a paid order:
+   * 1. Updates status to 'confirmed'
+   * 2. Safely decrements inventory (GREATEST(0, stock - qty))
+   * 3. Converts customer cart
+   * 4. Dispatches official ORDER_PLACED notification
+   */
+  async confirmPaidOrder(orderId: string, paymentDetails?: any) {
+    const [order] = await this.db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`)
+    }
+
+    const currentStatus = (order.status || '').toLowerCase()
+    // Idempotency check: if already confirmed or fulfilled, return existing full order
+    if (['confirmed', 'paid', 'processing', 'shipped', 'delivered'].includes(currentStatus)) {
+      return this.getOrderById(orderId)
+    }
+
+    const shipSnap = (order.shippingAddressSnapshot as any) || {}
+    const updatedShipSnap = {
+      ...shipSnap,
+      paymentConfirmedAt: new Date().toISOString(),
+      nalpayTransaction: paymentDetails || null,
+    }
+
+    // 1. Update order status to confirmed
+    await this.db
+      .update(orders)
+      .set({
+        status: 'confirmed',
+        shippingAddressSnapshot: updatedShipSnap,
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, orderId))
+
+    // 2. Safely deduct inventory for all order items
+    const items = await this.db.select().from(orderItems).where(eq(orderItems.orderId, orderId))
+    for (const item of items) {
+      if (item.productId && item.productId !== '00000000-0000-0000-0000-000000000000') {
+        try {
+          await this.db
+            .update(products)
+            .set({
+              stockQuantity: sql`GREATEST(0, ${products.stockQuantity} - ${item.quantity})`,
+              updatedAt: new Date(),
+            })
+            .where(eq(products.id, item.productId))
+        } catch (err) {
+          console.warn(`[Inventory] Stock deduction failed for product ${item.productId}:`, err)
+        }
+      }
+    }
+
+    // 3. Mark customer cart as converted and clear items
+    if (order.customerId) {
+      try {
+        const { carts, cartItems } = await import('../../database/schema.js')
+        const [customerCart] = await this.db.select().from(carts).where(eq(carts.customerId, order.customerId)).limit(1)
+        if (customerCart) {
+          await this.db.update(carts).set({ status: 'converted', updatedAt: new Date() }).where(eq(carts.id, customerCart.id))
+          await this.db.delete(cartItems).where(eq(cartItems.cartId, customerCart.id))
+        }
+      } catch (cartErr) {
+        console.warn('[Cart] Cart conversion skipped:', cartErr)
+      }
+    }
+
+    // 4. Dispatch Official Order Confirmed notification
+    const fullOrder = await this.getOrderById(orderId)
+    if (fullOrder) {
+      const custObj = (fullOrder as any).customer
+      const snapshot = (fullOrder.shippingAddressSnapshot as any) || {}
+      const customerName = custObj?.firstName
+        ? `${custObj.firstName} ${custObj.lastName || ''}`.trim()
+        : (snapshot.fullName || snapshot.recipientName || 'Valued Customer')
+      const customerEmail = custObj?.email || snapshot.email || 'customer@example.com'
+      const customerPhone = custObj?.phone || snapshot.phone || null
+
+      notify('ORDER_PLACED', {
+        orderNumber: fullOrder.orderNumber,
+        customerName,
+        customerEmail,
+        customerPhone,
+        totalAmount: fullOrder.totalAmount,
+        subtotal: fullOrder.subtotal,
+        shippingCost: fullOrder.shippingCost,
+        currency: fullOrder.currency,
+        paymentMethod: 'NalPay (Mada / Visa / Apple Pay)',
+        shippingAddress: [
+          snapshot.addressLine1 || snapshot.address,
+          snapshot.city,
+          snapshot.country,
+        ].filter(Boolean).join(', '),
+        items: (fullOrder.items || []).map((item: any) => ({
+          name: item.title || item.name || 'Product Item',
+          quantity: item.quantity,
+          unitPrice: Number(item.unitPrice || 0),
+          totalPrice: Number(item.totalPrice || 0),
+          sku: item.sku,
+          image: item.image,
+        })),
+      })
+    }
+
+    return fullOrder
+  }
+
+  /**
+   * Verify an order's payment status with NalPay gateway
+   */
+  async verifyNalPayPayment(orderId: string) {
+    const [order] = await this.db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`)
+    }
+
+    const currentStatus = (order.status || '').toLowerCase()
+    if (['confirmed', 'paid', 'processing', 'shipped', 'delivered'].includes(currentStatus)) {
+      const fullOrder = await this.getOrderById(orderId)
+      return { paid: true, status: order.status, order: fullOrder }
+    }
+
+    const shipSnap = (order.shippingAddressSnapshot as any) || {}
+    const plinkId = shipSnap.nalpayPaymentLinkId
+
+    if (!plinkId) {
+      const fullOrder = await this.getOrderById(orderId)
+      return { paid: false, status: order.status, order: fullOrder }
+    }
+
+    try {
+      const nalpayKey = process.env.NALPAY_SECRET_KEY || 'sk_test_lRKb9Q1jp6pjmxOHE5IFP5oPXd1YdE3r'
+      const res = await fetch(`https://nalpay.io/v1/payment_links/${plinkId}`, {
+        headers: {
+          'Authorization': `Bearer ${nalpayKey}`,
+        },
+      })
+
+      if (res.ok) {
+        const plinkData = await res.json() as any
+        const isPaid = plinkData.status === 'paid' || (plinkData.amount_paid && plinkData.amount_paid >= plinkData.amount)
+        if (isPaid) {
+          const confirmed = await this.confirmPaidOrder(orderId, plinkData)
+          return { paid: true, status: 'confirmed', order: confirmed }
+        }
+      } else {
+        console.warn(`[NalPay] Verification returned status ${res.status} for link ${plinkId}`)
+      }
+    } catch (err: any) {
+      console.error('[NalPay] Payment verification request failed:', err.message)
+    }
+
+    const fullOrder = await this.getOrderById(orderId)
+    return { paid: false, status: order.status, order: fullOrder }
   }
 }

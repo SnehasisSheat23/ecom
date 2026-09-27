@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { MobileBottomNav } from "@/components/shared/mobile-bottom-nav"
 
 export default function DashboardLayout({
   children,
@@ -20,14 +21,27 @@ export default function DashboardLayout({
 
     if (!session || !token) {
       router.replace("/")
-      setTimeout(() => {
-        setIsAuthenticated(false)
-      }, 0)
-    } else {
-      setTimeout(() => {
-        setIsAuthenticated(true)
-      }, 0)
+      setIsAuthenticated(false)
+      return
     }
+
+    // Verify token validity with backend
+    import("@/lib/api-client").then(({ apiRequest }) => {
+      apiRequest("/auth/admin/me")
+        .then((res) => {
+          if (!res.ok) {
+            localStorage.removeItem("user_session")
+            localStorage.removeItem("access_token")
+            router.replace("/")
+            setIsAuthenticated(false)
+          } else {
+            setIsAuthenticated(true)
+          }
+        })
+        .catch(() => {
+          setIsAuthenticated(true)
+        })
+    })
   }, [router])
 
   if (!isAuthenticated) {
@@ -51,9 +65,12 @@ export default function DashboardLayout({
       }
     >
       <AppSidebar variant="inset" />
-      <SidebarInset className="h-svh md:h-[calc(100svh-0.5rem)] overflow-hidden flex flex-col">
+      <SidebarInset className="h-svh md:h-[calc(100svh-0.5rem)] overflow-hidden flex flex-col min-w-0 pb-16 md:pb-0">
         {children}
       </SidebarInset>
+
+      {/* Sleek Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </SidebarProvider>
   )
 }

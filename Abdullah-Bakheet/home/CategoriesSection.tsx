@@ -10,12 +10,12 @@ export default function CategoriesSection() {
     const t = isArabic ? translations.ar.categories : translations.en.categories;
 
     const listCategories = [
-        { label: t.list.ketchup, href: '/products?category=KETCHUP' },
-        { label: t.list.vinegar, href: '/products?category=VINEGAR' },
-        { label: t.list.pickles, href: '/products?category=PICKLES' },
-        { label: t.list.cannedVeg, href: '/products?category=CANNED+FRUITS+%26+VEGETABLES' },
-        { label: t.list.oils, href: '/products?category=OILS' },
-        { label: t.list.sauces, href: '/products?category=SAUCES+%26+DRESSING' },
+        { label: t.list.ketchup, href: '/products?category=ketchup-condiments' },
+        { label: t.list.vinegar, href: '/products?category=vinegars' },
+        { label: t.list.pickles, href: '/products?category=pickles-relishes' },
+        { label: t.list.cannedVeg, href: '/products?category=canned-vegetables' },
+        { label: t.list.oils, href: '/products?category=cooking-oils' },
+        { label: t.list.sauces, href: '/products?category=sauces-condiments' },
     ];
 
     const categoryCards = [
@@ -23,25 +23,25 @@ export default function CategoriesSection() {
             title: t.cards.frenchFriesTitle,
             desc: t.cards.frenchFriesDesc,
             img: '/images/5a78966bd8e588d4e65dd42f970c206cab2fdbe8.png',
-            href: '/products?category=FRENCH+FRIES',
+            href: '/products?category=potatoes-fries',
         },
         {
             title: t.cards.dryCondimentsTitle,
             desc: t.cards.dryCondimentsDesc,
             img: '/images/b35bcfd42719c75ce2155e5f4945742b75bce429.jpg',
-            href: '/products?category=POWDERED+SPICES',
+            href: '/products?category=dry-condiments',
         },
         {
             title: t.cards.frozenItemsTitle,
             desc: t.cards.frozenItemsDesc,
             img: '/images/7a6cf875bde1e758b5dfefad9585ab5111043dbf.png',
-            href: '/products?category=PICKLES',
+            href: '/products?category=frozen-foods',
         },
         {
             title: t.cards.seasoningsTitle,
             desc: t.cards.seasoningsDesc,
             img: '/images/5ea614e80b1750a6948242606b397619384dd64d.png',
-            href: '/products?category=SAUCES+%26+DRESSING',
+            href: '/products?category=seasoning-blends',
         },
     ];
 

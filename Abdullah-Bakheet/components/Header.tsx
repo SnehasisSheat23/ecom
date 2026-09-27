@@ -223,7 +223,7 @@ export default function Header() {
                         >
                             <HeartIcon size={22} className="text-white" />
                             {wishlistCount > 0 && (
-                                <span className="absolute -top-1.5 -right-2 bg-white text-brand-dark text-[9px] font-bold h-3.5 w-3.5 rounded-full flex items-center justify-center">
+                                <span className="absolute -top-1.5 -right-2 bg-white text-brand-dark text-[9px] font-bold min-w-[16px] h-[16px] px-1 rounded-full flex items-center justify-center leading-none shadow-xs">
                                     {wishlistCount}
                                 </span>
                             )}

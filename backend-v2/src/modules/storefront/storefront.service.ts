@@ -159,7 +159,14 @@ export class StorefrontService {
       .limit(limit)
       .offset(offset)
 
-    const formatted = await Promise.all(items.map((p) => this.formatProduct(p, lang, currency)))
+    // Batch fetch all categories in a single query to eliminate N+1 latency
+    const allCategories = await this.db.select().from(categories)
+    const categoryMap = new Map<string, typeof categories.$inferSelect>()
+    for (const c of allCategories) {
+      categoryMap.set(c.id, c)
+    }
+
+    const formatted = items.map((p) => this.formatProductSync(p, lang, currency, categoryMap))
 
     return {
       items: formatted,
@@ -197,7 +204,15 @@ export class StorefrontService {
       return null
     }
 
-    return this.formatProduct(product, lang, currency)
+    const categoryMap = new Map<string, typeof categories.$inferSelect>()
+    if (product.categoryId) {
+      const [cat] = await this.db.select().from(categories).where(eq(categories.id, product.categoryId)).limit(1)
+      if (cat) {
+        categoryMap.set(cat.id, cat)
+      }
+    }
+
+    return this.formatProductSync(product, lang, currency, categoryMap)
   }
 
   /**
@@ -232,7 +247,12 @@ export class StorefrontService {
     }
   }
 
-  private async formatProduct(product: typeof products.$inferSelect, lang: 'en' | 'ar', currency: string) {
+  private formatProductSync(
+    product: typeof products.$inferSelect,
+    lang: 'en' | 'ar',
+    currency: string,
+    categoryMap: Map<string, typeof categories.$inferSelect>
+  ) {
     const translations = (product.translations || {}) as Record<string, { title?: string; name?: string; description?: string; slug?: string }>
     const langData = translations[lang] || translations['en'] || translations['ar'] || {}
 
@@ -244,7 +264,7 @@ export class StorefrontService {
     let categoryName = '-'
     let categorySlug = ''
     if (product.categoryId) {
-      const [cat] = await this.db.select().from(categories).where(eq(categories.id, product.categoryId)).limit(1)
+      const cat = categoryMap.get(product.categoryId)
       if (cat) {
         const catTrans = (cat.translations || {}) as Record<string, { name?: string; slug?: string }>
         categoryName = catTrans[lang]?.name || catTrans['en']?.name || '-'

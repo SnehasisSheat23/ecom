@@ -264,16 +264,15 @@ export function PartnersView() {
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 pt-4 lg:px-6 lg:pt-6 pb-0 max-w-full h-full min-h-0 font-ui">
+    <div className="flex flex-col gap-3 sm:gap-4 px-3 pt-3 sm:px-4 sm:pt-4 lg:px-6 lg:pt-6 pb-0 max-w-full h-full min-h-0 font-ui">
       
       {/* Header section with title and actions */}
-      <div className="flex items-center justify-between pb-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Partners</h1>
+      <div className="flex items-center justify-between pb-1 sm:pb-2 gap-2">
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Partners</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-9 text-sm px-3.5 font-medium shadow-xs">Export</Button>
           <Button 
             size="sm"
-            className="h-9 text-sm px-4 shadow-xs bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer font-medium"
+            className="h-8 text-xs px-3 sm:px-4 shadow-xs bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer font-medium"
             onClick={handleOpenAddModal}
           >
             Add partner
@@ -373,8 +372,8 @@ export function PartnersView() {
         </div>
 
         {/* Main Table Area */}
-        <div className="flex-1 overflow-auto">
-          <table className="w-full text-left border-collapse text-sm font-ui">
+        <div className="flex-1 overflow-x-auto overflow-y-auto -webkit-overflow-scrolling-touch">
+          <table className="w-full text-left border-collapse text-sm font-ui min-w-[650px] sm:min-w-full">
             <thead className="sticky top-0 bg-card backdrop-blur-xs font-ui text-xs font-semibold text-muted-foreground border-b border-border/60 z-10">
               <tr>
                 <th className="w-10 px-4 py-3 text-center">

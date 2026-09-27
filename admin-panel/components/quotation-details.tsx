@@ -218,30 +218,30 @@ export function QuotationDetails({ id }: { id: string }) {
   return (
     <div className="flex flex-col h-full font-ui min-h-0">
       {/* Top Header Bar */}
-      <div className="bg-background/95 pt-6 pb-2.5 px-6 md:px-8 flex items-center justify-between gap-3.5 shrink-0 ">
-        <div className="flex items-center gap-3.5">
+      <div className="bg-background/95 pt-3 pb-2 sm:pt-6 sm:pb-2.5 px-3 sm:px-6 md:px-8 flex items-center justify-between gap-2.5 sm:gap-3.5 shrink-0 border-b border-border/40">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
           <Link
             href="/dashboard/quotations"
-            className="text-muted-foreground hover:text-foreground duration-200 flex items-center justify-center size-8 rounded-lg hover:bg-muted/60 transition-colors"
+            className="text-muted-foreground hover:text-foreground duration-200 flex items-center justify-center size-8 rounded-lg hover:bg-muted/60 transition-colors shrink-0"
           >
             <Icon name="arrow_back" className="size-5 text-[20px]" />
           </Link>
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold font-heading text-foreground tracking-tight leading-none font-mono">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
+            <h2 className="text-base sm:text-xl font-bold font-heading text-foreground tracking-tight leading-none font-mono truncate">
               Quote {quotation.quoteNumber}
             </h2>
-            <span className="text-xs text-muted-foreground select-none">
+            <span className="text-[11px] sm:text-xs text-muted-foreground select-none">
               {new Date(quotation.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
             disabled={isSaving}
             onClick={handleSave}
-            className="h-8 shadow-xs rounded-lg text-xs px-4 bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer font-semibold"
+            className="h-8 shadow-xs rounded-lg text-xs px-3 sm:px-4 bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white cursor-pointer font-semibold"
           >
             {isSaving ? (
               <>
@@ -260,7 +260,7 @@ export function QuotationDetails({ id }: { id: string }) {
       </div>
 
       {/* Main Content (Scrollable 2-Column Layout matching order-details.tsx) */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 md:px-8 md:pb-8 pt-2 flex flex-col lg:flex-row gap-6 items-start">
+      <div className="flex-1 overflow-y-auto px-3 pb-6 sm:px-6 md:px-8 md:pb-8 pt-3 sm:pt-2 flex flex-col lg:flex-row gap-4 sm:gap-6 items-start">
         
         {/* Left Column (Products & Pricing Breakdown, Notes) */}
         <div className="flex-1 w-full flex flex-col gap-6">

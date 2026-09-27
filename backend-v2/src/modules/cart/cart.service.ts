@@ -248,8 +248,8 @@ export class CartService {
       )
 
       if (existingMatch) {
-        // DUPLICATE RESOLUTION: Combine quantities and respect MOQ step
-        const combinedQty = existingMatch.quantity + initialAddQty
+        // DUPLICATE RESOLUTION: Use the maximum quantity between guest and saved cart to prevent compounding
+        const combinedQty = Math.max(existingMatch.quantity, initialAddQty)
         const normalizedQty = Math.max(minMoq, combinedQty)
 
         await db

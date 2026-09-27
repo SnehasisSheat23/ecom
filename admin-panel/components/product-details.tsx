@@ -506,6 +506,8 @@ export function ProductDetails({ id }: { id: string }) {
       const patchData = {
         title: product.title,
         description: product.description || null,
+        arabicTitle: product.arabicTitle || "",
+        arabicDescription: product.arabicDescription || "",
         status: (product.status.toLowerCase()) as 'draft' | 'active' | 'archived',
         tags: product.tags || [],
         price: numericActivePrice,
@@ -529,6 +531,12 @@ export function ProductDetails({ id }: { id: string }) {
         metaDescription: product.seo?.description || null,
         translations: {
           ...(product.translations || {}),
+          en: {
+            ...((product.translations?.en as Record<string, any>) || {}),
+            title: product.title,
+            name: product.title,
+            description: product.description || description || "",
+          },
           ar: {
             ...((product.translations?.ar as Record<string, any>) || {}),
             title: product.arabicTitle || "",
@@ -872,16 +880,16 @@ export function ProductDetails({ id }: { id: string }) {
   return (
     <div className="flex flex-col h-full font-ui min-h-0">
       {/* Top Navigation / Header */}
-      <div className="bg-background/95 pt-6 pb-2.5 px-6 md:px-8 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3.5">
+      <div className="bg-background/95 pt-3 pb-2 sm:pt-6 sm:pb-2.5 px-3 sm:px-6 md:px-8 flex items-center justify-between shrink-0 border-b border-border/40">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
           <Link
             href="/dashboard/products"
-            className="text-muted-foreground hover:text-foreground duration-200 flex items-center justify-center size-8 rounded-lg hover:bg-muted/60 transition-colors"
+            className="text-muted-foreground hover:text-foreground duration-200 flex items-center justify-center size-8 rounded-lg hover:bg-muted/60 transition-colors shrink-0"
           >
             <Icon name="arrow_back" className="size-5 text-[20px]" />
           </Link>
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold font-heading text-foreground tracking-tight leading-none">{product.title}</h2>
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <h2 className="text-base sm:text-xl font-bold font-heading text-foreground tracking-tight leading-none truncate max-w-[150px] sm:max-w-md md:max-w-xl">{product.title}</h2>
             <StatusBadge status={product.status} />
           </div>
         </div>
@@ -889,10 +897,10 @@ export function ProductDetails({ id }: { id: string }) {
       </div>
 
       {/* Main Content (Scrollable) */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 md:px-8 md:pb-8 pt-1.5 flex flex-col lg:flex-row gap-6 items-start">
+      <div className="flex-1 overflow-y-auto px-3 pb-24 sm:px-6 md:px-8 md:pb-8 pt-3 sm:pt-1.5 flex flex-col lg:flex-row gap-4 sm:gap-6 items-start">
         
         {/* Left Column */}
-        <div className="flex-1 w-full flex flex-col gap-6">
+        <div className="flex-1 w-full flex flex-col gap-4 sm:gap-6">
           
           {/* General Info Card */}
           <GeneralInfoCard
@@ -953,14 +961,14 @@ export function ProductDetails({ id }: { id: string }) {
           />
 
           {/* Delete Product Section */}
-          <div className="flex justify-between items-center py-5 border-t border-border/80 mt-2">
+          <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3 py-4 sm:py-5 border-t border-border/80 mt-2">
             <div className="flex flex-col gap-0.5 select-none">
               <span className="text-sm font-semibold text-foreground">Delete this product</span>
               <span className="text-xs text-muted-foreground">This action is permanent and cannot be undone.</span>
             </div>
             <Button
               variant="outline"
-              className="h-8 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-950/20 shadow-xs cursor-pointer font-medium"
+              className="h-8 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-950/20 shadow-xs cursor-pointer font-medium text-xs"
               onClick={() => setIsDeleteModalOpen(true)}
             >
               Delete product
@@ -970,7 +978,7 @@ export function ProductDetails({ id }: { id: string }) {
         </div>
 
         {/* Right Column */}
-        <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-6">
+        <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-4 sm:gap-6">
           
           {/* Status Card */}
           <StatusCard
@@ -998,17 +1006,17 @@ export function ProductDetails({ id }: { id: string }) {
 
       {/* Sticky Bottom Save/Discard Bar */}
       <div 
-        className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white/95 dark:bg-zinc-900/95 text-zinc-900 dark:text-zinc-100 px-5 py-3 rounded-xl shadow-xl border border-border/80 backdrop-blur-md flex items-center gap-6 transition-all duration-300 ${
+        className={`fixed bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white/95 dark:bg-zinc-900/95 text-zinc-900 dark:text-zinc-100 px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-xl shadow-2xl border border-border/80 backdrop-blur-md flex flex-row items-center justify-between gap-3 sm:gap-6 w-[calc(100%-1.5rem)] sm:w-auto max-w-lg transition-all duration-300 ${
           hasChanges 
             ? "opacity-100 translate-y-0 pointer-events-auto" 
             : "opacity-0 translate-y-8 pointer-events-none"
         }`}
       >
-        <div className="flex flex-col gap-0.5 select-none">
-          <span className="text-xs font-semibold text-foreground">Unsaved changes</span>
-          <span className="text-[11px] text-muted-foreground">You have unsaved changes on this product.</span>
+        <div className="flex flex-col gap-0.5 select-none min-w-0">
+          <span className="text-xs font-semibold text-foreground truncate">Unsaved changes</span>
+          <span className="text-[11px] text-muted-foreground hidden sm:inline">You have unsaved changes on this product.</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             variant="outline"
             size="sm"

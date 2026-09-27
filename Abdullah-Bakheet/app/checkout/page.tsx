@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useShop } from '@/context/ShopContext';
-import { placeOrderApi, fetchProducts } from '@/lib/api';
+import { placeOrderApi, fetchProducts, verifyOrderPaymentApi } from '@/lib/api';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowUpRightIcon, CheckIcon, CreditCardIcon, XIcon } from 'lucide-animated';
-import { Banknote, ShieldCheck, Smartphone, Sparkles, Loader2 } from 'lucide-react';
+import { Banknote, ShieldCheck, Smartphone, Building2, FileText, Landmark, Loader2, Clock } from 'lucide-react';
 
 export default function CheckoutPage() {
     const {
@@ -25,84 +25,142 @@ export default function CheckoutPage() {
         shippingFormatted,
         selectedShippingMethod,
         selectedShippingMethodId,
-        setSelectedShippingMethodId,
-        shippingMethods,
         isCorporateUser,
     } = useShop();
     const router = useRouter();
 
-    const [firstName, setFirstName] = useState(user?.firstName || 'Abdullah');
-    const [lastName, setLastName] = useState(user?.lastName || 'Bakheet');
-    const [email, setEmail] = useState(user?.email || 'demo@bakheet-ksa.com');
-    const [phone, setPhone] = useState(user?.phone || '+966 50 123 4567');
-    const [street, setStreet] = useState('King Fahd Road, Al Olaya');
-    const [pinCode, setPinCode] = useState('12211');
-    const [city, setCity] = useState('Riyadh');
+    // Customer & Shipping Form state (No hardcoded demo values)
+    const [firstName, setFirstName] = useState(user?.firstName || '');
+    const [lastName, setLastName] = useState(user?.lastName || '');
+    const [email, setEmail] = useState(user?.email || '');
+    const [phone, setPhone] = useState(user?.phone || '');
+    const [street, setStreet] = useState('');
+    const [pinCode, setPinCode] = useState('');
+    const [city, setCity] = useState('');
     const [country, setCountry] = useState('Saudi Arabia');
 
     // Payment Form state
-    const [paymentMethod, setPaymentMethod] = useState<'credit' | 'applepay' | 'cod' | 'credit_terms' | 'purchase_order'>(
-        isCorporateUser ? 'credit_terms' : 'credit'
-    );
+    const [paymentMethod, setPaymentMethod] = useState<'nalpay' | 'cod' | 'bank_transfer' | 'credit_terms' | 'purchase_order'>('nalpay');
     const [poReference, setPoReference] = useState('');
-    const [cardNumber, setCardNumber] = useState('4242 4242 4242 4242');
-    const [cardHolder, setCardHolder] = useState('Abdullah Bakheet');
-    const [expiry, setExpiry] = useState('12/28');
-    const [cvv, setCvv] = useState('123');
 
-    // Fake Gateway Processing state
-    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-    const [paymentStepText, setPaymentStepText] = useState('Initializing Mada / Payment Gateway...');
+    // Submission & state
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [placedOrder, setPlacedOrder] = useState<any | null>(null);
     const [isOrderComplete, setIsOrderComplete] = useState(false);
+    const [isAwaitingNalpayPayment, setIsAwaitingNalpayPayment] = useState(false);
+    const [pendingPaymentUrl, setPendingPaymentUrl] = useState<string | null>(null);
+    const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+    const [pendingOrderNumber, setPendingOrderNumber] = useState<string | null>(null);
+    const [isCheckingPayment, setIsCheckingPayment] = useState(false);
 
     const subtotalConverted = getConvertedPrice(cartTotal);
-    const totalConverted = subtotalConverted + (cart.length > 0 ? shippingCost : 0);
+    const vatRate = currency === 'SAR' ? 0.15 : (currency === 'AED' ? 0.05 : 0);
+    const vatAmount = subtotalConverted * vatRate;
+    const totalConverted = subtotalConverted + (cart.length > 0 ? shippingCost : 0) + vatAmount;
     const currSymbol = (currency === 'SAR' || !currency) ? (language.startsWith('Arabic') ? 'ر.س' : 'SAR') : (currency === 'USD' ? '$' : (currency === 'EUR' ? '€' : (currency === 'INR' ? '₹' : (currency === 'AED' ? 'AED' : 'SAR'))));
     const totalFormatted = `${currSymbol} ${totalConverted.toFixed(2)}`;
+    const vatFormatted = `${currSymbol} ${vatAmount.toFixed(2)}`;
 
-    const handleFillDemoCard = () => {
-        setCardNumber('4242 4242 4242 4242');
-        setCardHolder('Abdullah Bakheet Demo');
-        setExpiry('12/28');
-        setCvv('123');
+    const [isPollingPaused, setIsPollingPaused] = useState(false);
+
+    // Smart Adaptive Polling for NalPay Settlement
+    useEffect(() => {
+        if (!isAwaitingNalpayPayment || !pendingOrderId || isPollingPaused) return;
+
+        let isMounted = true;
+        let pollCount = 0;
+        let timeoutId: NodeJS.Timeout;
+
+        const checkSettlement = async () => {
+            if (!isMounted) return;
+            try {
+                const res = await verifyOrderPaymentApi(pendingOrderId, accessToken || undefined);
+                if (res?.paid && isMounted) {
+                    clearCart();
+                    setIsAwaitingNalpayPayment(false);
+                    try {
+                        localStorage.removeItem('last_nalpay_checkout');
+                    } catch (e) {}
+                    const targetId = res.order?.orderNumber || pendingOrderNumber || pendingOrderId;
+                    router.push(`/orders/${targetId}`);
+                    return;
+                }
+            } catch (err) {
+                console.warn('Adaptive polling check error:', err);
+            }
+
+            pollCount += 1;
+
+            // 10-minute timeout guard: stop after ~60 total checks
+            if (pollCount > 65) {
+                if (isMounted) setIsPollingPaused(true);
+                return;
+            }
+
+            // Adaptive backoff: 4s for first min, 8s until 5 mins, 15s afterwards
+            const nextDelay = pollCount < 15 ? 4000 : (pollCount < 40 ? 8000 : 15000);
+            if (isMounted) {
+                timeoutId = setTimeout(checkSettlement, nextDelay);
+            }
+        };
+
+        // Initial delay before first check
+        timeoutId = setTimeout(checkSettlement, 3500);
+
+        // Immediate check whenever user switches back to this tab
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && isMounted && !isPollingPaused) {
+                checkSettlement();
+            }
+        };
+        window.addEventListener('focus', handleVisibilityChange);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            isMounted = false;
+            clearTimeout(timeoutId);
+            window.removeEventListener('focus', handleVisibilityChange);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [isAwaitingNalpayPayment, pendingOrderId, pendingOrderNumber, isPollingPaused, accessToken, clearCart, router]);
+
+    const handleCheckStatusNow = async () => {
+        if (!pendingOrderId) return;
+        setIsCheckingPayment(true);
+        try {
+            const res = await verifyOrderPaymentApi(pendingOrderId, accessToken || undefined);
+            if (res?.paid) {
+                clearCart();
+                setIsAwaitingNalpayPayment(false);
+                try {
+                    localStorage.removeItem('last_nalpay_checkout');
+                } catch (e) {}
+                const targetId = res.order?.orderNumber || pendingOrderNumber || pendingOrderId;
+                router.push(`/orders/${targetId}`);
+            } else {
+                // If it was paused, resume polling
+                setIsPollingPaused(false);
+                alert(language.startsWith('Arabic')
+                    ? 'لم يتم العثور على تأكيد دفع بعد من نال باي. يرجى إتمام السداد في نافذة الدفع.'
+                    : 'Payment has not been settled on NalPay yet. Please complete the transaction in the NalPay window.');
+            }
+        } catch (err) {
+            console.error('Manual check failed:', err);
+        } finally {
+            setIsCheckingPayment(false);
+        }
     };
 
     const handleCheckout = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
         setErrorMessage(null);
-        setIsProcessingPayment(true);
 
         const countryCode = country === 'Saudi Arabia' ? 'SA' : (country === 'UAE' ? 'AE' : 'IN');
 
-        // Fake Payment Gateway Simulation
         try {
-            setPaymentStepText('Connecting to Mada / Saudi Card Secure Gateway...');
-            await new Promise(r => setTimeout(r, 600));
-
-            if (paymentMethod === 'credit_terms') {
-                setPaymentStepText(`Authorizing Corporate Net 30 Credit (${formatPrice(user?.availableCredit || 0)} available)...`);
-                await new Promise(r => setTimeout(r, 600));
-            } else if (paymentMethod === 'purchase_order') {
-                setPaymentStepText(`Validating Purchase Order Invoice (${poReference || 'PO-DIRECT'})...`);
-                await new Promise(r => setTimeout(r, 600));
-            } else if (paymentMethod === 'credit') {
-                setPaymentStepText(`Verifying Mada / Credit Card (${cardNumber.slice(-4) || '4242'})...`);
-                await new Promise(r => setTimeout(r, 600));
-            } else if (paymentMethod === 'applepay') {
-                setPaymentStepText('Authorizing 1-Tap Apple Pay Demo...');
-                await new Promise(r => setTimeout(r, 600));
-            } else {
-                setPaymentStepText('Securing Cash on Delivery Order...');
-                await new Promise(r => setTimeout(r, 600));
-            }
-
-            setPaymentStepText('Authorizing payment & creating order in backend-v2...');
-
-            // Resolve fresh live DB product IDs and include item details so unitPrice and image are never lost
+            // Resolve fresh live DB product IDs and include item details
             const freshProducts = await fetchProducts({ limit: 100, currency }).catch(() => []);
             const validItems = cart.map(i => {
                 const matchedProduct = freshProducts.find(p =>
@@ -122,9 +180,12 @@ export default function CheckoutPage() {
                 };
             });
 
-            const resolvedPaymentType = paymentMethod === 'credit_terms' 
-                ? 'CREDIT_TERMS' 
-                : (paymentMethod === 'purchase_order' ? 'PURCHASE_ORDER' : paymentMethod.toUpperCase());
+            let resolvedPaymentType = 'CARD';
+            if (paymentMethod === 'nalpay') resolvedPaymentType = 'CARD';
+            else if (paymentMethod === 'cod') resolvedPaymentType = 'COD';
+            else if (paymentMethod === 'bank_transfer') resolvedPaymentType = 'BANK_TRANSFER';
+            else if (paymentMethod === 'credit_terms') resolvedPaymentType = 'CREDIT_TERMS';
+            else if (paymentMethod === 'purchase_order') resolvedPaymentType = 'PURCHASE_ORDER';
 
             const orderPayload: any = {
                 currency: (currency || 'SAR').toUpperCase(),
@@ -132,9 +193,9 @@ export default function CheckoutPage() {
                 shippingCost: shippingCost,
                 shippingAddressSnapshot: {
                     fullName: `${firstName} ${lastName}`.trim() || 'Customer',
-                    line1: street || 'Street address',
-                    city: city || 'Dubai',
-                    state: city || 'Dubai',
+                    line1: street || 'Address',
+                    city: city || 'Riyadh',
+                    state: city || 'Riyadh',
                     postalCode: pinCode || '00000',
                     country: countryCode,
                     phone: phone || null,
@@ -145,24 +206,81 @@ export default function CheckoutPage() {
                 paymentMethodType: resolvedPaymentType,
                 poNumber: poReference || undefined,
                 notes: paymentMethod === 'credit_terms' 
-                    ? `Billed to Corporate Net 30 Credit Line (${user?.companyName || 'Corporate Client'})`
-                    : (paymentMethod === 'purchase_order' ? `Purchase Order Invoice: ${poReference || 'PO-DEFAULT'}` : `Fake Payment Provider Demo Gateway - Method: ${paymentMethod.toUpperCase()}`),
+                    ? `Corporate Net 30 Credit Line (${user?.companyName || 'Corporate Client'})`
+                    : (paymentMethod === 'purchase_order' 
+                        ? `Purchase Order: ${poReference || 'N/A'}` 
+                        : (paymentMethod === 'nalpay' ? 'Payment Gateway: NalPay' : `Payment: ${paymentMethod.toUpperCase()}`)),
                 items: validItems,
             };
 
             const result = await placeOrderApi(orderPayload, guestSessionId, accessToken || undefined);
             
-            setPaymentStepText('Payment Approved! Finalizing receipt...');
-            await new Promise(r => setTimeout(r, 400));
+            let paymentUrl = result?.paymentUrl || result?.order?.paymentUrl || result?.paymentLink || result?.order?.paymentReceiptUrl || result?.order?.paymentLink;
+            
+            // Client fallback to ensure NalPay link is always generated and ready
+            if (!paymentUrl && paymentMethod === 'nalpay') {
+                try {
+                    const nalpayKey = 'sk_test_lRKb9Q1jp6pjmxOHE5IFP5oPXd1YdE3r';
+                    const nalpayAmountHalalas = Math.round(totalConverted * 100);
+                    const orderId = result?.orderNumber || result?.order?.orderNumber || result?.id || result?.order?.id || 'ORD-NEW';
+                    const nRes = await fetch('https://nalpay.io/v1/payment_links', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${nalpayKey}`,
+                            'Content-Type': 'application/json',
+                            'Idempotency-Key': typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `idemp-${Date.now()}-${Math.random()}`,
+                        },
+                        body: JSON.stringify({
+                            amount: nalpayAmountHalalas,
+                            currency: (currency || 'SAR').toUpperCase(),
+                            description: `Order #${orderId}`,
+                            metadata: { orderNumber: orderId },
+                        }),
+                    });
+                    if (nRes.ok) {
+                        const nData = await nRes.json();
+                        paymentUrl = nData.url;
+                    }
+                } catch (e) {
+                    console.error('NalPay fallback generation:', e);
+                }
+            }
 
-            setPlacedOrder(result?.order || result);
+            const orderData = result?.order || result;
+            const orderIdVal = orderData?.id || result?.id || '';
+            const orderNumberVal = orderData?.orderNumber || result?.orderNumber || orderIdVal || 'ORD-NEW';
+
+            if (paymentUrl && paymentMethod === 'nalpay') {
+                setPlacedOrder(orderData);
+                setPendingPaymentUrl(paymentUrl);
+                setPendingOrderId(orderIdVal);
+                setPendingOrderNumber(orderNumberVal);
+                setIsAwaitingNalpayPayment(true);
+
+                try {
+                    localStorage.setItem('last_nalpay_checkout', JSON.stringify({
+                        orderId: orderIdVal,
+                        orderNumber: orderNumberVal,
+                        paymentUrl,
+                        totalFormatted,
+                        createdAt: new Date().toISOString(),
+                    }));
+                } catch (storageErr) {
+                    console.warn('Storage save failed:', storageErr);
+                }
+
+                // Open NalPay in a dedicated, secure payment tab
+                window.open(paymentUrl, '_blank', 'noopener,noreferrer');
+                return;
+            }
+
             clearCart();
+            setPlacedOrder(result?.order || result);
             setIsOrderComplete(true);
         } catch (err: any) {
             console.error('Order placement error:', err);
-            setErrorMessage(err.message || 'Failed to place order. Please try again.');
+            setErrorMessage(err.message || 'Failed to place order. Please check details and try again.');
         } finally {
-            setIsProcessingPayment(false);
             setIsSubmitting(false);
         }
     };
@@ -190,7 +308,7 @@ export default function CheckoutPage() {
         );
     }
 
-    if (cart.length === 0 && !isOrderComplete) {
+    if (cart.length === 0 && !isOrderComplete && !isAwaitingNalpayPayment) {
         return (
             <div className="min-h-screen bg-[#fcfcfc] flex flex-col items-center justify-center p-4">
                 <h1 className="text-3xl font-bold mb-4">Your Cart is Empty</h1>
@@ -198,6 +316,92 @@ export default function CheckoutPage() {
                 <Link href="/products" className="bg-[#1a2b25] text-white px-8 py-3 rounded-full font-bold">
                     Return to Shop
                 </Link>
+            </div>
+        );
+    }
+
+    // Really simple, clean full-page awaiting payment state matching the website design
+    if (isAwaitingNalpayPayment) {
+        return (
+            <div className="w-full bg-[#f8f9fa] min-h-screen text-black font-sans pb-24">
+                {/* Header Section */}
+                <div className="pt-20 pb-8 flex justify-center items-center px-4">
+                    <h1 className="font-heading text-3xl md:text-5xl uppercase text-[#1a2b25] tracking-wider text-center">
+                        PAYMENT IN PROGRESS
+                    </h1>
+                </div>
+
+                <div className="max-w-md mx-auto px-4">
+                    <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center space-y-6 shadow-xs">
+                        
+                        <div className="w-14 h-14 rounded-full bg-gray-50 border border-gray-200 text-[#1a2b25] flex items-center justify-center mx-auto">
+                            <CreditCardIcon size={24} />
+                        </div>
+
+                        <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                                Order #{pendingOrderNumber}
+                            </p>
+                            <h2 className="text-2xl font-bold text-[#1a2b25] mt-1">
+                                Complete Payment on NalPay
+                            </h2>
+                            <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                                A secure payment window has been opened for <span className="font-bold text-gray-900">{totalFormatted}</span>.
+                                <br />
+                                Once you complete payment, this page will automatically confirm your order.
+                            </p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex items-center justify-between text-left">
+                            <div>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Reference</p>
+                                <p className="text-xs font-mono font-bold text-gray-900">{pendingOrderNumber}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Amount to Pay</p>
+                                <p className="text-base font-black text-[#1a2b25]">{totalFormatted}</p>
+                                <p className="text-[10px] text-gray-500 font-medium">Includes 15% VAT & Delivery</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 pt-2">
+                            {pendingPaymentUrl && (
+                                <a
+                                    href={pendingPaymentUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full bg-[#1a2b25] hover:bg-black text-white py-3.5 rounded-lg font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                                >
+                                    <span>Open Payment Window</span>
+                                    <ArrowUpRightIcon size={14} />
+                                </a>
+                            )}
+
+                            <button
+                                onClick={handleCheckStatusNow}
+                                disabled={isCheckingPayment}
+                                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-2"
+                            >
+                                {isCheckingPayment ? (
+                                    <>
+                                        <Loader2 size={14} className="animate-spin text-gray-600" />
+                                        <span>Checking Status...</span>
+                                    </>
+                                ) : (
+                                    <span>I Have Completed Payment</span>
+                                )}
+                            </button>
+
+                            <button
+                                onClick={() => setIsAwaitingNalpayPayment(false)}
+                                className="text-xs text-gray-400 hover:text-black transition-colors pt-2 block mx-auto underline cursor-pointer"
+                            >
+                                Return to Checkout Form
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
             </div>
         );
     }
@@ -215,6 +419,12 @@ export default function CheckoutPage() {
             {/* Main Checkout Area */}
             <div className="max-w-[1200px] mx-auto px-4">
                 
+                {errorMessage && (
+                    <div className="mb-8 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center justify-between">
+                        <span>{errorMessage}</span>
+                        <button onClick={() => setErrorMessage(null)} className="text-red-500 hover:text-red-700 font-bold">✕</button>
+                    </div>
+                )}
 
                 <form onSubmit={handleCheckout} className="flex flex-col lg:flex-row gap-10">
                     
@@ -231,36 +441,36 @@ export default function CheckoutPage() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
                                 <div className="space-y-2">
-                                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">First Name</label>
-                                    <input required type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="First name" />
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">First Name *</label>
+                                    <input required type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full bg-white border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400 shadow-xs" placeholder="First name" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Last Name</label>
-                                    <input required type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Last name" />
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">Last Name *</label>
+                                    <input required type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full bg-white border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400 shadow-xs" placeholder="Last name" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Email</label>
-                                    <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="abc@gmail.com" />
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">Email Address *</label>
+                                    <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-white border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400 shadow-xs" placeholder="name@example.com" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Phone</label>
-                                    <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="+966 50 123 4567" />
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">Phone Number *</label>
+                                    <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400 shadow-xs" placeholder="+966 50 000 0000" />
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">Street Address *</label>
+                                    <input required type="text" value={street} onChange={(e) => setStreet(e.target.value)} className="w-full bg-white border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400 shadow-xs" placeholder="Street name, Building No., District" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Street</label>
-                                    <input required type="text" value={street} onChange={(e) => setStreet(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="King Fahd Road, Al Olaya" />
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">Postal / Zip Code</label>
+                                    <input type="text" value={pinCode} onChange={(e) => setPinCode(e.target.value)} className="w-full bg-white border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400 shadow-xs" placeholder="e.g. 12211" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Pin Code</label>
-                                    <input required type="text" value={pinCode} onChange={(e) => setPinCode(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="12211" />
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">City *</label>
+                                    <input required type="text" value={city} onChange={(e) => setCity(e.target.value)} className="w-full bg-white border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400 shadow-xs" placeholder="City name" />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">City</label>
-                                    <input required type="text" value={city} onChange={(e) => setCity(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm" placeholder="Riyadh" />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Country</label>
-                                    <select value={country} onChange={(e) => setCountry(e.target.value)} className="w-full bg-white border border-gray-100 rounded-md p-3 text-sm focus:outline-none focus:border-gray-300 shadow-sm appearance-none">
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">Country *</label>
+                                    <select value={country} onChange={(e) => setCountry(e.target.value)} className="w-full bg-white border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400 shadow-xs">
                                         <option>Saudi Arabia</option>
                                         <option>UAE</option>
                                         <option>India</option>
@@ -269,218 +479,19 @@ export default function CheckoutPage() {
                             </div>
                         </section>
 
-                        {/* CHECKOUT INFORMATION (Fake Payment Provider Demo) */}
+                        {/* PAYMENT METHOD */}
                         <section>
                             <div className="py-3 px-6 mb-4 inline-block">
                                 <h2 className="font-heading text-3xl md:text-5xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none pt-2">
-                                    PAYMENT PROVIDER
+                                    PAYMENT METHOD
                                 </h2>
                             </div>
 
-                            <p className="text-xs text-gray-500 mb-6 font-medium flex items-center gap-1.5">
-                                <ShieldCheck size={14} className="text-emerald-600" />
-                                Simulated payment gateway.
-                            </p>
-
-                            <div className="flex flex-wrap gap-3 mb-8">
-                                {isCorporateUser && (
-                                    <button 
-                                        type="button"
-                                        onClick={() => setPaymentMethod('credit_terms')}
-                                        className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors cursor-pointer ${
-                                            paymentMethod === 'credit_terms' 
-                                                ? 'bg-emerald-800 text-white shadow-sm' 
-                                                : 'bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100'
-                                        }`}
-                                    >
-                                        🏢 Corporate Net 30 Credit
-                                    </button>
-                                )}
-
-                                {isCorporateUser && (
-                                    <button 
-                                        type="button"
-                                        onClick={() => setPaymentMethod('purchase_order')}
-                                        className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors cursor-pointer ${
-                                            paymentMethod === 'purchase_order' 
-                                                ? 'bg-[#1a2b25] text-white shadow-sm' 
-                                                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
-                                        }`}
-                                    >
-                                        📑 Purchase Order (PO)
-                                    </button>
-                                )}
-
-                                <button 
-                                    type="button"
-                                    onClick={() => setPaymentMethod('credit')}
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors cursor-pointer ${
-                                        paymentMethod === 'credit' 
-                                            ? 'bg-[#fbdc3c] text-black shadow-sm' 
-                                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    <CreditCardIcon size={16} /> Mada / Card Gateway
-                                </button>
-
-                                <button 
-                                    type="button"
-                                    onClick={() => setPaymentMethod('applepay')}
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors cursor-pointer ${
-                                        paymentMethod === 'applepay' 
-                                            ? 'bg-[#fbdc3c] text-black shadow-sm' 
-                                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    <Smartphone size={16} /> Apple Pay 1-Tap
-                                </button>
-
-                                <button 
-                                    type="button"
-                                    onClick={() => setPaymentMethod('cod')}
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-colors cursor-pointer ${
-                                        paymentMethod === 'cod' 
-                                            ? 'bg-[#fbdc3c] text-black shadow-sm' 
-                                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    <Banknote size={16} /> Cash on Delivery
-                                </button>
+                            <div className="flex flex-wrap gap-3 mb-6">
+                                <div className="flex items-center gap-2 px-6 py-3.5 rounded-full font-black text-xs md:text-sm bg-[#fbdc3c] text-black shadow-xs">
+                                    <CreditCardIcon size={16} /> NalPay (Mada / Cards / Apple Pay)
+                                </div>
                             </div>
-
-                            {/* Corporate Net 30 Credit Panel */}
-                            {paymentMethod === 'credit_terms' && (
-                                <div className="space-y-4 bg-emerald-50/80 p-6 rounded-xl border border-emerald-200 shadow-xs text-xs text-emerald-950">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-base font-bold text-emerald-950">🏢 Net 30 Corporate Credit Line</h3>
-                                        <span className="bg-emerald-200 text-emerald-900 font-bold px-2 py-0.5 rounded text-[11px]">AUTHORIZED</span>
-                                    </div>
-                                    <p className="text-emerald-800 leading-relaxed">
-                                        This order will be automatically authorized against your corporate credit line with Net 30 settlement terms. An official commercial invoice will be generated upon fulfillment.
-                                    </p>
-                                    <div className="pt-3 border-t border-emerald-200/80 flex items-center justify-between font-bold text-emerald-900 text-sm">
-                                        <span>Available Credit Balance:</span>
-                                        <span>{formatPrice(user?.availableCredit || 0)}</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Purchase Order Panel */}
-                            {paymentMethod === 'purchase_order' && (
-                                <div className="space-y-4 bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-xs text-xs">
-                                    <h3 className="text-base font-bold text-gray-900">📑 Purchase Order (PO) Reference</h3>
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
-                                            Internal PO Reference Number *
-                                        </label>
-                                        <input 
-                                            required
-                                            type="text"
-                                            value={poReference}
-                                            onChange={e => setPoReference(e.target.value)}
-                                            placeholder="e.g. PO-2026-ALM-4401"
-                                            className="w-full bg-white border border-gray-300 rounded-md p-3 text-xs focus:outline-none focus:border-[#1a2b25]"
-                                        />
-                                    </div>
-                                    <p className="text-gray-500 text-[11px]">
-                                        Your purchasing department will receive the commercial invoice linked to this PO number.
-                                    </p>
-                                </div>
-                            )}
-
-                            {paymentMethod === 'credit' && (
-                                <div className="space-y-6 bg-white p-6 rounded-xl border border-gray-100 shadow-xs">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <h3 className="text-lg font-bold text-black">Mada & Credit Card Gateway</h3>
-                                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">ZATCA & PCI-DSS</span>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={handleFillDemoCard}
-                                            className="text-xs text-amber-900 bg-amber-100 hover:bg-amber-200 font-bold px-3 py-1.5 rounded-md flex items-center gap-1 transition-colors"
-                                        >
-                                             Fill Demo Card
-                                        </button>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
-                                        <div className="space-y-2 col-span-1 md:col-span-2">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Card Number</label>
-                                            <div className="relative">
-                                                <input 
-                                                    required 
-                                                    type="text" 
-                                                    value={cardNumber} 
-                                                    onChange={(e) => setCardNumber(e.target.value)} 
-                                                    className="w-full bg-gray-50 border border-gray-200 rounded-md p-3 text-sm font-mono tracking-wider focus:outline-none focus:border-gray-400" 
-                                                    placeholder="4242 4242 4242 4242" 
-                                                />
-                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500">
-                                                    <CheckIcon size={16} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Card Holder</label>
-                                            <input 
-                                                required 
-                                                type="text" 
-                                                value={cardHolder} 
-                                                onChange={(e) => setCardHolder(e.target.value)} 
-                                                className="w-full bg-gray-50 border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400" 
-                                                placeholder="Card Holder Name" 
-                                            />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Expiry</label>
-                                                <input 
-                                                    required 
-                                                    type="text" 
-                                                    value={expiry} 
-                                                    onChange={(e) => setExpiry(e.target.value)} 
-                                                    className="w-full bg-gray-50 border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400" 
-                                                    placeholder="12/28" 
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">CVV</label>
-                                                <input 
-                                                    required 
-                                                    type="text" 
-                                                    value={cvv} 
-                                                    onChange={(e) => setCvv(e.target.value)} 
-                                                    className="w-full bg-gray-50 border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:border-gray-400" 
-                                                    placeholder="123" 
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {paymentMethod === 'applepay' && (
-                                <div className="bg-black text-white p-6 rounded-xl text-center space-y-4">
-                                    <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mx-auto">
-                                        <Smartphone size={24} />
-                                    </div>
-                                    <h4 className="font-bold text-lg">Apple Pay Demo Authorization</h4>
-                                    <p className="text-xs text-gray-400 max-w-sm mx-auto">
-                                        1-Tap Instant Demo Authentication enabled. Click BUY NOW to simulate TouchID / FaceID payment authorization.
-                                    </p>
-                                </div>
-                            )}
-
-                            {paymentMethod === 'cod' && (
-                                <div className="bg-amber-50 border border-amber-200 text-amber-900 p-6 rounded-xl text-center space-y-2">
-                                    <h4 className="font-bold text-base">Cash on Delivery</h4>
-                                    <p className="text-xs text-amber-800">
-                                        Pay via Cash, Card, or Business Check upon delivery at your warehouse or restaurant.
-                                    </p>
-                                </div>
-                            )}
-
                         </section>
                     </div>
 
@@ -534,6 +545,10 @@ export default function CheckoutPage() {
                                     </div>
                                     <span className="font-semibold text-black">{shippingFormatted}</span>
                                 </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-600 font-medium">VAT (15%)</span>
+                                    <span className="font-semibold text-black">{vatFormatted}</span>
+                                </div>
                             </div>
 
                             <div className="border-t border-gray-100 pt-6 mb-8 flex justify-between items-end">
@@ -544,15 +559,15 @@ export default function CheckoutPage() {
                             <button 
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-black transition-colors group disabled:opacity-50"
+                                className="w-full bg-[#1a2b25] text-white py-4 rounded-md font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-black transition-colors group disabled:opacity-50 cursor-pointer"
                             >
                                 {isSubmitting ? (
                                     <span className="flex items-center gap-2">
-                                        <Loader2 size={16} className="animate-spin" /> PROCESSING...
+                                        <Loader2 size={16} className="animate-spin" /> PLACING ORDER...
                                     </span>
                                 ) : (
                                     <>
-                                        BUY NOW (DEMO GATEWAY)
+                                        PLACE ORDER
                                         <ArrowUpRightIcon size={16} className="text-gray-400 group-hover:text-white transition-colors" />
                                     </>
                                 )}
@@ -564,26 +579,7 @@ export default function CheckoutPage() {
                 </form>
             </div>
 
-            {/* Fake Payment Gateway Processing Overlay */}
-            {isProcessingPayment && !isOrderComplete && (
-                <div className="fixed inset-0 z-[120] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center space-y-6 shadow-2xl border border-gray-100">
-                        <div className="relative w-16 h-16 mx-auto">
-                            <div className="absolute inset-0 rounded-full border-4 border-amber-300 border-t-brand-dark animate-spin" />
-                            <div className="absolute inset-0 flex items-center justify-center font-bold text-xs">
-                                🔒
-                            </div>
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-lg text-gray-900 mb-1">Mada / Card Gateway</h3>
-                            <p className="text-xs text-gray-500 font-medium">{paymentStepText}</p>
-                        </div>
-                        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                            <div className="bg-[#fbdc3c] h-full animate-pulse w-3/4 rounded-full" />
-                        </div>
-                    </div>
-                </div>
-            )}
+
 
             {/* Order Complete Success Receipt Overlay */}
             {isOrderComplete && (
@@ -606,24 +602,24 @@ export default function CheckoutPage() {
                             </div>
                             
                             <h2 className="font-heading text-4xl uppercase tracking-normal text-black transform scale-y-110 origin-bottom leading-none mb-2 pt-2">
-                                Order Completed
+                                Order Placed Successfully
                             </h2>
                             <p className="text-xs text-gray-500 mb-6 font-medium">
-                                Demo Payment Provider Gateway transaction approved!
+                                Your order has been recorded and is now being processed.
                             </p>
 
                             <div className="w-full border border-gray-100 bg-gray-50/50 rounded-lg p-5 mb-6 space-y-3.5 text-left">
                                 <div className="flex justify-between items-start border-b border-gray-200/60 pb-3">
                                     <div>
                                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1">Status</p>
-                                        <div className="bg-[#fbdc3c] text-black text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 w-fit">
-                                            {placedOrder?.status || 'PAID (DEMO)'} <CheckIcon size={12} />
+                                        <div className="bg-emerald-100 text-emerald-900 text-[11px] font-bold px-2.5 py-0.5 rounded flex items-center gap-1 w-fit uppercase">
+                                            {placedOrder?.status || 'CONFIRMED'} <CheckIcon size={12} />
                                         </div>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1">Order ID</p>
                                         <p className="text-[12px] font-bold text-gray-900 font-mono truncate max-w-[150px]">
-                                            {placedOrder?.orderNumber || placedOrder?.id || 'ABLH-ORDER-OK'}
+                                            {placedOrder?.orderNumber || placedOrder?.id || 'ORD-PLACED'}
                                         </p>
                                     </div>
                                 </div>
@@ -644,7 +640,11 @@ export default function CheckoutPage() {
                                 </div>
                                 <div className="flex justify-between items-center text-sm font-medium text-gray-700">
                                     <span>Payment Method</span>
-                                    <span className="font-semibold text-black capitalize">{paymentMethod === 'credit' ? 'Mada / Card Gateway' : paymentMethod}</span>
+                                    <span className="font-semibold text-black capitalize">
+                                        {paymentMethod === 'nalpay' 
+                                            ? 'NalPay Gateway' 
+                                            : (paymentMethod === 'bank_transfer' ? 'Bank Transfer' : paymentMethod)}
+                                    </span>
                                 </div>
                             </div>
 
@@ -672,3 +672,4 @@ export default function CheckoutPage() {
         </div>
     );
 }
+

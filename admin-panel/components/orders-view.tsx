@@ -3,24 +3,23 @@
 import * as React from "react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { useRouter } from "next/navigation"
-import ordersData from "@/app/dashboard/orders.json"
 import { apiRequest } from "@/lib/api-client"
 import { OrdersStats, type OrderSummaryStatsProps } from "@/components/orders-stats"
 import { toast } from "sonner"
 import { formatPrice } from "@/lib/currency"
+import { cn } from "@/lib/utils"
+import { ResponsiveDataView, type ColumnDef, type SortOption } from "@/components/shared/responsive-data-view"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuCheckboxItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
+import { ShoppingBag } from "lucide-react"
 
 interface Customer {
   name: string
@@ -45,36 +44,57 @@ interface Order {
 
 const TABS = ["All", "Pending & Processing", "Delivered", "B2B Quotations"]
 
+const SORT_OPTIONS: SortOption[] = [
+  { label: "Date (Newest first)", value: "date-desc" },
+  { label: "Date (Oldest first)", value: "date-asc" },
+  { label: "Order # (High to Low)", value: "id-desc" },
+  { label: "Order # (Low to High)", value: "id-asc" },
+  { label: "Total (High to Low)", value: "total-desc" },
+  { label: "Total (Low to High)", value: "total-asc" },
+]
+
 const formatRelativeDate = (dateString: string) => {
   const date = new Date(dateString)
   const now = new Date()
-  
-  const timeFormatter = new Intl.DateTimeFormat('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
+
+  const timeFormatter = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
   })
-  
-  const timeString = timeFormatter.format(date).toLowerCase().replace('am', 'a.m').replace('pm', 'p.m')
-  
-  const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
-  
+
+  const timeString = timeFormatter
+    .format(date)
+    .toLowerCase()
+    .replace("am", "a.m")
+    .replace("pm", "p.m")
+
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear()
+
   const yesterday = new Date(now)
   yesterday.setDate(now.getDate() - 1)
-  const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear()
-  
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear()
+
   if (isToday) return `Today at ${timeString}`
   if (isYesterday) return `Yesterday at ${timeString}`
-  
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + ` at ${timeString}`
+
+  return (
+    date.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
+    ` at ${timeString}`
+  )
 }
 
 const formatOrderId = (id: string) => {
-  if (!id) return ''
-  const clean = id.replace(/^#/, '')
-  // If it's a long timestamp like ORD-1790471675829-4143, shorten display to #ORD-4143
-  if (clean.includes('-') && clean.length > 15) {
-    const parts = clean.split('-')
+  if (!id) return ""
+  const clean = id.replace(/^#/, "")
+  if (clean.includes("-") && clean.length > 15) {
+    const parts = clean.split("-")
     return `#${parts[0]}-${parts[parts.length - 1]}`
   }
   return `#${clean}`
@@ -85,7 +105,11 @@ function StatusBadge({ status }: { status: string }) {
   let bgColor = "bg-muted text-muted-foreground"
   let label = status || "Pending"
 
-  if (clean === "pending" || clean === "pending_payment" || clean === "payment pending") {
+  if (
+    clean === "pending" ||
+    clean === "pending_payment" ||
+    clean === "payment pending"
+  ) {
     bgColor = "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
     label = "Pending"
   } else if (clean === "processing") {
@@ -97,7 +121,11 @@ function StatusBadge({ status }: { status: string }) {
   } else if (clean === "shipped" || clean === "out_for_delivery") {
     bgColor = "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
     label = "Shipped"
-  } else if (clean === "delivered" || clean === "fulfilled" || clean === "paid") {
+  } else if (
+    clean === "delivered" ||
+    clean === "fulfilled" ||
+    clean === "paid"
+  ) {
     bgColor = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
     label = "Delivered"
   } else if (clean === "cancelled" || clean === "refunded") {
@@ -106,7 +134,9 @@ function StatusBadge({ status }: { status: string }) {
   }
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md font-medium text-[11px] ${bgColor}`}>
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-md font-medium text-[11px] ${bgColor}`}
+    >
       {label}
     </span>
   )
@@ -129,7 +159,8 @@ interface BackendOrderSummary {
 
 const mapBackendOrderToFrontend = (item: BackendOrderSummary): Order => {
   let paymentStatus: "Paid" | "Pending" | "Refunded" = "Pending"
-  let fulfillmentStatus: "Fulfilled" | "Unfulfilled" | "Partially Fulfilled" = "Unfulfilled"
+  let fulfillmentStatus: "Fulfilled" | "Unfulfilled" | "Partially Fulfilled" =
+    "Unfulfilled"
 
   const rawStatus = (item.status || "PENDING").toUpperCase()
   if (rawStatus === "DELIVERED" || rawStatus === "SHIPPED") {
@@ -170,13 +201,12 @@ export function OrdersView() {
   const router = useRouter()
   const [mounted, setMounted] = React.useState(false)
 
-  // Search, Filter, Sort States
+  // Search & Filter States
   const [searchQuery, setSearchQuery] = React.useState("")
-  const [isSearchVisible, setIsSearchVisible] = React.useState(false)
-  const [sortField, setSortField] = React.useState<keyof Order | "customer">("date")
-  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc")
-  const [paymentFilter, setPaymentFilter] = React.useState<"All" | "Paid" | "Pending" | "Refunded">("All")
-  const [fulfillmentFilter, setFulfillmentFilter] = React.useState<"All" | "Fulfilled" | "Unfulfilled" | "Partially Fulfilled">("All")
+  const [debouncedSearch, setDebouncedSearch] = React.useState(searchQuery)
+  const [activeSort, setActiveSort] = React.useState("date-desc")
+  const [paymentFilter, setPaymentFilter] = React.useState<string>("All")
+  const [fulfillmentFilter, setFulfillmentFilter] = React.useState<string>("All")
   const [timeFilter, setTimeFilter] = React.useState<"today" | "7days" | "30days" | "all">("all")
 
   // Pagination States
@@ -185,7 +215,6 @@ export function OrdersView() {
   const [totalOrders, setTotalOrders] = React.useState(0)
   const [summaryStats, setSummaryStats] = React.useState<OrderSummaryStatsProps | null>(null)
   const [tenantCurrency, setTenantCurrency] = React.useState<string>("SAR")
-  const [debouncedSearch, setDebouncedSearch] = React.useState(searchQuery)
 
   React.useEffect(() => {
     const handler = setTimeout(() => {
@@ -195,13 +224,10 @@ export function OrdersView() {
     return () => clearTimeout(handler)
   }, [searchQuery])
 
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setMounted(true)
-      setIsLoading(true)
-    }, 0)
+  const loadOrders = React.useCallback(() => {
+    setMounted(true)
+    setIsLoading(true)
 
-    // Build query params
     const params = new URLSearchParams()
     params.set("page", currentPage.toString())
     params.set("perPage", pageSize.toString())
@@ -210,7 +236,6 @@ export function OrdersView() {
       params.set("search", debouncedSearch.trim())
     }
 
-    // Map active tab to status filter
     if (activeTab === "B2B Quotations") {
       params.set("search", "ORD-Q-")
     } else if (activeTab === "Pending & Processing") {
@@ -219,7 +244,6 @@ export function OrdersView() {
       params.set("status", "DELIVERED,SHIPPED")
     }
 
-    // Dropdown filters mapping
     if (paymentFilter !== "All") {
       if (paymentFilter === "Paid") {
         params.set("status", "CONFIRMED,PROCESSING,SHIPPED,DELIVERED")
@@ -238,33 +262,25 @@ export function OrdersView() {
       }
     }
 
-    // Time filter mapping
-    if (timeFilter !== "all") {
-      params.set("timeFilter", timeFilter)
-    }
+    const [field, order] = activeSort.split("-")
+    let mappedSortField = "date"
+    if (field === "total") mappedSortField = "total"
+    else if (field === "id") mappedSortField = "id"
 
-    // Map sort fields
-    let mappedSortField: "date" | "total" | "id" = "date"
-    if (sortField === "total") {
-      mappedSortField = "total"
-    } else if (sortField === "id") {
-      mappedSortField = "id"
-    }
     params.set("sortBy", mappedSortField)
-    params.set("sortOrder", sortOrder)
+    params.set("sortOrder", order || "desc")
 
     apiRequest(`/admin/orders/list-summary?${params.toString()}`)
       .then((res) => {
-        if (res.ok) {
-          return res.json()
-        }
+        if (res.ok) return res.json()
         throw new Error("Failed to fetch orders from backend")
       })
       .then((json) => {
         const backendItems = json.data?.items || []
         const total = json.data?.total || 0
         const stats = json.data?.stats
-        const currency = json.data?.currency || backendItems[0]?.currency || "SAR"
+        const currency =
+          json.data?.currency || backendItems[0]?.currency || "SAR"
         const mapped = backendItems.map(mapBackendOrderToFrontend)
         setOrders(mapped)
         setTotalOrders(total)
@@ -280,541 +296,320 @@ export function OrdersView() {
       .finally(() => {
         setIsLoading(false)
       })
+  }, [currentPage, pageSize, debouncedSearch, activeTab, paymentFilter, fulfillmentFilter, activeSort])
 
-    return () => clearTimeout(timer)
-  }, [currentPage, pageSize, debouncedSearch, activeTab, paymentFilter, fulfillmentFilter, sortField, sortOrder, timeFilter])
+  React.useEffect(() => {
+    loadOrders()
+  }, [loadOrders])
 
-  // Reset page when filter states change is now handled in event handlers directly to prevent cascading renders.
-
-  const filteredOrders = orders
-  const timeFilteredOrders = orders
-
-  // Bulk Actions
+  // Bulk actions
   const handleBulkMarkAsPaid = () => {
-    setOrders(prev =>
-      prev.map(o => (selectedRows.has(o.id) ? { ...o, paymentStatus: "Paid" as const } : o))
+    setOrders((prev) =>
+      prev.map((o) =>
+        selectedRows.has(o.id)
+          ? { ...o, paymentStatus: "Paid" as const }
+          : o
+      )
     )
     toast.success(`Marked ${selectedRows.size} orders as Paid`)
     setSelectedRows(new Set())
   }
 
-  const handleBulkMarkAsFulfilled = () => {
-    setOrders(prev =>
-      prev.map(o => (selectedRows.has(o.id) ? { ...o, fulfillmentStatus: "Fulfilled" as const } : o))
-    )
-    toast.success(`Marked ${selectedRows.size} orders as Fulfilled`)
-    setSelectedRows(new Set())
-  }
-
-  const handleBulkDelete = () => {
-    setOrders(prev => prev.filter(o => !selectedRows.has(o.id)))
-    toast.success(`Deleted ${selectedRows.size} orders`)
-    setSelectedRows(new Set())
-  }
-
-
-
-  // Row Selection Handlers
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      const allFilteredIds = filteredOrders.map(o => o.id)
-      setSelectedRows(new Set(allFilteredIds))
-    } else {
-      setSelectedRows(new Set())
-    }
-  }
-
-  const handleSelectRow = (orderId: string, checked: boolean) => {
-    const newSelection = new Set(selectedRows)
-    if (checked) {
-      newSelection.add(orderId)
-    } else {
-      newSelection.delete(orderId)
-    }
-    setSelectedRows(newSelection)
-  }
-
-  const toggleSort = (field: keyof Order | "customer") => {
-    if (sortField === field) {
-      setSortOrder(prev => (prev === "asc" ? "desc" : "asc"))
-    } else {
-      setSortField(field)
-      setSortOrder("asc")
-    }
-  }
-
-  const renderSortIcon = (field: keyof Order | "customer") => {
-    if (sortField !== field) {
-      return <Icon name="swap_vert" size={14} className="size-3.5! text-muted-foreground opacity-30 hover:opacity-100 transition-opacity ml-0.5" />
-    }
-    return sortOrder === "asc"
-      ? <Icon name="arrow_upward" size={14} className="size-3.5! text-foreground font-semibold ml-0.5" />
-      : <Icon name="arrow_downward" size={14} className="size-3.5! text-foreground font-semibold ml-0.5" />
-  }
-
-  return (
-    <div className="flex flex-col gap-4 px-4 pt-4 lg:px-6 lg:pt-6 pb-0 max-w-full h-full min-h-0 font-ui">
-      
-      {/* Top Stats */}
-      <OrdersStats 
-        orders={timeFilteredOrders} 
-        totalOrdersCount={totalOrders}
-        stats={summaryStats || undefined}
-        currency={tenantCurrency}
-        timeFilter={timeFilter} 
-        setTimeFilter={(filter) => {
-          setTimeFilter(filter)
-          setCurrentPage(1)
-        }} 
-      />
-
-      {/* Orders Table Container */}
-      <div className="border border-border/80 rounded-lg overflow-hidden bg-card/40 shadow-xs flex flex-col flex-1 min-h-0 mt-2">
-        
-        {/* Toolbar & Filters */}
-        <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-2 h-12 shrink-0">
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar mask-fade-right pr-4 flex-1 min-w-0">
-            <Button
-              variant={activeTab === "All" ? "secondary" : "ghost"}
-              className={`h-8 rounded-md text-xs font-medium px-3 flex items-center gap-1 transition-colors cursor-pointer ${
-                activeTab === "All" ? "bg-muted text-foreground shadow-xs" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              }`}
-              onClick={() => {
-                setActiveTab("All")
-                setCurrentPage(1)
-              }}
-            >
-              All
-            </Button>
-            
-            {TABS.slice(1).map(tab => (
-              <Button
-                key={tab}
-                variant={activeTab === tab ? "secondary" : "ghost"}
-                className={`h-8 rounded-md text-xs font-medium px-3 transition-colors cursor-pointer shrink-0 ${
-                  activeTab === tab ? "bg-muted text-foreground shadow-xs" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                }`}
-                onClick={() => {
-                  setActiveTab(tab)
-                  setCurrentPage(1)
-                }}
-              >
-                {tab}
-              </Button>
-            ))}
-
-
-            {/* Clear All Filters Tag */}
-            {(paymentFilter !== "All" || fulfillmentFilter !== "All" || searchQuery) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-xs text-muted-foreground hover:text-destructive hover:bg-transparent cursor-pointer shrink-0 font-medium ml-1 gap-1"
-                onClick={() => {
-                  setPaymentFilter("All")
-                  setFulfillmentFilter("All")
-                  setSearchQuery("")
-                  setCurrentPage(1)
-                }}
-              >
-                <Icon name="close" size={14} className="size-3.5!" /> Clear filters
-              </Button>
+  // Desktop Table Column Definitions
+  const columns: ColumnDef<Order>[] = [
+    {
+      header: "Order",
+      accessor: (order) => {
+        const displayOrderId = formatOrderId(order.orderNumber || order.id)
+        const fullOrderNumber = order.orderNumber || order.id
+        return (
+          <div className="flex items-center gap-1.5" title={fullOrderNumber}>
+            <span className="font-mono font-semibold text-[13px] text-foreground">
+              {displayOrderId}
+            </span>
+            {order.orderNumber?.startsWith("ORD-Q-") && (
+              <span className="text-[10px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 px-1.5 py-0.2 rounded border border-purple-200/50">
+                B2B Quote
+              </span>
             )}
           </div>
+        )
+      },
+    },
+    {
+      header: "Date",
+      accessor: (order) => (
+        <span className="text-muted-foreground whitespace-nowrap text-xs">
+          {mounted ? formatRelativeDate(order.date) : "—"}
+        </span>
+      ),
+    },
+    {
+      header: "Customer",
+      accessor: (order) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-foreground">{order.customer.name}</span>
+          <span className="text-[11px] text-muted-foreground truncate max-w-[180px]">
+            {order.customer.city || order.customer.email}
+          </span>
+        </div>
+      ),
+    },
+    {
+      header: "Total",
+      accessor: (order) => (
+        <div className="flex flex-col">
+          <span className="font-semibold text-foreground font-mono">
+            {formatPrice(order.total, { currency: order.currency || "SAR" })}
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            {order.itemCount} {order.itemCount === 1 ? "item" : "items"}
+          </span>
+        </div>
+      ),
+    },
+    {
+      header: "Status",
+      accessor: (order) => (
+        <StatusBadge
+          status={order.status || order.fulfillmentStatus || order.paymentStatus}
+        />
+      ),
+    },
+  ]
 
-          {selectedRows.size > 0 ? (
-            <div className="flex items-center gap-1 pl-2 border-l border-border/60 ml-auto animate-in fade-in slide-in-from-right-2 duration-150 shrink-0">
-              <span className="text-[11px] text-muted-foreground font-medium mr-1.5 whitespace-nowrap">
-                {selectedRows.size} selected
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs gap-1 cursor-pointer hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400"
-                onClick={handleBulkMarkAsPaid}
-              >
-                <Icon name="payments" size={14} className="size-3.5!" /> Mark Paid
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs gap-1 cursor-pointer hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400"
-                onClick={handleBulkMarkAsFulfilled}
-              >
-                <Icon name="local_shipping" size={14} className="size-3.5!" /> Mark Fulfilled
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs gap-1 cursor-pointer hover:bg-destructive/10 hover:text-destructive text-destructive"
-                onClick={handleBulkDelete}
-              >
-                <Icon name="delete" size={14} className="size-3.5!" /> Delete
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-xs text-muted-foreground hover:bg-muted cursor-pointer"
-                onClick={() => setSelectedRows(new Set())}
-              >
-                Cancel
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 pl-2 border-l border-border/60 ml-auto shrink-0">
-              {isSearchVisible ? (
-                <div className="flex items-center gap-1.5 h-8 bg-background border border-border rounded-md px-2 w-48 md:w-60 animate-in fade-in zoom-in-95 duration-200">
-                  <Icon name="search" size={14} className="size-3.5 text-muted-foreground shrink-0" />
-                  <input
-                    type="text"
-                    placeholder="Search orders..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-transparent border-none outline-none focus:outline-none text-xs text-foreground placeholder:text-muted-foreground w-full h-full pl-1 ml-0.5 shrink min-w-0"
-                    autoFocus
-                  />
-                  {searchQuery && (
-                    <button onClick={() => setSearchQuery("")} className="hover:bg-muted p-0.5 rounded-full cursor-pointer shrink-0 flex items-center justify-center">
-                      <Icon name="close" size={12} className="size-3 text-muted-foreground" />
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => { setIsSearchVisible(false); setSearchQuery(""); }} 
-                    className="hover:bg-muted p-0.5 rounded-full cursor-pointer shrink-0 flex items-center justify-center"
-                  >
-                    <Icon name="keyboard_double_arrow_right" size={14} className="size-3.5 text-muted-foreground" />
-                  </button>
-                </div>
-              ) : (
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="h-8 w-8 bg-background shadow-xs cursor-pointer"
-                  onClick={() => setIsSearchVisible(true)}
-                >
-                  <Icon name="search" size={16} className="size-4! text-muted-foreground" />
-                </Button>
-              )}
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant={paymentFilter !== "All" || fulfillmentFilter !== "All" ? "secondary" : "outline"} 
-                    size="icon" 
-                    className={`h-8 w-8 bg-background shadow-xs cursor-pointer ${(paymentFilter !== "All" || fulfillmentFilter !== "All") ? "bg-muted text-foreground border-border/80" : ""}`}
-                  >
-                    <Icon name="filter_list" size={16} className="size-4! text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                  <DropdownMenuLabel>Filter orders</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <div className="p-2 flex flex-col gap-2.5">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[11px] font-medium text-muted-foreground">Payment Status</span>
-                      <div className="flex flex-wrap gap-1">
-                        {["All", "Paid", "Pending", "Refunded"].map(status => (
-                          <Button
-                            key={status}
-                            variant={paymentFilter === status ? "secondary" : "outline"}
-                            size="sm"
-                            className="h-7 text-[11px] px-2.5 cursor-pointer"
-                            onClick={() => {
-                              setPaymentFilter(status as "All" | "Paid" | "Pending" | "Refunded")
-                              setCurrentPage(1)
-                            }}
-                          >
-                            {status}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[11px] font-medium text-muted-foreground">Fulfillment Status</span>
-                      <div className="flex flex-wrap gap-1">
-                        {["All", "Fulfilled", "Unfulfilled", "Partially Fulfilled"].map(status => (
-                          <Button
-                            key={status}
-                            variant={fulfillmentFilter === status ? "secondary" : "outline"}
-                            size="sm"
-                            className="h-7 text-[11px] px-2.5 cursor-pointer"
-                            onClick={() => {
-                              setFulfillmentFilter(status as "All" | "Fulfilled" | "Unfulfilled" | "Partially Fulfilled")
-                              setCurrentPage(1)
-                            }}
-                          >
-                            {status}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {(paymentFilter !== "All" || fulfillmentFilter !== "All") && (
-                      <>
-                        <DropdownMenuSeparator className="-mx-2" />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-destructive hover:bg-destructive/10 justify-center font-medium w-full cursor-pointer"
-                          onClick={() => {
-                            setPaymentFilter("All")
-                            setFulfillmentFilter("All")
-                            setCurrentPage(1)
-                          }}
-                        >
-                          Clear all filters
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-8 w-8 bg-background shadow-xs cursor-pointer">
-                    <Icon name="swap_vert" size={16} className="size-4! text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuRadioGroup value={`${sortField}-${sortOrder}`} onValueChange={(val) => {
-                    const [field, order] = val.split("-")
-                    setSortField(field as keyof Order | "customer")
-                    setSortOrder(order as "asc" | "desc")
-                  }}>
-                    <DropdownMenuRadioItem value="date-desc">Date (Newest first)</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="date-asc">Date (Oldest first)</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="id-desc">Order # (High to Low)</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="id-asc">Order # (Low to High)</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="total-desc">Total (High to Low)</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="total-asc">Total (Low to High)</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="customer-asc">Customer A-Z</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="customer-desc">Customer Z-A</DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+  // Filter Dropdown Component for Desktop
+  const filterDropdown = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-sm relative",
+            (paymentFilter !== "All" || fulfillmentFilter !== "All") &&
+              "text-emerald-700 dark:text-emerald-300 bg-emerald-500/10"
           )}
-        </div>
+        >
+          <Icon name="filter_list" size={16} className="size-4!" />
+          {(paymentFilter !== "All" || fulfillmentFilter !== "All") && (
+            <span className="absolute top-1 right-1 size-1.5 rounded-full bg-emerald-500" />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>Payment Status</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={paymentFilter}
+          onValueChange={(val) => {
+            setPaymentFilter(val)
+            setCurrentPage(1)
+          }}
+        >
+          {["All", "Paid", "Pending", "Refunded"].map((s) => (
+            <DropdownMenuRadioItem key={s} value={s}>
+              {s}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
 
-        {/* Table */}
-        <div className="overflow-auto flex-1">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead className="sticky top-0 bg-card backdrop-blur-xs font-ui text-xs font-medium text-muted-foreground border-b border-border/60 z-10">
-              <tr>
-                <th className="p-3 w-10 text-center">
-                  <Checkbox
-                    checked={
-                      filteredOrders.length > 0 &&
-                      filteredOrders.every(o => selectedRows.has(o.id))
-                    }
-                    onCheckedChange={(val) => handleSelectAll(!!val)}
-                    aria-label="Select all orders"
-                  />
-                </th>
-                <th className="p-3 font-semibold text-foreground select-none">
-                  <div onClick={() => toggleSort("id")} className="flex items-center cursor-pointer hover:text-foreground">
-                    Order {renderSortIcon("id")}
-                  </div>
-                </th>
-                <th className="p-3 font-semibold text-foreground select-none">
-                  <div onClick={() => toggleSort("date")} className="flex items-center cursor-pointer hover:text-foreground">
-                    Date {renderSortIcon("date")}
-                  </div>
-                </th>
-                <th className="p-3 font-semibold text-foreground select-none">
-                  <div onClick={() => toggleSort("customer")} className="flex items-center cursor-pointer hover:text-foreground">
-                    Customer {renderSortIcon("customer")}
-                  </div>
-                </th>
-                <th className="p-3 font-semibold text-foreground select-none">
-                  <div onClick={() => toggleSort("total")} className="flex items-center cursor-pointer hover:text-foreground">
-                    Total {renderSortIcon("total")}
-                  </div>
-                </th>
-                <th className="p-3 font-semibold text-foreground select-none">
-                  Status
-                </th>
-                <th className="p-3 w-10 text-right"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {isLoading ? (
-                Array.from({ length: 6 }).map((_, idx) => (
-                  <tr key={idx} className="h-[52px] animate-pulse">
-                    <td className="p-3 text-center">
-                      <div className="size-4 bg-muted/60 rounded mx-auto" />
-                    </td>
-                    <td className="p-3">
-                      <div className="h-3 w-20 bg-muted/60 rounded-full" />
-                    </td>
-                    <td className="p-3">
-                      <div className="h-3 w-28 bg-muted/60 rounded-full" />
-                    </td>
-                    <td className="p-3">
-                      <div className="h-3 w-32 bg-muted/60 rounded-full" />
-                    </td>
-                    <td className="p-3">
-                      <div className="h-3 w-20 bg-muted/60 rounded-full" />
-                    </td>
-                    <td className="p-3">
-                      <div className="h-5 w-24 bg-muted/60 rounded-full" />
-                    </td>
-                    <td className="p-3 text-right">
-                      <div className="size-4 bg-muted/60 rounded-full ml-auto" />
-                    </td>
-                  </tr>
-                ))
-              ) : filteredOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="p-12 text-center text-muted-foreground font-ui">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <Icon name="inbox" size={32} className="size-8 text-muted-foreground/40" />
-                      <p className="text-sm font-medium">No orders found</p>
-                      <p className="text-xs text-muted-foreground">Try clearing filters or changing your search criteria.</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredOrders.map((order) => {
-                  const isSelected = selectedRows.has(order.id)
-                  const totalItems = order.itemCount
-                  const displayOrderId = formatOrderId(order.orderNumber || order.id)
-                  const fullOrderNumber = order.orderNumber || order.id
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Fulfillment Status</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={fulfillmentFilter}
+          onValueChange={(val) => {
+            setFulfillmentFilter(val)
+            setCurrentPage(1)
+          }}
+        >
+          {["All", "Fulfilled", "Unfulfilled", "Partially Fulfilled"].map((s) => (
+            <DropdownMenuRadioItem key={s} value={s}>
+              {s}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
 
-                  return (
-                    <tr
-                      key={order.id}
-                      onClick={() => router.push(`/dashboard/orders/${order.id}`)}
-                      className={`group hover:bg-muted/40 cursor-pointer duration-150 text-[13px] ${
-                        isSelected ? "bg-muted/40" : "bg-card/20"
-                      }`}
-                    >
-                      <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={(val) => handleSelectRow(order.id, !!val)}
-                          aria-label={`Select order ${order.id}`}
-                        />
-                      </td>
-                      <td className="p-3 font-semibold text-foreground">
-                        <div className="flex items-center gap-1.5" title={fullOrderNumber}>
-                          <span className="font-mono text-[13px]">{displayOrderId}</span>
-                          {order.orderNumber?.startsWith('ORD-Q-') && (
-                            <span className="text-[10px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 px-1.5 py-0.2 rounded border border-purple-200/50">
-                              B2B Quote
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3 text-muted-foreground whitespace-nowrap text-xs">
-                        {mounted ? formatRelativeDate(order.date) : "—"}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex flex-col">
-                          <span className="font-medium text-foreground">{order.customer.name}</span>
-                          <span className="text-[11px] text-muted-foreground truncate max-w-[180px]">
-                            {order.customer.city || order.customer.email}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-foreground font-mono">
-                            {formatPrice(order.total, { currency: order.currency || "SAR" })}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground">
-                            {totalItems} {totalItems === 1 ? "item" : "items"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <StatusBadge status={order.status || order.fulfillmentStatus || order.paymentStatus} />
-                      </td>
-                      <td className="p-3 text-right">
-                        <Icon name="chevron_right" size={16} className="size-4 text-muted-foreground/40 group-hover:text-foreground transition-colors ml-auto" />
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination Footer */}
-        <div className="flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 h-12 shrink-0 text-xs font-ui">
-          <div className="flex items-center gap-4 text-muted-foreground">
-            <span>
-              Showing {totalOrders > 0 ? (currentPage - 1) * pageSize + 1 : 0}–
-              {Math.min(currentPage * pageSize, totalOrders)} of {totalOrders} orders
-            </span>
-            <div className="flex items-center gap-1.5">
-              <span>Rows per page:</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1 select-none cursor-pointer">
-                    {pageSize} <Icon name="keyboard_arrow_down" size={14} className="size-3.5 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-16">
-                  {[10, 20, 50, 100].map((size) => (
-                    <DropdownMenuItem key={size} onClick={() => { setPageSize(size); setCurrentPage(1); }} className="cursor-pointer">
-                      {size}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground mr-2">
-              Page {currentPage} of {Math.max(Math.ceil(totalOrders / pageSize), 1)}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 cursor-pointer"
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
+        {(paymentFilter !== "All" || fulfillmentFilter !== "All") && (
+          <>
+            <DropdownMenuSeparator />
+            <button
+              type="button"
+              onClick={() => {
+                setPaymentFilter("All")
+                setFulfillmentFilter("All")
+                setCurrentPage(1)
+              }}
+              className="w-full text-xs text-center py-1 text-red-600 dark:text-red-400 hover:underline cursor-pointer font-medium"
             >
-              <Icon name="first_page" size={16} />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 cursor-pointer"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              <Icon name="chevron_left" size={16} />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 cursor-pointer"
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.max(Math.ceil(totalOrders / pageSize), 1)))}
-              disabled={currentPage >= Math.ceil(totalOrders / pageSize)}
-            >
-              <Icon name="chevron_right" size={16} />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 cursor-pointer"
-              onClick={() => setCurrentPage(Math.max(Math.ceil(totalOrders / pageSize), 1))}
-              disabled={currentPage >= Math.ceil(totalOrders / pageSize)}
-            >
-              <Icon name="last_page" size={16} />
-            </Button>
-          </div>
-        </div>
-      </div>
+              Clear All Filters
+            </button>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 
+  // Active Filter Badges
+  const activeFilterBadges = (paymentFilter !== "All" || fulfillmentFilter !== "All" || searchQuery.trim()) && (
+    <div className="flex items-center flex-wrap gap-1.5 px-3.5 py-2 bg-primary/5 border-b border-border/60 text-xs">
+      <span className="text-muted-foreground font-medium mr-1 text-[11px]">Active Filters:</span>
+      {paymentFilter !== "All" && (
+        <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/25 px-2.5 py-0.5 rounded-full text-primary text-[11px] font-medium">
+          Payment: <strong>{paymentFilter}</strong>
+          <button
+            type="button"
+            onClick={() => { setPaymentFilter("All"); setCurrentPage(1); }}
+            className="hover:text-destructive cursor-pointer ml-0.5"
+          >
+            <Icon name="close" size={12} className="size-3" />
+          </button>
+        </span>
+      )}
+      {fulfillmentFilter !== "All" && (
+        <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/25 px-2.5 py-0.5 rounded-full text-primary text-[11px] font-medium">
+          Fulfillment: <strong>{fulfillmentFilter}</strong>
+          <button
+            type="button"
+            onClick={() => { setFulfillmentFilter("All"); setCurrentPage(1); }}
+            className="hover:text-destructive cursor-pointer ml-0.5"
+          >
+            <Icon name="close" size={12} className="size-3" />
+          </button>
+        </span>
+      )}
+      {searchQuery.trim() && (
+        <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/25 px-2.5 py-0.5 rounded-full text-primary text-[11px] font-medium">
+          Search: &quot;{searchQuery}&quot;
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="hover:text-destructive cursor-pointer ml-0.5"
+          >
+            <Icon name="close" size={12} className="size-3" />
+          </button>
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={() => {
+          setPaymentFilter("All")
+          setFulfillmentFilter("All")
+          setSearchQuery("")
+          setCurrentPage(1)
+        }}
+        className="text-[11px] text-primary hover:underline ml-1 cursor-pointer font-medium"
+      >
+        Clear all
+      </button>
     </div>
+  )
+
+  return (
+    <ResponsiveDataView<Order>
+      title="Orders"
+      hideDesktopTitle={true}
+      topContent={
+        <OrdersStats
+          orders={orders}
+          totalOrdersCount={totalOrders}
+          stats={summaryStats || undefined}
+          currency={tenantCurrency}
+          timeFilter={timeFilter}
+          setTimeFilter={setTimeFilter}
+        />
+      }
+      tabs={TABS}
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab)
+          setCurrentPage(1)
+        }}
+        searchPlaceholder="Search orders, customers..."
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        filterDropdown={filterDropdown}
+        activeFilterBadges={activeFilterBadges}
+        sortOptions={SORT_OPTIONS}
+        activeSort={activeSort}
+        onSortChange={(sort) => {
+          setActiveSort(sort)
+          setCurrentPage(1)
+        }}
+        items={orders}
+        getItemId={(order) => order.id}
+        isLoading={isLoading}
+        emptyMessage="No orders found"
+        selectedIds={selectedRows}
+        onSelectionChange={setSelectedRows}
+        totalItems={totalOrders}
+        currentPage={currentPage}
+        totalPages={Math.max(Math.ceil(totalOrders / pageSize), 1)}
+        onPageChange={setCurrentPage}
+        bulkActions={
+          <div className="flex items-center gap-2 ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs cursor-pointer"
+              onClick={handleBulkMarkAsPaid}
+            >
+              Mark as Paid
+            </Button>
+          </div>
+        }
+        columns={columns}
+        renderMobileCard={(order) => {
+          const displayOrderId = formatOrderId(order.orderNumber || order.id)
+          const formattedDate = mounted ? formatRelativeDate(order.date) : ""
+
+          return (
+            <div className="py-3 px-3.5 flex items-center justify-between gap-3 hover:bg-muted/30 active:bg-muted/50 transition-colors">
+              {/* Order Info */}
+              <div className="flex-1 min-w-0">
+                {/* Top line: Order ID + Status Pill */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-mono font-bold text-[13.5px] text-foreground tracking-tight">
+                    {displayOrderId}
+                  </span>
+                  <StatusBadge status={order.status || order.fulfillmentStatus || order.paymentStatus} />
+                  {order.orderNumber?.startsWith("ORD-Q-") && (
+                    <span className="text-[10px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 px-1.5 py-0.5 rounded">
+                      B2B Quote
+                    </span>
+                  )}
+                </div>
+
+                {/* Subtitle: Customer Name • Items count • Date */}
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 truncate">
+                  <span className="font-medium text-foreground/90 truncate max-w-[140px]">
+                    {order.customer.name}
+                  </span>
+                  <span>•</span>
+                  <span className="shrink-0">{order.itemCount} {order.itemCount === 1 ? "item" : "items"}</span>
+                  {formattedDate && (
+                    <>
+                      <span>•</span>
+                      <span className="truncate">{formattedDate}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Total Price & Navigation Chevron */}
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="font-bold text-[14px] tracking-tight text-foreground font-mono">
+                  {formatPrice(order.total, { currency: order.currency || "SAR" })}
+                </span>
+                <Icon
+                  name="chevron_right"
+                  size={16}
+                  className="text-muted-foreground/30 size-4"
+                />
+              </div>
+            </div>
+          )
+        }}
+        onRowClick={(order) => router.push(`/dashboard/orders/${order.id}`)}
+      />
   )
 }
