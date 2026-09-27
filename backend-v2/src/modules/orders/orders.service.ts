@@ -35,6 +35,27 @@ export class OrdersService {
   private db = getDatabase()
   private productsService = new ProductsService()
 
+  private async getNextOrderSequence(): Promise<number> {
+    try {
+      await this.db.execute(sql`CREATE SEQUENCE IF NOT EXISTS order_number_seq START WITH 100001;`)
+      const res = await this.db.execute(sql`SELECT nextval('order_number_seq') as seq;`)
+      const rows = (res as any)?.rows || res
+      const rawSeq = rows?.[0]?.seq
+      if (rawSeq) {
+        return parseInt(String(rawSeq), 10)
+      }
+    } catch (err) {
+      console.warn('Postgres sequence nextval error, using fallback:', err)
+    }
+
+    try {
+      const [countRow] = await this.db.select({ count: sql<number>`cast(count(*) as integer)` }).from(orders)
+      return 100001 + (countRow?.count || 0)
+    } catch {
+      return Math.floor(100000 + Math.random() * 900000)
+    }
+  }
+
   async createOrder(input: CreateOrderInput) {
     const currency = (input.currency || 'SAR').toUpperCase()
 
@@ -178,7 +199,10 @@ export class OrdersService {
         .where(eq(customers.id, customerProfile.id))
     }
 
-    const orderNumber = `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`
+    // Generate atomic 6-digit incremental Order ID (e.g. ORD-100001)
+    const nextSeq = await this.getNextOrderSequence()
+    const isB2BQuote = Boolean(input.quotationId)
+    const orderNumber = isB2BQuote ? `ORD-Q-${nextSeq}` : `ORD-${nextSeq}`
     const initialStatus = paymentMethodType === 'CREDIT_TERMS' || paymentMethodType === 'PURCHASE_ORDER'
       ? 'processing'
       : (paymentMethodType === 'BANK_TRANSFER' ? 'pending_payment' : 'pending')
@@ -423,8 +447,29 @@ export class OrdersService {
       })
     )
 
+    const [statsResult] = await this.db
+      .select({
+        totalRevenue: sql<number>`cast(coalesce(sum(cast(${orders.totalAmount} as numeric)), 0) as float)`,
+        deliveredOrders: sql<number>`cast(count(case when lower(${orders.status}) in ('delivered', 'shipped') then 1 end) as integer)`,
+        pendingOrders: sql<number>`cast(count(case when lower(${orders.status}) in ('pending', 'pending_payment', 'processing', 'confirmed') then 1 end) as integer)`,
+        cancelledOrders: sql<number>`cast(count(case when lower(${orders.status}) in ('cancelled', 'refunded') then 1 end) as integer)`,
+      })
+      .from(orders)
+
     const total = totalCountResult?.count ?? enriched.length
-    return { items: enriched, page, limit, total }
+    return {
+      items: enriched,
+      page,
+      limit,
+      total,
+      stats: {
+        totalOrders: total,
+        totalRevenue: statsResult?.totalRevenue || 0,
+        fulfilledOrders: statsResult?.deliveredOrders || 0,
+        pendingOrders: statsResult?.pendingOrders || 0,
+        cancelledOrders: statsResult?.cancelledOrders || 0,
+      },
+    }
   }
 
   async getOrderById(idOrNumber: string) {

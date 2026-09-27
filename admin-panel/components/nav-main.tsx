@@ -43,9 +43,9 @@ export function NavMain({
   }
 
   return (
-    <SidebarGroup className="pt-3">
-      <SidebarGroupContent className="flex flex-col gap-2">
-        <SidebarMenu className="gap-1">
+    <SidebarGroup className="pt-1 px-2">
+      <SidebarGroupContent className="flex flex-col">
+        <SidebarMenu className="gap-0.5">
           {items.map((item) => {
             const hasSubItems = Boolean(item.items && item.items.length > 0)
             const isSubActive = item.items?.some((sub) => pathname === sub.url || pathname.startsWith(`${sub.url}/`))
@@ -69,7 +69,7 @@ export function NavMain({
                     asChild
                     tooltip={item.title}
                     isActive={isActive}
-                    className="w-full justify-between group/button cursor-pointer h-9 text-[13.5px] font-medium px-3 rounded-lg"
+                    className="w-full justify-between group/button cursor-pointer h-8 text-[13px] font-medium px-2.5 rounded-md"
                   >
                     <Link
                       href={item.url}
@@ -80,9 +80,9 @@ export function NavMain({
                       }}
                       className="flex items-center justify-between w-full"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <span className="shrink-0 [&>span]:size-4.5 [&>span]:text-[19px]">{item.icon}</span>
-                        <span className="text-[13.5px]">{item.title}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="shrink-0 [&>span]:size-4 [&>span]:text-[17px]">{item.icon}</span>
+                        <span className="text-[13px]">{item.title}</span>
                       </div>
                       <span
                         role="button"
@@ -95,7 +95,7 @@ export function NavMain({
                       >
                         <Icon
                           name="expand_more"
-                          className={`size-4 transition-transform duration-200 ${
+                          className={`size-3.5 transition-transform duration-200 ${
                             isOpen ? "rotate-180" : ""
                           }`}
                         />
@@ -103,12 +103,12 @@ export function NavMain({
                     </Link>
                   </SidebarMenuButton>
                   {isOpen && (
-                    <SidebarMenuSub>
+                    <SidebarMenuSub className="my-0.5 py-0.5">
                       {item.items?.map((subItem) => {
                         const isChildActive = pathname === subItem.url || pathname.startsWith(subItem.url)
                         return (
                           <SidebarMenuSubItem key={subItem.title}>
-                            <SidebarMenuSubButton asChild isActive={isChildActive}>
+                            <SidebarMenuSubButton asChild isActive={isChildActive} className="h-7 text-xs">
                               <Link href={subItem.url}>
                                 <span>{subItem.title}</span>
                               </Link>
@@ -128,11 +128,11 @@ export function NavMain({
                   asChild 
                   tooltip={item.title} 
                   isActive={isActive}
-                  className="h-9 text-[13.5px] font-medium px-3 rounded-lg gap-2.5"
+                  className="h-8 text-[13px] font-medium px-2.5 rounded-md gap-2"
                 >
-                  <Link href={item.url} className="flex items-center gap-2.5 w-full">
-                    <span className="shrink-0 [&>span]:size-4.5 [&>span]:text-[19px]">{item.icon}</span>
-                    <span className="text-[13.5px]">{item.title}</span>
+                  <Link href={item.url} className="flex items-center gap-2 w-full">
+                    <span className="shrink-0 [&>span]:size-4 [&>span]:text-[17px]">{item.icon}</span>
+                    <span className="text-[13px]">{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

@@ -45,9 +45,9 @@ export function NavUser({
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-lg grayscale">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+              <Avatar className="h-8 w-8 rounded-full bg-transparent flex items-center justify-center shrink-0">
+                <AvatarImage src={user.avatar || "/footer_logo.png"} alt={user.name} className="object-contain h-full w-full rounded-full" />
+                <AvatarFallback className="rounded-full bg-muted text-foreground font-semibold text-xs">AB</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
@@ -66,9 +66,9 @@ export function NavUser({
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <Avatar className="h-8 w-8 rounded-full bg-transparent flex items-center justify-center shrink-0">
+                  <AvatarImage src={user.avatar || "/footer_logo.png"} alt={user.name} className="object-contain h-full w-full rounded-full" />
+                  <AvatarFallback className="rounded-full bg-muted text-foreground font-semibold text-xs">AB</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
@@ -79,23 +79,8 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <Icon name="account_circle" />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Icon name="credit_card" />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Icon name="notifications" />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={apiLogout} className="cursor-pointer">
-              <Icon name="logout" />
+            <DropdownMenuItem onClick={apiLogout} className="cursor-pointer text-destructive focus:text-destructive">
+              <Icon name="logout" className="text-destructive" />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

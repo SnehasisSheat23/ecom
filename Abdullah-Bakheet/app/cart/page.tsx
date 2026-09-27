@@ -104,9 +104,14 @@ export default function CartPage() {
                                                                 </button>
                                                             </div>
                                                             <div className="flex flex-col">
-                                                                <p className="font-semibold text-gray-800 text-[14px] md:text-[15px] uppercase tracking-wide leading-snug mb-1">
+                                                                <p className="font-semibold text-gray-800 text-[14px] md:text-[15px] uppercase tracking-wide leading-snug mb-0.5">
                                                                     {item.name}
                                                                 </p>
+                                                                {(item.specifications?.packSize || item.specifications?.netWeight) && (
+                                                                    <p className="text-[11px] text-gray-500 font-mono mb-1">
+                                                                        {item.specifications?.packSize || item.specifications?.netWeight}
+                                                                    </p>
+                                                                )}
                                                                 <div className="flex flex-wrap items-center gap-2">
                                                                     {hasVolumeDiscount ? (
                                                                         <div className="flex items-center gap-1.5">

@@ -364,6 +364,18 @@ function ProductDescriptionContent() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Packaging & Weight Spec Badge if available */}
+                            {(() => {
+                                const packSpec = product.specifications?.packSize || product.specifications?.netWeight || product.size || (product.weight ? `${product.weight} ${product.weightUnit || 'kg'}` : null);
+                                if (!packSpec) return null;
+                                return (
+                                    <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100/80 border border-gray-200/60 text-gray-700 text-xs font-medium w-fit">
+                                        <span className="text-gray-500 font-semibold">{isArabic ? 'التعبئة والوزن:' : 'Packaging & Weight:'}</span>
+                                        <span className="font-bold text-gray-900 font-mono">{packSpec}</span>
+                                    </div>
+                                );
+                            })()}
                             
                             <div className={`flex items-center gap-4 mb-6 ${isArabic ? 'flex-row-reverse' : ''}`}>
                                 <span className="text-sm font-bold border-r border-gray-300 pr-4">50 {isArabic ? 'تقييم' : 'reviews'}</span>
@@ -417,7 +429,7 @@ function ProductDescriptionContent() {
                                 <div>
                                     <div className="flex justify-between items-center mb-2">
                                         <label className={`text-xs font-medium text-gray-500 ${isArabic ? 'text-right' : 'text-left'}`}>
-                                            {isArabic ? 'الكمية' : 'Quantity'}
+                                            {isArabic ? 'الكمية (كرتون / وحدة)' : 'Quantity (Cartons / Units)'}
                                         </label>
                                         {product.moq && product.moq > 1 && (
                                             <span className="text-[11px] text-gray-600 bg-gray-100 font-medium px-2 py-0.5 rounded">
@@ -428,7 +440,7 @@ function ProductDescriptionContent() {
                                     <div className="flex items-center justify-between border border-gray-200 rounded-lg p-1 bg-white">
                                         <button 
                                             onClick={() => setQuantity(Math.max(product.moq || 1, quantity - 1))}
-                                            disabled={quantity <= (product.moq || 1)}
+                                            disabled={quantity <= (product.moq || 1) || product.inStock === false}
                                             className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 rounded-md transition-colors disabled:opacity-30 cursor-pointer"
                                         >
                                             <Minus size={16} />
@@ -436,6 +448,7 @@ function ProductDescriptionContent() {
                                         <input
                                             type="number"
                                             min={product.moq || 1}
+                                            disabled={product.inStock === false}
                                             value={quantity}
                                             onChange={(e) => {
                                                 const val = parseInt(e.target.value, 10);
@@ -447,11 +460,12 @@ function ProductDescriptionContent() {
                                                 const minMoq = Math.max(1, product.moq || 1);
                                                 if (quantity < minMoq) setQuantity(minMoq);
                                             }}
-                                            className="w-24 text-center font-bold text-[15px] text-gray-900 bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            className="w-24 text-center font-bold text-[15px] text-gray-900 bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:opacity-50"
                                         />
                                         <button 
                                             onClick={() => setQuantity(quantity + 1)}
-                                            className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 rounded-md transition-colors cursor-pointer"
+                                            disabled={product.inStock === false}
+                                            className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 rounded-md transition-colors disabled:opacity-30 cursor-pointer"
                                         >
                                             <Plus size={16} />
                                         </button>
@@ -471,33 +485,43 @@ function ProductDescriptionContent() {
                             </div>
                             
                             <div className="space-y-3 mb-6">
-                                <button 
-                                    onClick={() => {
-                                        addToCart({
-                                            id: product.id,
-                                            variantId: product.variantId,
-                                            name: isArabic ? (product.arabic || product.title) : product.title,
-                                            category: product.category,
-                                            price: product.price,
-                                            catalogPrice: product.price,
-                                            corporatePrice: product.corporatePrice,
-                                            tieredPricing: product.tieredPricing,
-                                            image: product.img || '',
-                                            moq: product.moq,
-                                            quantity,
-                                        });
-                                        setWishlistNotification(
-                                            isArabic 
-                                                ? `تمت إضافة ${quantity} وحدة إلى السلة بنجاح!` 
-                                                : `Added ${quantity} units to your cart!`
-                                        );
-                                        setTimeout(() => setWishlistNotification(null), 3500);
-                                    }}
-                                    className="w-full bg-[#1a2b25] text-white py-4 rounded-xl font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-[#22322a] transition-colors group cursor-pointer shadow-md"
-                                >
-                                    {isArabic ? 'أضف إلى السلة' : 'ADD TO CART'}
-                                    <ArrowUpRight size={16} className={`text-gray-400 group-hover:text-white transition-colors ${isArabic ? 'rotate-180' : ''}`} />
-                                </button>
+                                {product.inStock === false ? (
+                                    <button 
+                                        disabled
+                                        className="w-full bg-gray-200 text-gray-500 py-4 rounded-xl font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 cursor-not-allowed"
+                                    >
+                                        {isArabic ? 'نفذت الكمية من المخزون' : 'OUT OF STOCK'}
+                                    </button>
+                                ) : (
+                                    <button 
+                                        onClick={() => {
+                                            addToCart({
+                                                id: product.id,
+                                                variantId: product.variantId,
+                                                name: isArabic ? (product.arabic || product.title) : product.title,
+                                                category: product.category,
+                                                price: product.price,
+                                                catalogPrice: product.price,
+                                                corporatePrice: product.corporatePrice,
+                                                tieredPricing: product.tieredPricing,
+                                                image: product.img || '',
+                                                moq: product.moq,
+                                                quantity,
+                                                specifications: product.specifications,
+                                            });
+                                            setWishlistNotification(
+                                                isArabic 
+                                                    ? `تمت إضافة ${quantity} وحدة إلى السلة بنجاح!` 
+                                                    : `Added ${quantity} units to your cart!`
+                                            );
+                                            setTimeout(() => setWishlistNotification(null), 3500);
+                                        }}
+                                        className="w-full bg-[#1a2b25] text-white py-4 rounded-xl font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:bg-[#22322a] transition-colors group cursor-pointer shadow-md"
+                                    >
+                                        {isArabic ? 'أضف إلى السلة' : 'ADD TO CART'}
+                                        <ArrowUpRight size={16} className={`text-gray-400 group-hover:text-white transition-colors ${isArabic ? 'rotate-180' : ''}`} />
+                                    </button>
+                                )}
                                 <button 
                                     onClick={handleWishlistAction}
                                     className="w-full bg-white text-black border border-gray-200 py-4 rounded-xl font-bold text-[13px] uppercase tracking-wide flex justify-center items-center gap-2 hover:border-[#1a2b25] transition-colors group cursor-pointer"
@@ -621,14 +645,16 @@ function ProductDescriptionContent() {
                                                                                 : (product.specifications?.netWeight || product.size || 'As requested')}
                                                                         </span>
                                                                     </div>
-                                                                    <div className="p-3.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs">
-                                                                        <span className="text-[11px] text-gray-400 uppercase font-semibold block tracking-wider mb-1">
-                                                                            {isArabic ? 'الحد الأدنى للطلب (MOQ)' : 'Minimum Order (MOQ)'}
-                                                                        </span>
-                                                                        <span className="font-bold text-[#1a2b25] text-sm">
-                                                                            {product.moq || 1} {isArabic ? 'وحدات' : 'Units'}
-                                                                        </span>
-                                                                    </div>
+                                                                    {product.moq && product.moq > 1 && (
+                                                                        <div className="p-3.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs">
+                                                                            <span className="text-[11px] text-gray-400 uppercase font-semibold block tracking-wider mb-1">
+                                                                                {isArabic ? 'الحد الأدنى للطلب (MOQ)' : 'Minimum Order (MOQ)'}
+                                                                            </span>
+                                                                            <span className="font-bold text-[#1a2b25] text-sm">
+                                                                                {product.moq} {isArabic ? 'كرتون / وحدات' : 'Cartons / Units'}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
                                                                     <div className="p-3.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs">
                                                                         <span className="text-[11px] text-gray-400 uppercase font-semibold block tracking-wider mb-1">
                                                                             {isArabic ? 'بلد المنشأ' : 'Country of Origin'}

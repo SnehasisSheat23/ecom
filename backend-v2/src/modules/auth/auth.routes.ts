@@ -75,6 +75,8 @@ authRoutes.post('/admin/login', async (c) => {
           firstName: betterRes.user.firstName,
           lastName: betterRes.user.lastName,
           role: betterRes.user.role,
+          avatar: betterRes.user.image || '/footer_logo.png',
+          image: betterRes.user.image || '/footer_logo.png',
         },
       },
     })
@@ -108,6 +110,8 @@ authRoutes.get('/admin/me', requireAdminAuth, async (c) => {
         lastName: current.lastName,
         role: current.role,
         status: current.status,
+        avatar: current.image || '/footer_logo.png',
+        image: current.image || '/footer_logo.png',
       },
     })
   } catch (err: any) {

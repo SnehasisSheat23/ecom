@@ -18,11 +18,15 @@ const handleGetOrders = async (c: any) => {
   const search = c.req.query('search') || c.req.query('q')
 
   // Check Better Auth session if customerId not explicitly provided in query
-  if (!customerId) {
+  // For admin users or summary endpoints, do NOT restrict to admin's own customerId
+  const path = c.req.path || ''
+  const isSummaryEndpoint = path.includes('/list-summary') || path.includes('/summary')
+  if (!customerId && !isSummaryEndpoint) {
     try {
       const session = await auth.api.getSession({ headers: c.req.raw.headers })
-      if (session?.user?.id) {
-        customerId = session.user.id
+      const user = session?.user as any
+      if (user?.id && user?.role !== 'admin' && user?.role !== 'superadmin') {
+        customerId = user.id
       }
     } catch {
       // not logged in

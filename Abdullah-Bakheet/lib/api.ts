@@ -30,6 +30,9 @@ export interface StorefrontProduct {
   moq?: number
   moqStep?: number
   inStock: boolean
+  stockQuantity?: number
+  weight?: number
+  weightUnit?: string
   onSale: boolean
   img: string
   images?: string[]
@@ -116,6 +119,9 @@ export function parseStorefrontProducts(items: any[]): StorefrontProduct[] {
       moq: item.moq || 1,
       moqStep: item.moqStep || 1,
       inStock: item.stockQuantity !== undefined ? item.stockQuantity > 0 : true,
+      stockQuantity: item.stockQuantity,
+      weight: item.weight,
+      weightUnit: item.weightUnit,
       onSale: compareAtPrice !== null && compareAtPrice > price,
       img: primaryImg,
       images: imagesArray,

@@ -33,6 +33,7 @@ interface Order {
   date: string
   customer: Customer
   itemCount: number
+  status: string
   paymentStatus: "Paid" | "Pending" | "Refunded"
   fulfillmentStatus: "Fulfilled" | "Unfulfilled" | "Partially Fulfilled"
   total: number
@@ -42,7 +43,7 @@ interface Order {
   orderNumber?: string
 }
 
-const TABS = ["All", "Standard Orders", "B2B Quotation Orders", "Unfulfilled", "Unpaid", "Open", "Closed"]
+const TABS = ["All", "Pending & Processing", "Delivered", "B2B Quotations"]
 
 const formatRelativeDate = (dateString: string) => {
   const date = new Date(dateString)
@@ -70,35 +71,44 @@ const formatRelativeDate = (dateString: string) => {
 
 const formatOrderId = (id: string) => {
   if (!id) return ''
-  if (id.startsWith('#')) return id
-  return `#${id}`
+  const clean = id.replace(/^#/, '')
+  // If it's a long timestamp like ORD-1790471675829-4143, shorten display to #ORD-4143
+  if (clean.includes('-') && clean.length > 15) {
+    const parts = clean.split('-')
+    return `#${parts[0]}-${parts[parts.length - 1]}`
+  }
+  return `#${clean}`
 }
 
 function StatusBadge({ status }: { status: string }) {
-  let dotColor = "bg-zinc-400"
-  let bgColor = "bg-muted/50"
-  let textColor = "text-zinc-600 dark:text-zinc-300"
-  
-  if (status === "Payment pending" || status === "Pending") {
-    dotColor = "bg-amber-500"
-    bgColor = "bg-amber-100 dark:bg-amber-900/30"
-    textColor = "text-amber-800 dark:text-amber-400"
-    status = "Payment pending"
-  } else if (status === "Unfulfilled" || status === "On hold") {
-    dotColor = "bg-yellow-400"
-    bgColor = "bg-yellow-100/80 dark:bg-yellow-900/30"
-    textColor = "text-yellow-800 dark:text-yellow-400"
-  } else if (status === "Fulfilled") {
-    dotColor = "bg-zinc-400"
-    bgColor = "bg-muted/50"
-    textColor = "text-zinc-600 dark:text-zinc-300"
+  const clean = (status || "").toLowerCase().trim()
+  let bgColor = "bg-muted text-muted-foreground"
+  let label = status || "Pending"
+
+  if (clean === "pending" || clean === "pending_payment" || clean === "payment pending") {
+    bgColor = "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+    label = "Pending"
+  } else if (clean === "processing") {
+    bgColor = "bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300"
+    label = "Processing"
+  } else if (clean === "confirmed") {
+    bgColor = "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
+    label = "Confirmed"
+  } else if (clean === "shipped" || clean === "out_for_delivery") {
+    bgColor = "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+    label = "Shipped"
+  } else if (clean === "delivered" || clean === "fulfilled" || clean === "paid") {
+    bgColor = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+    label = "Delivered"
+  } else if (clean === "cancelled" || clean === "refunded") {
+    bgColor = "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+    label = "Cancelled"
   }
 
   return (
-    <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-[11px] ${bgColor} ${textColor}`}>
-      <div className={`size-1.5 rounded-full ${dotColor}`} />
-      {status}
-    </div>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md font-medium text-[11px] ${bgColor}`}>
+      {label}
+    </span>
   )
 }
 
@@ -121,14 +131,14 @@ const mapBackendOrderToFrontend = (item: BackendOrderSummary): Order => {
   let paymentStatus: "Paid" | "Pending" | "Refunded" = "Pending"
   let fulfillmentStatus: "Fulfilled" | "Unfulfilled" | "Partially Fulfilled" = "Unfulfilled"
 
-  const status = item.status || "PENDING"
-  if (status === "DELIVERED" || status === "SHIPPED") {
+  const rawStatus = (item.status || "PENDING").toUpperCase()
+  if (rawStatus === "DELIVERED" || rawStatus === "SHIPPED") {
     paymentStatus = "Paid"
     fulfillmentStatus = "Fulfilled"
-  } else if (status === "CONFIRMED" || status === "PROCESSING") {
+  } else if (rawStatus === "CONFIRMED" || rawStatus === "PROCESSING") {
     paymentStatus = "Paid"
     fulfillmentStatus = "Unfulfilled"
-  } else if (status === "CANCELLED") {
+  } else if (rawStatus === "CANCELLED") {
     paymentStatus = "Refunded"
     fulfillmentStatus = "Unfulfilled"
   }
@@ -139,9 +149,10 @@ const mapBackendOrderToFrontend = (item: BackendOrderSummary): Order => {
     customer: {
       name: item.customerName || "Customer",
       email: item.customerEmail || "guest@example.com",
-      city: item.customerCity || "Unknown",
+      city: item.customerCity || "Riyadh",
     },
-    itemCount: item.itemCount || 0,
+    itemCount: item.itemCount || 1,
+    status: rawStatus,
     paymentStatus,
     fulfillmentStatus,
     total: parseFloat(String(item.total || (item as any).totalAmount || 0)),
@@ -200,18 +211,12 @@ export function OrdersView() {
     }
 
     // Map active tab to status filter
-    if (activeTab === "B2B Quotation Orders") {
+    if (activeTab === "B2B Quotations") {
       params.set("search", "ORD-Q-")
-    } else if (activeTab === "Standard Orders") {
-      params.set("search", "ORD-20")
-    } else if (activeTab === "Unfulfilled") {
-      params.set("status", "PENDING,CONFIRMED,PROCESSING")
-    } else if (activeTab === "Unpaid") {
-      params.set("status", "PENDING")
-    } else if (activeTab === "Open") {
-      params.set("status", "PENDING,CONFIRMED,PROCESSING,SHIPPED")
-    } else if (activeTab === "Closed") {
-      params.set("status", "DELIVERED")
+    } else if (activeTab === "Pending & Processing") {
+      params.set("status", "PENDING,CONFIRMED,PROCESSING,PENDING_PAYMENT")
+    } else if (activeTab === "Delivered") {
+      params.set("status", "DELIVERED,SHIPPED")
     }
 
     // Dropdown filters mapping
@@ -219,7 +224,7 @@ export function OrdersView() {
       if (paymentFilter === "Paid") {
         params.set("status", "CONFIRMED,PROCESSING,SHIPPED,DELIVERED")
       } else if (paymentFilter === "Pending") {
-        params.set("status", "PENDING")
+        params.set("status", "PENDING,PENDING_PAYMENT")
       } else if (paymentFilter === "Refunded") {
         params.set("status", "CANCELLED")
       }
@@ -631,63 +636,60 @@ export function OrdersView() {
                   </div>
                 </th>
                 <th className="p-3 font-semibold text-foreground select-none">
-                  <div onClick={() => toggleSort("paymentStatus")} className="flex items-center cursor-pointer hover:text-foreground">
-                    Payment status {renderSortIcon("paymentStatus")}
-                  </div>
+                  Status
                 </th>
-                <th className="p-3 font-semibold text-foreground select-none">
-                  <div onClick={() => toggleSort("fulfillmentStatus")} className="flex items-center cursor-pointer hover:text-foreground">
-                    Fulfillment status {renderSortIcon("fulfillmentStatus")}
-                  </div>
-                </th>
-                <th className="p-3 font-semibold text-foreground select-none">Items</th>
+                <th className="p-3 w-10 text-right"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, idx) => (
-                  <tr key={idx} className="h-[49px] animate-pulse">
+                  <tr key={idx} className="h-[52px] animate-pulse">
                     <td className="p-3 text-center">
                       <div className="size-4 bg-muted/60 rounded mx-auto" />
                     </td>
                     <td className="p-3">
-                      <div className="h-2.5 w-16 bg-muted/60 rounded-full" />
+                      <div className="h-3 w-20 bg-muted/60 rounded-full" />
                     </td>
                     <td className="p-3">
-                      <div className="h-2.5 w-32 bg-muted/60 rounded-full" />
+                      <div className="h-3 w-28 bg-muted/60 rounded-full" />
                     </td>
                     <td className="p-3">
-                      <div className="h-2.5 w-24 bg-muted/60 rounded-full" />
+                      <div className="h-3 w-32 bg-muted/60 rounded-full" />
                     </td>
                     <td className="p-3">
-                      <div className="h-2.5 w-16 bg-muted/60 rounded-full" />
-                    </td>
-                    <td className="p-3">
-                      <div className="h-5 w-20 bg-muted/60 rounded-full" />
+                      <div className="h-3 w-20 bg-muted/60 rounded-full" />
                     </td>
                     <td className="p-3">
                       <div className="h-5 w-24 bg-muted/60 rounded-full" />
                     </td>
-                    <td className="p-3">
-                      <div className="h-2.5 w-12 bg-muted/60 rounded-full" />
+                    <td className="p-3 text-right">
+                      <div className="size-4 bg-muted/60 rounded-full ml-auto" />
                     </td>
                   </tr>
                 ))
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-muted-foreground font-ui">
-                    No orders found
+                  <td colSpan={7} className="p-12 text-center text-muted-foreground font-ui">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Icon name="inbox" size={32} className="size-8 text-muted-foreground/40" />
+                      <p className="text-sm font-medium">No orders found</p>
+                      <p className="text-xs text-muted-foreground">Try clearing filters or changing your search criteria.</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 filteredOrders.map((order) => {
                   const isSelected = selectedRows.has(order.id)
                   const totalItems = order.itemCount
+                  const displayOrderId = formatOrderId(order.orderNumber || order.id)
+                  const fullOrderNumber = order.orderNumber || order.id
+
                   return (
                     <tr
                       key={order.id}
                       onClick={() => router.push(`/dashboard/orders/${order.id}`)}
-                      className={`hover:bg-muted/30 cursor-pointer duration-150 text-[13px] ${
+                      className={`group hover:bg-muted/40 cursor-pointer duration-150 text-[13px] ${
                         isSelected ? "bg-muted/40" : "bg-card/20"
                       }`}
                     >
@@ -699,30 +701,41 @@ export function OrdersView() {
                         />
                       </td>
                       <td className="p-3 font-semibold text-foreground">
-                        <div className="flex items-center gap-1.5">
-                          <span>{formatOrderId(order.orderNumber || order.id)}</span>
+                        <div className="flex items-center gap-1.5" title={fullOrderNumber}>
+                          <span className="font-mono text-[13px]">{displayOrderId}</span>
                           {order.orderNumber?.startsWith('ORD-Q-') && (
-                            <span className="text-[10px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200/50">
+                            <span className="text-[10px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 px-1.5 py-0.2 rounded border border-purple-200/50">
                               B2B Quote
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="p-3 text-muted-foreground whitespace-nowrap">
+                      <td className="p-3 text-muted-foreground whitespace-nowrap text-xs">
                         {mounted ? formatRelativeDate(order.date) : "—"}
                       </td>
-                      <td className="p-3 text-foreground">{order.customer.name}</td>
-                      <td className="p-3 text-foreground font-mono">
-                        {formatPrice(order.total, { currency: order.currency || "SAR" })}
+                      <td className="p-3">
+                        <div className="flex flex-col">
+                          <span className="font-medium text-foreground">{order.customer.name}</span>
+                          <span className="text-[11px] text-muted-foreground truncate max-w-[180px]">
+                            {order.customer.city || order.customer.email}
+                          </span>
+                        </div>
                       </td>
                       <td className="p-3">
-                        <StatusBadge status={order.paymentStatus} />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-foreground font-mono">
+                            {formatPrice(order.total, { currency: order.currency || "SAR" })}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">
+                            {totalItems} {totalItems === 1 ? "item" : "items"}
+                          </span>
+                        </div>
                       </td>
                       <td className="p-3">
-                        <StatusBadge status={order.fulfillmentStatus} />
+                        <StatusBadge status={order.status || order.fulfillmentStatus || order.paymentStatus} />
                       </td>
-                      <td className="p-3 text-muted-foreground">
-                        {totalItems} {totalItems === 1 ? "item" : "items"}
+                      <td className="p-3 text-right">
+                        <Icon name="chevron_right" size={16} className="size-4 text-muted-foreground/40 group-hover:text-foreground transition-colors ml-auto" />
                       </td>
                     </tr>
                   )

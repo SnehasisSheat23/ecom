@@ -13,11 +13,13 @@ import {
 } from "@/components/ui/sidebar"
 import { Icon } from "@/components/ui/icon"
 
+import { apiRequest } from "@/lib/api-client"
+
 const data = {
   user: {
-    name: "Abdullah Bakheet Admin",
-    email: "admin@abdullahbakheet.com",
-    avatar: "",
+    name: "Admin User",
+    email: "admin@example.com",
+    avatar: "/footer_logo.png",
   },
   navMain: [
     {
@@ -80,25 +82,53 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (session) {
       try {
         const parsed = JSON.parse(session)
-        // Defer user profile state update to prevent synchronous cascading renders inside effect
-        setTimeout(() => {
-          setCurrentUser({
-            name: parsed.name || parsed.email.split("@")[0],
-            email: parsed.email,
-            avatar: parsed.avatar || "",
-          })
-        }, 0)
+        setCurrentUser({
+          name: parsed.name || parsed.email?.split("@")[0] || "Admin User",
+          email: parsed.email || "admin@example.com",
+          avatar: parsed.avatar || "/footer_logo.png",
+        })
       } catch (e) {
         console.error("Failed to parse user session", e)
       }
     }
+
+    // Dynamically fetch live admin profile from backend
+    apiRequest("/auth/admin/me")
+      .then((res) => {
+        if (res.ok) return res.json()
+        throw new Error("Not logged in")
+      })
+      .then((json) => {
+        if (json.data) {
+          const u = json.data
+          const displayName = u.name || `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email?.split("@")[0] || "Admin User"
+          const avatarUrl = u.avatar || u.image || "/footer_logo.png"
+          setCurrentUser({
+            name: displayName,
+            email: u.email,
+            avatar: avatarUrl,
+          })
+          localStorage.setItem(
+            "user_session",
+            JSON.stringify({
+              id: u.id,
+              email: u.email,
+              name: displayName,
+              avatar: avatarUrl,
+              role: u.role || "admin",
+              isAdmin: true,
+            })
+          )
+        }
+      })
+      .catch(() => {})
   }, [])
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader className="px-5 pt-2 pb-4">
+      <SidebarHeader className="px-4 pt-2 pb-2">
         <Link href="/products" className="flex items-center">
-          <img src="/image.png" alt="Abdullah Bakheet" className="h-14 w-auto object-contain" />
+          <img src="/image.png" alt="Abdullah Bakheet" className="h-12 w-auto object-contain" />
         </Link>
       </SidebarHeader>
       <SidebarContent>

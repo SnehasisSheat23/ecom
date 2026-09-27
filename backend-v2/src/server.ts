@@ -26,7 +26,19 @@ app.use(
     origin: (origin) => origin || 'http://localhost:3000',
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Id', 'Cookie'],
+    allowHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Tenant-Id',
+      'X-Guest-Session-Id',
+      'X-Session-Id',
+      'X-Guest-Id',
+      'X-Customer-Group',
+      'X-User-Id',
+      'X-Requested-With',
+      'Accept',
+      'Cookie',
+    ],
     exposeHeaders: ['Set-Cookie'],
   })
 )

@@ -13,6 +13,7 @@ import { toast } from "sonner"
 import { Product, ProductImage, Variant, VariantPrice, APIVariant, APICollection, APISalesChannel, APIProductImage, APICategory } from "./product-details/types"
 
 import { GeneralInfoCard } from "./product-details/general-info-card"
+import { InventoryCard } from "./product-details/inventory-card"
 import { SpecificationsCard } from "./product-details/specifications-card"
 import { PricingCard } from "./product-details/pricing-card"
 import { ShippingCard } from "./product-details/shipping-card"
@@ -535,6 +536,10 @@ export function ProductDetails({ id }: { id: string }) {
             description: product.arabicDescription || "",
           },
         },
+        sku: product.sku || "AUTO",
+        stockQuantity: (product.trackQuantity === false) 
+          ? 999999 
+          : (product.quantity !== undefined && product.quantity !== "" ? Number(product.quantity) : 100),
         specifications: (() => {
           const specs = { ...(product.specifications || {}) }
           delete specs.arabicName
@@ -558,9 +563,9 @@ export function ProductDetails({ id }: { id: string }) {
               tieredPricing: pData.tieredPricing,
             })),
             barcode: product.variants?.[0]?.barcode || null,
-            trackInventory: false,
-            availableQuantity: 999999,
-            allowBackorder: false,
+            trackInventory: product.trackQuantity ?? false,
+            availableQuantity: (product.trackQuantity === false) ? 999999 : (product.quantity !== undefined && product.quantity !== "" ? Number(product.quantity) : 100),
+            allowBackorder: product.continueSellingWhenOutOfStock ?? false,
             countryOfOrigin: product.variants?.[0]?.countryOfOrigin || null,
             hsCode: product.variants?.[0]?.hsCode || null,
             weightGrams: product.variants?.[0]?.weightGrams !== undefined && product.variants?.[0]?.weightGrams !== null && product.variants?.[0]?.weightGrams !== "" ? Math.round(Number(product.variants[0].weightGrams)) : null,
@@ -925,6 +930,12 @@ export function ProductDetails({ id }: { id: string }) {
             />
           )}
 
+
+          {/* Inventory & Packaging Card */}
+          <InventoryCard
+            product={product}
+            setProduct={setProduct}
+          />
 
           {/* Product Specifications & MOUQ File Card */}
           <SpecificationsCard
