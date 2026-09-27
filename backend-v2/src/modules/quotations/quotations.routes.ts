@@ -41,12 +41,16 @@ quotationsRoutes.get('/', async (c) => {
     const email = c.req.query('email')
     const status = c.req.query('status')
     const search = c.req.query('search')
+    const page = c.req.query('page') ? parseInt(c.req.query('page')!) : 1
+    const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!) : 20
 
     const list = await quotationsService.getQuotations({
       customerId,
       email,
       status,
       search,
+      page,
+      limit,
     })
 
     return c.json({

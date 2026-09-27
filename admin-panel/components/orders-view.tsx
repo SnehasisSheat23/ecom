@@ -10,6 +10,7 @@ import { toast } from "sonner"
 import { formatPrice } from "@/lib/currency"
 import { cn } from "@/lib/utils"
 import { ResponsiveDataView, type ColumnDef, type SortOption } from "@/components/shared/responsive-data-view"
+import { useInfiniteData } from "@/hooks/use-infinite-data"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -194,8 +195,6 @@ const mapBackendOrderToFrontend = (item: BackendOrderSummary): Order => {
 }
 
 export function OrdersView() {
-  const [orders, setOrders] = React.useState<Order[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
   const [activeTab, setActiveTab] = React.useState("All")
   const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set())
   const router = useRouter()
@@ -209,28 +208,19 @@ export function OrdersView() {
   const [fulfillmentFilter, setFulfillmentFilter] = React.useState<string>("All")
   const [timeFilter, setTimeFilter] = React.useState<"today" | "7days" | "30days" | "all">("all")
 
-  // Pagination States
-  const [currentPage, setCurrentPage] = React.useState(1)
-  const [pageSize, setPageSize] = React.useState(20)
-  const [totalOrders, setTotalOrders] = React.useState(0)
-  const [summaryStats, setSummaryStats] = React.useState<OrderSummaryStatsProps | null>(null)
-  const [tenantCurrency, setTenantCurrency] = React.useState<string>("SAR")
-
   React.useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchQuery)
-      setCurrentPage(1)
     }, 400)
     return () => clearTimeout(handler)
   }, [searchQuery])
 
-  const loadOrders = React.useCallback(() => {
+  const fetchOrders = React.useCallback(async (page: number, limit: number) => {
     setMounted(true)
-    setIsLoading(true)
 
     const params = new URLSearchParams()
-    params.set("page", currentPage.toString())
-    params.set("perPage", pageSize.toString())
+    params.set("page", page.toString())
+    params.set("perPage", limit.toString())
 
     if (debouncedSearch.trim()) {
       params.set("search", debouncedSearch.trim())
@@ -270,37 +260,42 @@ export function OrdersView() {
     params.set("sortBy", mappedSortField)
     params.set("sortOrder", order || "desc")
 
-    apiRequest(`/admin/orders/list-summary?${params.toString()}`)
-      .then((res) => {
-        if (res.ok) return res.json()
-        throw new Error("Failed to fetch orders from backend")
-      })
-      .then((json) => {
-        const backendItems = json.data?.items || []
-        const total = json.data?.total || 0
-        const stats = json.data?.stats
-        const currency =
-          json.data?.currency || backendItems[0]?.currency || "SAR"
-        const mapped = backendItems.map(mapBackendOrderToFrontend)
-        setOrders(mapped)
-        setTotalOrders(total)
-        setTenantCurrency(currency)
-        if (stats) setSummaryStats(stats)
-      })
-      .catch((err) => {
-        console.error("Failed to load orders from backend:", err)
-        toast.error("Failed to load orders from backend.")
-        setOrders([])
-        setTotalOrders(0)
-      })
-      .finally(() => {
-        setIsLoading(false)
-      })
-  }, [currentPage, pageSize, debouncedSearch, activeTab, paymentFilter, fulfillmentFilter, activeSort])
+    const res = await apiRequest(`/admin/orders/list-summary?${params.toString()}`)
+    if (!res.ok) {
+      throw new Error("Failed to fetch orders from backend")
+    }
 
-  React.useEffect(() => {
-    loadOrders()
-  }, [loadOrders])
+    const json = await res.json()
+    const backendItems = json.data?.items || []
+    const total = json.data?.total || 0
+    const stats = json.data?.stats
+    const currency = json.data?.currency || backendItems[0]?.currency || "SAR"
+    const mapped = backendItems.map(mapBackendOrderToFrontend)
+
+    return {
+      items: mapped,
+      total,
+      meta: { stats, currency },
+    }
+  }, [debouncedSearch, activeTab, paymentFilter, fulfillmentFilter, activeSort])
+
+  const {
+    items: orders,
+    totalItems: totalOrders,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    loadMore,
+    mutate: setOrders,
+    meta,
+  } = useInfiniteData<Order, { stats?: OrderSummaryStatsProps; currency?: string }>({
+    fetcher: fetchOrders,
+    pageSize: 20,
+    deps: [debouncedSearch, activeTab, paymentFilter, fulfillmentFilter, activeSort],
+  })
+
+  const summaryStats = meta?.stats || null
+  const tenantCurrency = meta?.currency || "SAR"
 
   // Bulk actions
   const handleBulkMarkAsPaid = () => {
@@ -403,7 +398,6 @@ export function OrdersView() {
           value={paymentFilter}
           onValueChange={(val) => {
             setPaymentFilter(val)
-            setCurrentPage(1)
           }}
         >
           {["All", "Paid", "Pending", "Refunded"].map((s) => (
@@ -419,7 +413,6 @@ export function OrdersView() {
           value={fulfillmentFilter}
           onValueChange={(val) => {
             setFulfillmentFilter(val)
-            setCurrentPage(1)
           }}
         >
           {["All", "Fulfilled", "Unfulfilled", "Partially Fulfilled"].map((s) => (
@@ -437,7 +430,6 @@ export function OrdersView() {
               onClick={() => {
                 setPaymentFilter("All")
                 setFulfillmentFilter("All")
-                setCurrentPage(1)
               }}
               className="w-full text-xs text-center py-1 text-red-600 dark:text-red-400 hover:underline cursor-pointer font-medium"
             >
@@ -458,7 +450,7 @@ export function OrdersView() {
           Payment: <strong>{paymentFilter}</strong>
           <button
             type="button"
-            onClick={() => { setPaymentFilter("All"); setCurrentPage(1); }}
+            onClick={() => { setPaymentFilter("All"); }}
             className="hover:text-destructive cursor-pointer ml-0.5"
           >
             <Icon name="close" size={12} className="size-3" />
@@ -470,7 +462,7 @@ export function OrdersView() {
           Fulfillment: <strong>{fulfillmentFilter}</strong>
           <button
             type="button"
-            onClick={() => { setFulfillmentFilter("All"); setCurrentPage(1); }}
+            onClick={() => { setFulfillmentFilter("All"); }}
             className="hover:text-destructive cursor-pointer ml-0.5"
           >
             <Icon name="close" size={12} className="size-3" />
@@ -495,7 +487,6 @@ export function OrdersView() {
           setPaymentFilter("All")
           setFulfillmentFilter("All")
           setSearchQuery("")
-          setCurrentPage(1)
         }}
         className="text-[11px] text-primary hover:underline ml-1 cursor-pointer font-medium"
       >
@@ -522,7 +513,6 @@ export function OrdersView() {
         activeTab={activeTab}
         onTabChange={(tab) => {
           setActiveTab(tab)
-          setCurrentPage(1)
         }}
         searchPlaceholder="Search orders, customers..."
         searchQuery={searchQuery}
@@ -533,7 +523,6 @@ export function OrdersView() {
         activeSort={activeSort}
         onSortChange={(sort) => {
           setActiveSort(sort)
-          setCurrentPage(1)
         }}
         items={orders}
         getItemId={(order) => order.id}
@@ -542,9 +531,6 @@ export function OrdersView() {
         selectedIds={selectedRows}
         onSelectionChange={setSelectedRows}
         totalItems={totalOrders}
-        currentPage={currentPage}
-        totalPages={Math.max(Math.ceil(totalOrders / pageSize), 1)}
-        onPageChange={setCurrentPage}
         bulkActions={
           <div className="flex items-center gap-2 ml-auto">
             <Button
@@ -610,6 +596,10 @@ export function OrdersView() {
           )
         }}
         onRowClick={(order) => router.push(`/dashboard/orders/${order.id}`)}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={loadMore}
+        itemCountLabel="orders"
       />
   )
 }

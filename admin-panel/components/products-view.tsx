@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { ConfirmationModal } from "@/components/product-details/modals/confirmation-modal"
 import { formatPrice } from "@/lib/currency"
 import { cn } from "@/lib/utils"
+import { useInfiniteData } from "@/hooks/use-infinite-data"
 import { ResponsiveDataView, type ColumnDef, type SortOption } from "@/components/shared/responsive-data-view"
 import {
   DropdownMenu,
@@ -100,8 +101,6 @@ async function getProductTypeData(): Promise<ProductTypeInfo> {
 }
 
 export function ProductsView() {
-  const [products, setProducts] = React.useState<Product[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
   const [activeTab, setActiveTab] = React.useState("All")
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
   const router = useRouter()
@@ -154,87 +153,93 @@ export function ProductsView() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  const loadProducts = React.useCallback(async () => {
-    try {
-      setIsLoading(true)
-      const typeData = await getProductTypeData()
+  // Infinite data fetcher with 20 items per page
+  const fetchProducts = React.useCallback(async (page: number, limit: number) => {
+    const typeData = await getProductTypeData()
 
-      let url = `/products?limit=100&currency=SAR`
-      if (activeTab !== "All") {
-        url += `&status=${encodeURIComponent(activeTab.toLowerCase())}`
-      }
-      if (debouncedSearchQuery.trim()) {
-        url += `&q=${encodeURIComponent(debouncedSearchQuery.trim())}`
-      }
-      if (categoryFilter !== "all") {
-        url += `&categoryId=${encodeURIComponent(categoryFilter)}`
-      }
-      if (activeSort) {
-        url += `&sort=${encodeURIComponent(activeSort)}`
-      }
-
-      const res = await apiRequest(url)
-      if (res.ok) {
-        const body = await res.json()
-        const itemsList = body.data?.items || body.data || []
-        if (Array.isArray(itemsList)) {
-          const typeLookup = typeData.lookup
-          const mapped = itemsList.map((p: any) => {
-            const rawStatus = p.status || "active"
-            const capitalizedStatus = (rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1)) as "Active" | "Draft" | "Archived"
-
-            const typeInfo = p.productTypeId ? typeLookup[p.productTypeId] : null
-            const typeName = typeInfo?.name || (p.productType ? p.productType.charAt(0).toUpperCase() + p.productType.slice(1) : "Physical")
-            const typeSlug = typeInfo?.slug || (p.productType ? p.productType.toLowerCase() : "")
-
-            const title = p.title || p.translations?.en?.title || p.sku || "Untitled Product"
-            const numericPrice = typeof p.price === "number" ? p.price : (p.variants?.[0]?.price ?? 0)
-            const activeCurrency = p.currency || "SAR"
-
-            const priceFormatted = numericPrice > 0
-              ? formatPrice(numericPrice, { currency: activeCurrency, isMinorUnit: false })
-              : "-"
-            const rawCompareAt = p.compareAtPrice ?? p.variants?.[0]?.compareAtPrice
-            const compareAtFormatted = rawCompareAt
-              ? formatPrice(rawCompareAt, { currency: activeCurrency, isMinorUnit: false })
-              : null
-
-            const imageUrl = Array.isArray(p.images) && p.images.length > 0
-              ? (typeof p.images[0] === "string" ? p.images[0] : p.images[0]?.url)
-              : "https://placehold.co/100x100?text=No+Image"
-
-            return {
-              id: p.id,
-              image: imageUrl,
-              title: title,
-              status: capitalizedStatus,
-              price: priceFormatted,
-              compareAtPrice: compareAtFormatted,
-              category: p.categoryName || p.categories?.[0]?.name || "-",
-              type: typeName,
-              typeSlug: typeSlug,
-              productTypeId: p.productTypeId,
-              vendor: p.vendorName || p.attributes?.origin || "Store",
-              stockQuantity: p.stockQuantity ?? 100,
-            }
-          })
-          setProducts(mapped)
-        }
-      } else {
-        console.error("Failed to fetch products")
-        toast.error("Failed to load products")
-      }
-    } catch (e) {
-      console.error("Failed to load products from API:", e)
-      toast.error("Error loading products")
-    } finally {
-      setIsLoading(false)
+    let url = `/products?page=${page}&limit=${limit}&currency=SAR`
+    if (activeTab !== "All") {
+      url += `&status=${encodeURIComponent(activeTab.toLowerCase())}`
     }
-  }, [debouncedSearchQuery, activeTab, categoryFilter, activeSort])
+    if (debouncedSearchQuery.trim()) {
+      url += `&q=${encodeURIComponent(debouncedSearchQuery.trim())}`
+    }
+    if (categoryFilter !== "all") {
+      url += `&categoryId=${encodeURIComponent(categoryFilter)}`
+    }
+    if (activeSort) {
+      url += `&sort=${encodeURIComponent(activeSort)}`
+    }
 
-  React.useEffect(() => {
-    loadProducts()
-  }, [loadProducts])
+    const res = await apiRequest(url)
+    if (!res.ok) {
+      throw new Error("Failed to load products")
+    }
+
+    const body = await res.json()
+    const itemsList = body.data?.items || body.data || []
+    const totalCount = Number(body.data?.total ?? (Array.isArray(itemsList) ? itemsList.length : 0))
+
+    const typeLookup = typeData.lookup
+    const mapped: Product[] = (Array.isArray(itemsList) ? itemsList : []).map((p: any) => {
+      const rawStatus = p.status || "active"
+      const capitalizedStatus = (rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1)) as "Active" | "Draft" | "Archived"
+
+      const typeInfo = p.productTypeId ? typeLookup[p.productTypeId] : null
+      const typeName = typeInfo?.name || (p.productType ? p.productType.charAt(0).toUpperCase() + p.productType.slice(1) : "Physical")
+      const typeSlug = typeInfo?.slug || (p.productType ? p.productType.toLowerCase() : "")
+
+      const title = p.title || p.translations?.en?.title || p.sku || "Untitled Product"
+      const numericPrice = typeof p.price === "number" ? p.price : (p.variants?.[0]?.price ?? 0)
+      const activeCurrency = p.currency || "SAR"
+
+      const priceFormatted = numericPrice > 0
+        ? formatPrice(numericPrice, { currency: activeCurrency, isMinorUnit: false })
+        : "-"
+      const rawCompareAt = p.compareAtPrice ?? p.variants?.[0]?.compareAtPrice
+      const compareAtFormatted = rawCompareAt
+        ? formatPrice(rawCompareAt, { currency: activeCurrency, isMinorUnit: false })
+        : null
+
+      const imageUrl = Array.isArray(p.images) && p.images.length > 0
+        ? (typeof p.images[0] === "string" ? p.images[0] : p.images[0]?.url)
+        : "https://placehold.co/100x100?text=No+Image"
+
+      return {
+        id: p.id,
+        image: imageUrl,
+        title: title,
+        status: capitalizedStatus,
+        price: priceFormatted,
+        compareAtPrice: compareAtFormatted,
+        category: p.categoryName || p.categories?.[0]?.name || "-",
+        type: typeName,
+        typeSlug: typeSlug,
+        productTypeId: p.productTypeId,
+        vendor: p.vendorName || p.attributes?.origin || "Store",
+        stockQuantity: p.stockQuantity ?? 100,
+      }
+    })
+
+    return {
+      items: mapped,
+      total: totalCount,
+    }
+  }, [activeTab, debouncedSearchQuery, categoryFilter, activeSort])
+
+  const {
+    items: products,
+    totalItems,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    loadMore,
+    refresh: loadProducts,
+  } = useInfiniteData<Product>({
+    fetcher: fetchProducts,
+    pageSize: 20,
+    deps: [activeTab, debouncedSearchQuery, categoryFilter, activeSort],
+  })
 
   const selectedProductTitles = React.useMemo(() => {
     return products.filter((p) => selectedIds.has(p.id)).map((p) => p.title)
@@ -552,6 +557,11 @@ export function ProductsView() {
           </div>
         )}
         onRowClick={(product) => router.push(`/dashboard/products/${product.id}`)}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={loadMore}
+        itemCountLabel="products"
+        totalItems={totalItems}
       />
 
       <ConfirmationModal

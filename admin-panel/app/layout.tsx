@@ -13,7 +13,10 @@ export const metadata: Metadata = {
   title: "Abdullah Bakheet | Admin Portal",
   description: "Enterprise Administrative Portal for Abdullah Bakheet Trading Co. - Saudi Arabia",
   icons: {
-    icon: "/image.png",
+    icon: [
+      { url: "/image.png", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
     shortcut: "/image.png",
     apple: "/image.png",
   },
@@ -29,6 +32,11 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} h-full antialiased`}
     >
+      <head>
+        <link rel="icon" href="/image.png" type="image/png" />
+        <link rel="shortcut icon" href="/image.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/image.png" />
+      </head>
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground antialiased selection:bg-primary/10">
         {children}
         <Toaster />

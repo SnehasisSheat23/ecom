@@ -19,6 +19,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
+import { useInfiniteData } from "@/hooks/use-infinite-data"
+import { InfiniteScrollSentinel, InfiniteScrollFooter } from "@/components/shared/infinite-scroll-sentinel"
 
 interface Customer {
   id: string
@@ -53,16 +55,11 @@ const TABS = ["All", "Email subscribers", "Returning"]
 
 export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporate" | "retail" }) {
   const isCorporateView = filterGroup === "corporate"
-  const [customers, setCustomers] = React.useState<Customer[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
   const [activeTab, setActiveTab] = React.useState(isCorporateView ? "All Business" : "All")
   const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set())
   const router = useRouter()
 
-  // Server-side Pagination & Search States
-  const [page, setPage] = React.useState(1)
-  const [perPage, setPerPage] = React.useState(50)
-  const [total, setTotal] = React.useState(0)
+  // Search & Sort States
   const [searchQuery, setSearchQuery] = React.useState("")
   const [debouncedSearch, setDebouncedSearch] = React.useState("")
   const [isSearchVisible, setIsSearchVisible] = React.useState(false)
@@ -73,74 +70,80 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery)
-      setPage(1)
     }, 300)
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  const loadCustomers = React.useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const queryParams = new URLSearchParams({
-        page: String(page),
-        perPage: String(perPage),
-      })
-      if (debouncedSearch.trim()) {
-        queryParams.set("search", debouncedSearch.trim())
-      }
-      if (isCorporateView) {
-        queryParams.set("customerGroup", "corporate")
-      } else {
-        queryParams.set("customerGroup", "retail")
-      }
-
-      const res = await apiRequest(`/admin/customers?${queryParams.toString()}`)
-      if (res.ok) {
-        const body = await res.json()
-        if (body.data) {
-          const items = body.data.items || body.data || []
-          const mapped = items.map((c: any) => ({
-            id: c.id,
-            name: `${c.firstName || ""} ${c.lastName || ""}`.trim() || c.companyName || c.email.split("@")[0],
-            email: c.email,
-            phone: c.phone || "-",
-            companyName: c.companyName || "",
-            companyTaxId: c.companyTaxId || "",
-            crNumber: c.crNumber || "",
-            businessType: c.businessType || "",
-            city: c.city || "-",
-            province: c.province || c.city || "-",
-            country: c.country || "-",
-            deliveryAddress: c.deliveryAddress || "",
-            crDocumentUrl: c.crDocumentUrl || "",
-            vatDocumentUrl: c.vatDocumentUrl || "",
-            customerGroup: c.customerGroup || "retail",
-            status: c.status || "active",
-            creditLimit: Number(c.creditLimit || 0),
-            availableCredit: Number(c.availableCredit || 0),
-            paymentTerms: c.paymentTerms || "prepaid",
-            ordersCount: c.ordersCount || 0,
-            totalSpent: c.totalSpent || 0,
-            tags: c.tags || [],
-            marketingConsent: false,
-            rejectionReason: c.rejectionReason || "",
-          }))
-          setCustomers(mapped)
-          setTotal(body.data.total ?? mapped.length)
-        }
-      } else {
-        console.error("Failed to fetch customers")
-      }
-    } catch (e) {
-      console.error("Failed to load customers from API:", e)
-    } finally {
-      setIsLoading(false)
+  const fetchCustomers = React.useCallback(async (page: number, limit: number) => {
+    const queryParams = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    })
+    if (debouncedSearch.trim()) {
+      queryParams.set("search", debouncedSearch.trim())
     }
-  }, [page, perPage, debouncedSearch, isCorporateView])
+    if (isCorporateView) {
+      queryParams.set("customerGroup", "corporate")
+      if (activeTab === "Pending") {
+        queryParams.set("status", "pending")
+      }
+    } else {
+      queryParams.set("customerGroup", "retail")
+    }
 
-  React.useEffect(() => {
-    loadCustomers()
-  }, [loadCustomers])
+    const res = await apiRequest(`/admin/customers?${queryParams.toString()}`)
+    if (!res.ok) {
+      throw new Error("Failed to fetch customers")
+    }
+    const body = await res.json()
+    const items = body.data?.items || body.data || []
+    const mapped: Customer[] = (Array.isArray(items) ? items : []).map((c: any) => ({
+      id: c.id,
+      name: `${c.firstName || ""} ${c.lastName || ""}`.trim() || c.companyName || c.email.split("@")[0],
+      email: c.email,
+      phone: c.phone || "-",
+      companyName: c.companyName || "",
+      companyTaxId: c.companyTaxId || "",
+      crNumber: c.crNumber || "",
+      businessType: c.businessType || "",
+      city: c.city || "-",
+      province: c.province || c.city || "-",
+      country: c.country || "-",
+      deliveryAddress: c.deliveryAddress || "",
+      crDocumentUrl: c.crDocumentUrl || "",
+      vatDocumentUrl: c.vatDocumentUrl || "",
+      customerGroup: c.customerGroup || "retail",
+      status: c.status || "active",
+      creditLimit: Number(c.creditLimit || 0),
+      availableCredit: Number(c.availableCredit || 0),
+      paymentTerms: c.paymentTerms || "prepaid",
+      ordersCount: c.ordersCount || 0,
+      totalSpent: c.totalSpent || 0,
+      tags: c.tags || [],
+      marketingConsent: false,
+      rejectionReason: c.rejectionReason || "",
+    }))
+
+    return {
+      items: mapped,
+      total: Number(body.data?.total ?? mapped.length),
+    }
+  }, [debouncedSearch, isCorporateView, activeTab])
+
+  const {
+    items: customers,
+    totalItems: total,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    loadMore,
+    mutate: setCustomers,
+    refresh: refreshCustomers,
+  } = useInfiniteData<Customer>({
+    fetcher: fetchCustomers,
+    pageSize: 20,
+    deps: [debouncedSearch, isCorporateView, activeTab],
+  })
 
   // Approval & Rejection Handlers
   const handleApprove = async (id: string, e: React.MouseEvent) => {
@@ -829,6 +832,15 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
                   )
                 })
               )}
+              {/* Desktop Infinite Scroll Sentinel */}
+              <InfiniteScrollSentinel
+                asTableRow={true}
+                colSpan={isCorporateView ? (activeTab === "Pending" ? 6 : 5) : 5}
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={loadMore}
+                label={isCorporateView ? "corporate accounts" : "customers"}
+              />
             </tbody>
           </table>
         </div>
@@ -897,41 +909,25 @@ export function CustomersView({ filterGroup }: { filterGroup?: "all" | "corporat
               </div>
             ))
           )}
+
+          {/* Mobile Infinite Scroll Sentinel */}
+          <InfiniteScrollSentinel
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={loadMore}
+            label={isCorporateView ? "corporate accounts" : "customers"}
+          />
         </div>
 
-        {/* Desktop Pagination Footer */}
-        <div className="hidden md:flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 h-12 shrink-0 text-xs font-ui">
-          <div className="flex items-center gap-4 text-muted-foreground">
-            <span>
-              Showing {total > 0 ? (page - 1) * perPage + 1 : 0}–
-              {Math.min(page * perPage, total)} of {total} {isCorporateView ? "corporate accounts" : "customers"}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground mr-2">
-              Page {page} of {Math.max(Math.ceil(total / perPage), 1)}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2 text-xs cursor-pointer"
-              disabled={page <= 1}
-              onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2 text-xs cursor-pointer"
-              disabled={page * perPage >= total}
-              onClick={() => setPage(prev => prev + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+        {/* Infinite Scroll Footer */}
+        <InfiniteScrollFooter
+          loadedCount={customers.length}
+          totalCount={total}
+          label={isCorporateView ? "corporate accounts" : "customers"}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={loadMore}
+        />
 
       </div>
     </div>

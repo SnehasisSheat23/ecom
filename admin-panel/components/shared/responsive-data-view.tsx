@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
+import { InfiniteScrollSentinel, InfiniteScrollFooter } from "@/components/shared/infinite-scroll-sentinel"
 
 export interface ColumnDef<T> {
   header: string
@@ -86,6 +87,12 @@ export interface ResponsiveDataViewProps<T> {
   totalPages?: number
   totalItems?: number
   onPageChange?: (page: number) => void
+
+  // Infinite Scroll (Optional)
+  hasMore?: boolean
+  isLoadingMore?: boolean
+  onLoadMore?: () => void
+  itemCountLabel?: string
 }
 
 export function ResponsiveDataView<T>({
@@ -121,8 +128,13 @@ export function ResponsiveDataView<T>({
   totalPages,
   totalItems,
   onPageChange,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
+  itemCountLabel,
 }: ResponsiveDataViewProps<T>) {
   const [isSearchVisible, setIsSearchVisible] = React.useState(false)
+
 
   const hasSelection = selectedIds && onSelectionChange
   const isAllSelected = hasSelection && items.length > 0 && items.every((item) => selectedIds.has(getItemId(item)))
@@ -462,6 +474,16 @@ export function ResponsiveDataView<T>({
                   )
                 })
               )}
+
+              {/* Desktop Infinite Scroll Sentinel */}
+              <InfiniteScrollSentinel
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={onLoadMore}
+                label={itemCountLabel || "items"}
+                asTableRow={true}
+                colSpan={columns.length + (hasSelection ? 1 : 0)}
+              />
             </tbody>
           </table>
         </div>
@@ -524,10 +546,27 @@ export function ResponsiveDataView<T>({
               )
             })
           )}
+
+          {/* Mobile Infinite Scroll Sentinel */}
+          <InfiniteScrollSentinel
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={onLoadMore}
+            label={itemCountLabel || "items"}
+          />
         </div>
 
-        {/* Optional Pagination Footer */}
-        {totalPages && totalPages > 1 && onPageChange && (
+        {/* Footer: Infinite Scroll Counter OR Pagination */}
+        {onLoadMore ? (
+          <InfiniteScrollFooter
+            loadedCount={items.length}
+            totalCount={totalItems}
+            label={itemCountLabel || "items"}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={onLoadMore}
+          />
+        ) : totalPages && totalPages > 1 && onPageChange ? (
           <div className="flex items-center justify-between border-t border-border/60 px-3 py-2 bg-card text-xs text-muted-foreground shrink-0">
             <span>
               Page {currentPage || 1} of {totalPages}
@@ -553,7 +592,7 @@ export function ResponsiveDataView<T>({
               </Button>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )

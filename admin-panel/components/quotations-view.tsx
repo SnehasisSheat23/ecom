@@ -19,6 +19,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
+import { useInfiniteData } from "@/hooks/use-infinite-data"
+import { InfiniteScrollSentinel, InfiniteScrollFooter } from "@/components/shared/infinite-scroll-sentinel"
 
 export interface QuotationItem {
   id: string
@@ -123,79 +125,67 @@ function QuotationStatusBadge({ status }: { status: string }) {
 
 export function QuotationsView() {
   const router = useRouter()
-  const [quotations, setQuotations] = React.useState<Quotation[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
   const [activeTab, setActiveTab] = React.useState<string>("All")
   const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set())
 
-  // Pagination states
-  const [currentPage, setCurrentPage] = React.useState(1)
-  const [pageSize, setPageSize] = React.useState(20)
-
   // Search, Filter & Sort States
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [debouncedSearch, setDebouncedSearch] = React.useState("")
   const [isSearchVisible, setIsSearchVisible] = React.useState(false)
   const [sortField, setSortField] = React.useState<"date" | "total" | "quoteNumber">("date")
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc")
   const [timeFilter, setTimeFilter] = React.useState<"today" | "7days" | "30days" | "all">("all")
 
-  const fetchQuotations = React.useCallback(async () => {
-    try {
-      setIsLoading(true)
-      const res = await apiRequest("/quotations")
-      if (res.ok) {
-        const body = await res.json()
-        if (body && Array.isArray(body.data)) {
-          setQuotations(body.data)
-        }
-      }
-    } catch (err: any) {
-      console.error("Failed to load quotations:", err)
-      toast.error("Failed to load quotations from backend")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
   React.useEffect(() => {
-    fetchQuotations()
-  }, [fetchQuotations])
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
-  // Reset page when tab, search or sort changes
-  React.useEffect(() => {
-    setCurrentPage(1)
-  }, [activeTab, searchQuery, sortField, sortOrder])
+  const fetchQuotations = React.useCallback(async (page: number, limit: number) => {
+    let url = `/quotations?page=${page}&limit=${limit}`
+    if (activeTab === "Pending") url += "&status=pending_review"
+    else if (activeTab === "Quoted") url += "&status=quoted"
+    else if (activeTab === "Accepted") url += "&status=accepted"
+    else if (activeTab === "Converted") url += "&status=converted"
+    else if (activeTab === "Rejected") url += "&status=rejected"
 
-  // Filter & Sort Logic
-  const filteredQuotations = React.useMemo(() => {
-    let result = [...quotations]
-
-    // 1. Tab filter
-    if (activeTab === "Pending") {
-      result = result.filter((q) => q.status === "pending_review")
-    } else if (activeTab === "Quoted") {
-      result = result.filter((q) => q.status === "quoted")
-    } else if (activeTab === "Accepted") {
-      result = result.filter((q) => q.status === "accepted")
-    } else if (activeTab === "Converted") {
-      result = result.filter((q) => q.status === "converted")
-    } else if (activeTab === "Rejected") {
-      result = result.filter((q) => q.status === "rejected")
+    if (debouncedSearch.trim()) {
+      url += `&search=${encodeURIComponent(debouncedSearch.trim())}`
     }
 
-    // 2. Search query
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim()
-      result = result.filter(
-        (item) =>
-          item.quoteNumber.toLowerCase().includes(q) ||
-          item.customerName.toLowerCase().includes(q) ||
-          (item.companyName && item.companyName.toLowerCase().includes(q)) ||
-          item.customerEmail.toLowerCase().includes(q)
-      )
+    const res = await apiRequest(url)
+    if (!res.ok) {
+      throw new Error("Failed to load quotations")
     }
+    const body = await res.json()
+    const items = body.data?.items || body.data || []
+    const total = Number(body.data?.total ?? (Array.isArray(items) ? items.length : 0))
 
-    // 3. Sorting
+    return {
+      items: Array.isArray(items) ? items : [],
+      total,
+    }
+  }, [activeTab, debouncedSearch])
+
+  const {
+    items: quotations,
+    totalItems: totalQuotations,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    loadMore,
+    refresh: refreshQuotations,
+  } = useInfiniteData<Quotation>({
+    fetcher: fetchQuotations,
+    pageSize: 20,
+    deps: [activeTab, debouncedSearch],
+  })
+
+  // Sort loaded quotations
+  const sortedQuotations = React.useMemo(() => {
+    const result = [...quotations]
     result.sort((a, b) => {
       if (sortField === "date") {
         const timeA = new Date(a.createdAt).getTime()
@@ -209,20 +199,13 @@ export function QuotationsView() {
           : b.quoteNumber.localeCompare(a.quoteNumber)
       }
     })
-
     return result
-  }, [quotations, activeTab, searchQuery, sortField, sortOrder])
-
-  // Paginated quotations slice
-  const paginatedQuotations = React.useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return filteredQuotations.slice(start, start + pageSize)
-  }, [filteredQuotations, currentPage, pageSize])
+  }, [quotations, sortField, sortOrder])
 
   // Select all rows handler
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedRows(new Set(filteredQuotations.map((q) => q.id)))
+      setSelectedRows(new Set(sortedQuotations.map((q) => q.id)))
     } else {
       setSelectedRows(new Set())
     }
@@ -274,7 +257,7 @@ export function QuotationsView() {
       <div className="hidden md:flex items-center justify-between pb-1 sm:pb-2 gap-2 shrink-0">
         <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground select-none">Quotations</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="h-8 shadow-xs text-xs px-2.5 sm:px-3 cursor-pointer" onClick={fetchQuotations}>
+          <Button variant="outline" className="h-8 shadow-xs text-xs px-2.5 sm:px-3 cursor-pointer" onClick={refreshQuotations}>
             <Icon name="refresh" size={14} className="size-3.5 mr-1" />
             Refresh
           </Button>
@@ -285,7 +268,7 @@ export function QuotationsView() {
       <div className="flex md:hidden flex-col gap-3 pb-1.5 shrink-0">
         <div className="flex items-center justify-between gap-2 pt-1">
           <h1 className="text-[26px] font-bold tracking-tight text-foreground select-none leading-tight">Quotations</h1>
-          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground cursor-pointer" onClick={fetchQuotations}>
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground cursor-pointer" onClick={refreshQuotations}>
             <Icon name="refresh" size={18} className="size-4.5" />
           </Button>
         </div>
@@ -504,7 +487,7 @@ export function QuotationsView() {
               <tr>
                 <th className="w-10 p-3 text-center">
                   <Checkbox
-                    checked={selectedRows.size === filteredQuotations.length && filteredQuotations.length > 0}
+                    checked={selectedRows.size === sortedQuotations.length && sortedQuotations.length > 0}
                     onCheckedChange={(val) => handleSelectAll(!!val)}
                   />
                 </th>
@@ -559,7 +542,7 @@ export function QuotationsView() {
                     </td>
                   </tr>
                 ))
-              ) : filteredQuotations.length === 0 ? (
+              ) : sortedQuotations.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="p-8 text-center text-muted-foreground">
                     <div className="flex flex-col items-center justify-center gap-2">
@@ -569,7 +552,7 @@ export function QuotationsView() {
                   </td>
                 </tr>
               ) : (
-                paginatedQuotations.map((q) => {
+                sortedQuotations.map((q) => {
                   const isChecked = selectedRows.has(q.id)
                   return (
                     <tr
@@ -620,6 +603,16 @@ export function QuotationsView() {
                   )
                 })
               )}
+
+              {/* Desktop Infinite Scroll Sentinel */}
+              <InfiniteScrollSentinel
+                asTableRow={true}
+                colSpan={8}
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={loadMore}
+                label="quotations"
+              />
             </tbody>
           </table>
         </div>
@@ -636,12 +629,12 @@ export function QuotationsView() {
                 </div>
               </div>
             ))
-          ) : paginatedQuotations.length === 0 ? (
+          ) : sortedQuotations.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground font-ui text-xs">
               No quotations found
             </div>
           ) : (
-            paginatedQuotations.map((q) => {
+            sortedQuotations.map((q) => {
               const createdDate = new Date(q.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 
               return (
@@ -676,76 +669,25 @@ export function QuotationsView() {
               )
             })
           )}
+
+          {/* Mobile Infinite Scroll Sentinel */}
+          <InfiniteScrollSentinel
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={loadMore}
+            label="quotations"
+          />
         </div>
 
-        {/* Desktop Pagination Footer */}
-        <div className="hidden md:flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 h-12 shrink-0 text-xs font-ui">
-          <div className="flex items-center gap-4 text-muted-foreground">
-            <span>
-              Showing {filteredQuotations.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}–
-              {Math.min(currentPage * pageSize, filteredQuotations.length)} of {filteredQuotations.length} quotations
-            </span>
-            <div className="flex items-center gap-1.5">
-              <span>Rows per page:</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1 select-none cursor-pointer">
-                    {pageSize} <Icon name="keyboard_arrow_down" size={14} className="size-3.5 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-16 font-ui">
-                  {[10, 20, 50, 100].map((size) => (
-                    <DropdownMenuItem key={size} onClick={() => { setPageSize(size); setCurrentPage(1); }} className="cursor-pointer">
-                      {size}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground mr-2">
-              Page {currentPage} of {Math.max(Math.ceil(filteredQuotations.length / pageSize), 1)}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 cursor-pointer"
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1 || isLoading}
-            >
-              <Icon name="first_page" size={16} />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 cursor-pointer"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1 || isLoading}
-            >
-              <Icon name="chevron_left" size={16} />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 cursor-pointer"
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.max(Math.ceil(filteredQuotations.length / pageSize), 1)))}
-              disabled={currentPage >= Math.ceil(filteredQuotations.length / pageSize) || isLoading}
-            >
-              <Icon name="chevron_right" size={16} />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 cursor-pointer"
-              onClick={() => setCurrentPage(Math.max(Math.ceil(filteredQuotations.length / pageSize), 1))}
-              disabled={currentPage >= Math.ceil(filteredQuotations.length / pageSize) || isLoading}
-            >
-              <Icon name="last_page" size={16} />
-            </Button>
-          </div>
-        </div>
+        {/* Infinite Scroll Footer */}
+        <InfiniteScrollFooter
+          loadedCount={quotations.length}
+          totalCount={totalQuotations}
+          label="quotations"
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={loadMore}
+        />
       </div>
     </div>
   )

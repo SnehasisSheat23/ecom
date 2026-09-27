@@ -210,8 +210,11 @@ export class QuotationsService {
     return fullQuote
   }
 
-  async getQuotations(filters?: { customerId?: string; email?: string; status?: string; search?: string }) {
-    let query = this.db.select().from(quotations)
+  async getQuotations(filters?: { customerId?: string; email?: string; status?: string; search?: string; page?: number; limit?: number }) {
+    const page = Math.max(1, Number(filters?.page) || 1)
+    const limit = Math.max(1, Math.min(100, Number(filters?.limit) || 20))
+    const offset = (page - 1) * limit
+
     const conditions: any[] = []
 
     if (filters?.customerId) {
@@ -235,11 +238,28 @@ export class QuotationsService {
       )
     }
 
-    const quotes = conditions.length > 0
-      ? await query.where(and(...conditions)).orderBy(desc(quotations.createdAt))
-      : await query.orderBy(desc(quotations.createdAt))
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
-    return quotes
+    const [countResult] = await this.db
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(quotations)
+      .where(whereClause)
+    const total = Number(countResult?.count || 0)
+
+    const quotes = await this.db
+      .select()
+      .from(quotations)
+      .where(whereClause)
+      .orderBy(desc(quotations.createdAt))
+      .limit(limit)
+      .offset(offset)
+
+    return {
+      items: quotes,
+      page,
+      limit,
+      total,
+    }
   }
 
   async getQuotationById(id: string) {

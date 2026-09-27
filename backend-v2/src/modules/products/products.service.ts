@@ -1,4 +1,4 @@
-import { eq, or, ilike, sql } from 'drizzle-orm'
+import { eq, or, ilike, sql, inArray } from 'drizzle-orm'
 import { getDatabase } from '../../lib/db.js'
 import { products, categories, orderItems, quotationItems, cartItems, wishlistItems, type PriceTier } from '../../database/schema.js'
 
@@ -205,7 +205,18 @@ export class ProductsService {
     ])
 
     const total = Number(countRes?.count || 0)
-    const formatted = await Promise.all(items.map((p) => this.formatProduct(p, lang, currency)))
+
+    // Batch fetch referenced categories in a single query to eliminate N+1 latency
+    const categoryIds = Array.from(new Set(items.map((p) => p.categoryId).filter(Boolean))) as string[]
+    const catRows = categoryIds.length > 0
+      ? await this.db.select().from(categories).where(inArray(categories.id, categoryIds))
+      : []
+    const categoryMap = new Map<string, typeof categories.$inferSelect>()
+    for (const c of catRows) {
+      categoryMap.set(c.id, c)
+    }
+
+    const formatted = await Promise.all(items.map((p) => this.formatProduct(p, lang, currency, categoryMap)))
     return { items: formatted, page, limit, total }
   }
 
@@ -379,7 +390,12 @@ export class ProductsService {
     return { valid: true }
   }
 
-  private async formatProduct(product: typeof products.$inferSelect, lang: 'en' | 'ar', currency: string) {
+  private async formatProduct(
+    product: typeof products.$inferSelect,
+    lang: 'en' | 'ar',
+    currency: string,
+    categoryMap?: Map<string, typeof categories.$inferSelect>
+  ) {
     const langData = (product.translations?.[lang] || product.translations?.['en'] || product.translations?.['ar'] || {}) as any
     const priceData = product.pricing[currency] || product.pricing['SAR'] || product.pricing['AED'] || { price: 0 }
 
@@ -393,7 +409,10 @@ export class ProductsService {
     let categoryArabic = ''
     let categoryEnglish = ''
     if (product.categoryId) {
-      const [cat] = await this.db.select().from(categories).where(eq(categories.id, product.categoryId)).limit(1)
+      let cat = categoryMap ? categoryMap.get(product.categoryId) : undefined
+      if (!cat && !categoryMap) {
+        ;[cat] = await this.db.select().from(categories).where(eq(categories.id, product.categoryId)).limit(1)
+      }
       if (cat) {
         categoryEnglish = cat.translations?.en?.name || ''
         categoryArabic = cat.translations?.ar?.name || ''
