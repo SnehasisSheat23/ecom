@@ -391,6 +391,7 @@ export function ProductDetails({ id }: { id: string }) {
                 description: p.seo?.description || p.metaDescription || "",
               } : undefined,
               currency: activeCurr,
+              slug: p.slug || p.translations?.en?.slug || p.translations?.ar?.slug || "",
               translations: p.translations || {},
               specifications: p.specifications || {},
               arabicTitle: p.arabicTitle || p.translations?.ar?.title || p.translations?.ar?.name || p.specifications?.arabicName || "",
@@ -529,6 +530,7 @@ export function ProductDetails({ id }: { id: string }) {
         },
         metaTitle: product.seo?.title || null,
         metaDescription: product.seo?.description || null,
+        slug: product.slug || product.translations?.en?.slug || (product.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
         translations: {
           ...(product.translations || {}),
           en: {
@@ -536,12 +538,14 @@ export function ProductDetails({ id }: { id: string }) {
             title: product.title,
             name: product.title,
             description: product.description || description || "",
+            slug: product.slug || product.translations?.en?.slug || (product.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
           },
           ar: {
             ...((product.translations?.ar as Record<string, any>) || {}),
             title: product.arabicTitle || "",
             name: product.arabicTitle || "",
             description: product.arabicDescription || "",
+            slug: product.translations?.ar?.slug || product.slug || product.translations?.en?.slug || (product.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
           },
         },
         sku: product.sku || "AUTO",

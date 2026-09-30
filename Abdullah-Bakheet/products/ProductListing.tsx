@@ -571,7 +571,7 @@ export default function ProductListing() {
                             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
                                 {filteredProducts.map((product) => (
                                     <Link
-                                        href={`/products/${product.id}`}
+                                        href={`/products/${product.slug || product.id}`}
                                         key={product.id}
                                         className="bg-white p-3 sm:p-4 md:p-5 rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.1)] transition-all border border-gray-100/80 flex flex-col justify-between group relative block"
                                     >

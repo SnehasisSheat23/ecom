@@ -196,18 +196,18 @@ export function renderEmailTemplate(event: NotificationEvent, payload: any): Out
         : `Order Confirmation #${p.orderNumber} - Abdullah Bakheet`
       const categoryTag = isCorporate ? 'CORPORATE WHOLESALE ORDER' : 'ORDER CONFIRMATION'
 
-      const itemsHtml = p.items
+      const itemsHtml = (p.items || [])
         .map(
           (item) => `
             <tr>
               <td style="padding: 10px 0; border-bottom: 1px solid #f4f4f5; font-size: 13px; color: #09090b;">
-                <strong>${item.name}</strong> ${item.sku ? `<br><span style="color:#a1a1aa;font-size:11px;font-family:monospace;">SKU: ${item.sku}</span>` : ''}
+                <strong>${item.name || 'Product'}</strong> ${item.sku ? `<br><span style="color:#a1a1aa;font-size:11px;font-family:monospace;">SKU: ${item.sku}</span>` : ''}
               </td>
               <td style="padding: 10px 0; border-bottom: 1px solid #f4f4f5; text-align: center; font-size: 13px; color: #71717a;">
-                ×${item.quantity}
+                ×${item.quantity || 1}
               </td>
               <td style="padding: 10px 0; border-bottom: 1px solid #f4f4f5; text-align: right; font-size: 13px; font-weight: 600; color: #09090b;">
-                ${p.currency} ${Number(item.totalPrice).toFixed(2)}
+                ${p.currency || 'SAR'} ${Number(item.totalPrice || (Number(item.unitPrice || 0) * Number(item.quantity || 1)) || 0).toFixed(2)}
               </td>
             </tr>
           `
@@ -218,7 +218,7 @@ export function renderEmailTemplate(event: NotificationEvent, payload: any): Out
         subject,
         categoryTag,
         `
-          <h1 class="main-title">Thank you for your order, ${p.customerName}!</h1>
+          <h1 class="main-title">Thank you for your order, ${p.customerName || 'Valued Customer'}!</h1>
           <p class="lead-text">
             We have received order <strong>#${p.orderNumber}</strong>${p.companyName ? ` placed on behalf of <strong>${p.companyName}</strong>` : ''}. Our fulfillment team is preparing your shipment.
           </p>
@@ -229,7 +229,7 @@ export function renderEmailTemplate(event: NotificationEvent, payload: any): Out
               ${p.companyName ? `<tr><td style="color:#71717a;padding:3px 0;">Corporate Account:</td><td style="text-align:right;font-weight:600;">${p.companyName}</td></tr>` : ''}
               ${p.poNumber ? `<tr><td style="color:#71717a;padding:3px 0;">Purchase Order (PO):</td><td style="text-align:right;font-weight:600;font-family:monospace;">${p.poNumber}</td></tr>` : ''}
               ${p.vatNumber ? `<tr><td style="color:#71717a;padding:3px 0;">Buyer VAT ID:</td><td style="text-align:right;font-weight:600;font-family:monospace;">${p.vatNumber}</td></tr>` : ''}
-              ${p.paymentMethod ? `<tr><td style="color:#71717a;padding:3px 0;">Payment Method:</td><td style="text-align:right;font-weight:600;text-transform:uppercase;">${p.paymentMethod.replace('_', ' ')}</td></tr>` : ''}
+              ${p.paymentMethod ? `<tr><td style="color:#71717a;padding:3px 0;">Payment Method:</td><td style="text-align:right;font-weight:600;text-transform:uppercase;">${String(p.paymentMethod).replace(/_/g, ' ')}</td></tr>` : ''}
             </table>
           </div>
           ` : ''}
@@ -250,13 +250,13 @@ export function renderEmailTemplate(event: NotificationEvent, payload: any): Out
 
             <div style="margin-top: 16px; border-top: 1px solid #e4e4e7; padding-top: 12px;">
               <table style="width: 100%; font-size: 13px;">
-                ${p.subtotal ? `<tr><td style="color:#71717a;padding:3px 0;">Subtotal:</td><td style="text-align:right;font-weight:500;">${p.currency} ${Number(p.subtotal).toFixed(2)}</td></tr>` : ''}
-                ${p.shippingCost ? `<tr><td style="color:#71717a;padding:3px 0;">Shipping & Logistics:</td><td style="text-align:right;font-weight:500;">${p.currency} ${Number(p.shippingCost).toFixed(2)}</td></tr>` : ''}
-                ${p.vatAmount ? `<tr><td style="color:#71717a;padding:3px 0;">VAT (15%):</td><td style="text-align:right;font-weight:500;">${p.currency} ${Number(p.vatAmount).toFixed(2)}</td></tr>` : ''}
+                ${p.subtotal !== undefined && p.subtotal !== null ? `<tr><td style="color:#71717a;padding:3px 0;">Subtotal:</td><td style="text-align:right;font-weight:500;">${p.currency || 'SAR'} ${Number(p.subtotal || 0).toFixed(2)}</td></tr>` : ''}
+                ${p.shippingCost !== undefined && p.shippingCost !== null ? `<tr><td style="color:#71717a;padding:3px 0;">Shipping & Logistics:</td><td style="text-align:right;font-weight:500;">${p.currency || 'SAR'} ${Number(p.shippingCost || 0).toFixed(2)}</td></tr>` : ''}
+                ${p.vatAmount !== undefined && p.vatAmount !== null ? `<tr><td style="color:#71717a;padding:3px 0;">VAT (15%):</td><td style="text-align:right;font-weight:500;">${p.currency || 'SAR'} ${Number(p.vatAmount || 0).toFixed(2)}</td></tr>` : ''}
                 <tr>
                   <td style="font-weight: 700; font-size: 15px; padding-top: 8px; color: #09090b;">Order Total:</td>
                   <td style="font-weight: 800; font-size: 17px; color: #09090b; text-align: right; padding-top: 8px;">
-                    ${p.currency} ${Number(p.totalAmount).toFixed(2)}
+                    ${p.currency || 'SAR'} ${Number(p.totalAmount || 0).toFixed(2)}
                   </td>
                 </tr>
               </table>

@@ -140,6 +140,7 @@ export interface Product {
   moq?: number | ""
   moqStep?: number | ""
   currency?: string
+  slug?: string
   arabicTitle?: string
   arabicDescription?: string
   translations?: Record<string, Record<string, any>>

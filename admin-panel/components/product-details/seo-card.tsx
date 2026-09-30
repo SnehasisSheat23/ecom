@@ -27,6 +27,7 @@ export function SEOCard({
 
   const storeUrl = process.env.NEXT_PUBLIC_STORE_URL || "https://abdullahbakheettksa.com"
   const cleanStoreUrl = storeUrl.replace(/\/$/, "")
+  const currentSlug = product.slug || product.translations?.en?.slug || product.translations?.ar?.slug || ""
 
   return (
     <Card className="shadow-xs border-border/60">
@@ -43,7 +44,7 @@ export function SEOCard({
               {product.seo?.title || product.title}
             </span>
             <span className="text-xs text-emerald-700 dark:text-emerald-400">
-              {cleanStoreUrl}/products/{(product.seo?.title || product.title).toLowerCase().replace(/[^a-z0-9]+/g, '-')}
+              {cleanStoreUrl}/products/{currentSlug}
             </span>
             <span className="text-sm text-muted-foreground mt-1">
               {stripHtml(product.seo?.description || product.description) || "Add a description to see how this product might appear in a search engine listing."}
@@ -90,9 +91,22 @@ export function SEOCard({
                 </span>
                 <input
                   type="text"
-                  disabled
-                  className="px-0.5 py-2 text-sm bg-transparent border-none outline-none focus:outline-none w-full select-none cursor-not-allowed text-muted-foreground min-w-0"
-                  value={(product.seo?.title || product.title).toLowerCase().replace(/[^a-z0-9]+/g, '-')}
+                  className="px-0.5 py-2 text-sm bg-transparent border-none outline-none focus:outline-none w-full text-foreground min-w-0"
+                  value={currentSlug}
+                  onChange={(e) => {
+                    const rawVal = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')
+                    setProduct(prev => prev ? {
+                      ...prev,
+                      slug: rawVal,
+                      translations: {
+                        ...(prev.translations || {}),
+                        en: {
+                          ...(prev.translations?.en || {}),
+                          slug: rawVal,
+                        },
+                      },
+                    } : null)
+                  }}
                 />
               </div>
             </div>

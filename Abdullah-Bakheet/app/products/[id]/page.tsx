@@ -36,6 +36,9 @@ function ProductDescriptionContent() {
                     setSelectedImage(null);
                     setActiveImageIndex(0);
                     setQuantity(Math.max(1, apiProd.moq || 1));
+                    if (apiProd.slug && productId !== apiProd.slug && typeof window !== 'undefined') {
+                        window.history.replaceState(null, '', `/products/${apiProd.slug}`);
+                    }
                 }
             } finally {
                 if (isMounted) setIsLoading(false);
