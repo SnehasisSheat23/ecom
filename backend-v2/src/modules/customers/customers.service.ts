@@ -48,6 +48,42 @@ export class CustomersService {
       accountDiscountPercent: input.accountDiscountPercent !== undefined ? String(input.accountDiscountPercent) : '0.00',
     }
     const [customer] = await this.db.insert(customers).values(formattedInput as any).returning()
+
+    if (customer) {
+      const isCorporate = Boolean(
+        customer.customerGroup === 'corporate' ||
+        customer.customerGroup === 'wholesale' ||
+        customer.companyName ||
+        customer.crNumber
+      )
+      const displayName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || customer.companyName || customer.email.split('@')[0]
+
+      if (isCorporate) {
+        const cleanStatus = (customer.status || 'pending').toLowerCase()
+        if (cleanStatus === 'approved' || cleanStatus === 'active') {
+          notify('BUSINESS_ACCOUNT_APPROVED', {
+            companyName: customer.companyName || 'Corporate Account',
+            contactPerson: displayName,
+            email: customer.email,
+            customerGroup: customer.customerGroup || 'corporate',
+            creditLimit: customer.creditLimit || '0',
+            paymentTerms: customer.paymentTerms || 'prepaid',
+          })
+        } else if (cleanStatus === 'pending') {
+          notify('BUSINESS_REGISTRATION_SUBMITTED', {
+            companyName: customer.companyName || 'Corporate Entity',
+            contactPerson: displayName,
+            email: customer.email,
+            phone: customer.phone,
+            crNumber: customer.crNumber,
+            vatNumber: customer.companyTaxId,
+            businessType: customer.businessType,
+            city: customer.city,
+          })
+        }
+      }
+    }
+
     return customer
   }
 
@@ -234,15 +270,23 @@ export class CustomersService {
       .returning()
 
     // When admin approves a corporate account, fire-and-forget congratulations email!
-    if (updated && (input.status === 'approved' || input.status === 'active')) {
+    const cleanStatus = (input.status || '').toLowerCase()
+    const isCorp = Boolean(
+      updated?.customerGroup === 'corporate' ||
+      updated?.customerGroup === 'wholesale' ||
+      updated?.companyName ||
+      updated?.crNumber
+    )
+
+    if (updated && isCorp && (cleanStatus === 'approved' || cleanStatus === 'active')) {
       const displayName = `${updated.firstName || ''} ${updated.lastName || ''}`.trim() || updated.companyName || 'Corporate Partner'
       notify('BUSINESS_ACCOUNT_APPROVED', {
         companyName: updated.companyName || 'Corporate Account',
         contactPerson: displayName,
         email: updated.email,
-        customerGroup: updated.customerGroup,
-        creditLimit: updated.creditLimit,
-        paymentTerms: updated.paymentTerms,
+        customerGroup: updated.customerGroup || 'corporate',
+        creditLimit: updated.creditLimit || '0',
+        paymentTerms: updated.paymentTerms || 'prepaid',
       })
     }
 

@@ -193,6 +193,8 @@ export default function CheckoutPage() {
                 shippingCost: shippingCost,
                 shippingAddressSnapshot: {
                     fullName: `${firstName} ${lastName}`.trim() || 'Customer',
+                    email: email || user?.email || undefined,
+                    companyName: user?.companyName || undefined,
                     line1: street || 'Address',
                     city: city || 'Riyadh',
                     state: city || 'Riyadh',
@@ -200,6 +202,7 @@ export default function CheckoutPage() {
                     country: countryCode,
                     phone: phone || null,
                 },
+                email: email || user?.email || undefined,
                 guestEmail: email || user?.email || undefined,
                 customerId: user?.id || undefined,
                 paymentMethod: resolvedPaymentType,

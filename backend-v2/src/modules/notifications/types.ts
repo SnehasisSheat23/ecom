@@ -15,8 +15,8 @@ export interface OrderItemSummary {
   quantity: number
   unitPrice: number
   totalPrice: number
-  sku?: string
-  image?: string
+  sku?: string | null
+  image?: string | null
 }
 
 export interface OrderPlacedPayload {

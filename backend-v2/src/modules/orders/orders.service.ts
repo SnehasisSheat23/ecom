@@ -82,9 +82,13 @@ export class OrdersService {
     }[] = []
 
     for (const item of input.items) {
-      // Find product by ID or SKU
-      let product = await this.db.select().from(products).where(eq(products.id, item.productId)).limit(1)
-      if (!product[0]) {
+      // Find product by ID (if valid UUID) or SKU
+      const isUuid = Boolean(item.productId && /^[0-9a-fA-F-]{36}$/.test(item.productId))
+      let product = isUuid
+        ? await this.db.select().from(products).where(eq(products.id, item.productId)).limit(1)
+        : []
+
+      if (!product[0] && item.productId) {
         product = await this.db.select().from(products).where(eq(products.sku, item.productId)).limit(1)
       }
 
@@ -335,26 +339,43 @@ export class OrdersService {
 
     // Fire-and-forget notification dispatch (only for non-pending checkouts)
     if (createdOrder && initialStatus !== 'checkout_pending') {
-      const custObj = (createdOrder as any).customer
+      const custObj = (createdOrder as any).customer || customerProfile
       const shipSnap = (createdOrder.shippingAddressSnapshot as any) || {}
       const customerName = custObj?.firstName
         ? `${custObj.firstName} ${custObj.lastName || ''}`.trim()
         : (shipSnap.fullName || shipSnap.recipientName || 'Valued Customer')
-      const customerEmail = custObj?.email || shipSnap.email || 'customer@example.com'
+      const customerEmail = custObj?.email || shipSnap.email || (input as any).guestEmail || (input as any).email || 'customer@example.com'
       const customerPhone = custObj?.phone || shipSnap.phone || null
+
+      const isCorporate = Boolean(
+        custObj?.customerGroup === 'corporate' ||
+        custObj?.customerGroup === 'wholesale' ||
+        custObj?.companyName ||
+        shipSnap.companyName ||
+        createdOrder.poNumber ||
+        (createdOrder as any).poNumber
+      )
+      const companyName = custObj?.companyName || shipSnap.companyName || null
+      const poNumber = createdOrder.poNumber || (createdOrder as any).poNumber || null
+      const vatNumber = custObj?.companyTaxId || custObj?.crNumber || shipSnap.vatNumber || null
 
       notify('ORDER_PLACED', {
         orderNumber: createdOrder.orderNumber,
         customerName,
         customerEmail,
         customerPhone,
+        companyName,
+        poNumber,
+        vatNumber,
+        isCorporate,
         totalAmount: createdOrder.totalAmount,
         subtotal: createdOrder.subtotal,
         shippingCost: createdOrder.shippingCost,
+        vatAmount: createdOrder.taxAmount,
         currency: createdOrder.currency,
         paymentMethod: createdOrder.paymentMethodType,
         shippingAddress: [
-          (createdOrder.shippingAddressSnapshot as any)?.addressLine1,
+          (createdOrder.shippingAddressSnapshot as any)?.addressLine1 || (createdOrder.shippingAddressSnapshot as any)?.line1,
           (createdOrder.shippingAddressSnapshot as any)?.city,
           (createdOrder.shippingAddressSnapshot as any)?.country,
         ]
@@ -751,18 +772,35 @@ export class OrdersService {
       const customerEmail = custObj?.email || snapshot.email || 'customer@example.com'
       const customerPhone = custObj?.phone || snapshot.phone || null
 
+      const isCorporate = Boolean(
+        custObj?.customerGroup === 'corporate' ||
+        custObj?.customerGroup === 'wholesale' ||
+        custObj?.companyName ||
+        snapshot.companyName ||
+        fullOrder.poNumber ||
+        (fullOrder as any).poNumber
+      )
+      const companyName = custObj?.companyName || snapshot.companyName || null
+      const poNumber = fullOrder.poNumber || (fullOrder as any).poNumber || null
+      const vatNumber = custObj?.companyTaxId || custObj?.crNumber || snapshot.vatNumber || null
+
       notify('ORDER_PLACED', {
         orderNumber: fullOrder.orderNumber,
         customerName,
         customerEmail,
         customerPhone,
+        companyName,
+        poNumber,
+        vatNumber,
+        isCorporate,
         totalAmount: fullOrder.totalAmount,
         subtotal: fullOrder.subtotal,
         shippingCost: fullOrder.shippingCost,
+        vatAmount: fullOrder.taxAmount,
         currency: fullOrder.currency,
         paymentMethod: 'NalPay (Mada / Visa / Apple Pay)',
         shippingAddress: [
-          snapshot.addressLine1 || snapshot.address,
+          snapshot.addressLine1 || snapshot.address || snapshot.line1,
           snapshot.city,
           snapshot.country,
         ].filter(Boolean).join(', '),

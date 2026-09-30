@@ -81,8 +81,12 @@ export class QuotationsService {
     }[] = []
 
     for (const item of input.items) {
-      let product = await this.db.select().from(products).where(eq(products.id, item.productId)).limit(1)
-      if (!product[0]) {
+      const isUuid = Boolean(item.productId && /^[0-9a-fA-F-]{36}$/.test(item.productId))
+      let product = isUuid
+        ? await this.db.select().from(products).where(eq(products.id, item.productId)).limit(1)
+        : []
+
+      if (!product[0] && item.productId) {
         product = await this.db.select().from(products).where(eq(products.sku, item.productId)).limit(1)
       }
 
@@ -487,6 +491,52 @@ export class QuotationsService {
         updatedAt: new Date(),
       })
       .where(eq(quotations.id, quote.id))
+
+    // Dispatch Official Order Placed notification with B2B wholesale metadata
+    const customerName = quote.customerName || (customerData ? `${customerData.firstName || ''} ${customerData.lastName || ''}`.trim() : 'Corporate Partner')
+    const customerEmail = quote.customerEmail || customerData?.email || shippingSnapshot.email || 'customer@example.com'
+    const customerPhone = quote.customerPhone || customerData?.phone || shippingSnapshot.phone || null
+    const companyName = quote.companyName || customerData?.companyName || shippingSnapshot.company || null
+    const poNumber = input.poNumber || null
+    const vatNumber = quote.taxNumber || customerData?.companyTaxId || null
+
+    notify('ORDER_PLACED', {
+      orderNumber: createdOrder.orderNumber,
+      customerName,
+      customerEmail,
+      customerPhone,
+      companyName,
+      poNumber,
+      vatNumber,
+      isCorporate: true,
+      totalAmount: createdOrder.totalAmount,
+      subtotal: createdOrder.subtotal,
+      shippingCost: createdOrder.shippingCost,
+      vatAmount: createdOrder.taxAmount,
+      currency: createdOrder.currency,
+      paymentMethod: createdOrder.paymentMethodType,
+      shippingAddress: [
+        shippingSnapshot.addressLine1 || shippingSnapshot.address || shippingSnapshot.line1,
+        shippingSnapshot.city,
+        shippingSnapshot.country,
+      ].filter(Boolean).join(', '),
+      items: quote.items.map((i) => {
+        const snap: any = i.productNameSnapshot || {}
+        const name = typeof i.productNameSnapshot === 'string'
+          ? i.productNameSnapshot
+          : (snap.en || snap.title || i.sku || 'Product Item')
+        const image = typeof snap === 'object' && snap !== null ? (snap.image || snap.imageUrl || undefined) : undefined
+
+        return {
+          name,
+          quantity: i.requestedQuantity,
+          unitPrice: Number(i.quotedUnitPrice || 0),
+          totalPrice: Number(i.totalPrice || 0),
+          sku: i.sku || undefined,
+          image,
+        }
+      }),
+    })
 
     return {
       success: true,

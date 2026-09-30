@@ -60,8 +60,9 @@ ordersRoutes.post('/', async (c) => {
     }
 
     // 2. If not in token, look up customer by email in database
-    if (!customerId && (body.guestEmail || body.shippingAddressSnapshot?.email || body.email)) {
-      const email = (body.guestEmail || body.shippingAddressSnapshot?.email || body.email).trim().toLowerCase()
+    const explicitEmail = body.guestEmail || body.shippingAddressSnapshot?.email || body.email
+    if (!customerId && explicitEmail) {
+      const email = explicitEmail.trim().toLowerCase()
       const db = (await import('../../lib/db.js')).getDatabase()
       const { customers } = await import('../../database/schema.js')
       const { eq } = await import('drizzle-orm')
@@ -71,8 +72,14 @@ ordersRoutes.post('/', async (c) => {
       }
     }
 
+    const shippingAddressSnapshot = {
+      ...(body.shippingAddressSnapshot || {}),
+      email: body.shippingAddressSnapshot?.email || explicitEmail || undefined,
+    }
+
     const order = await ordersService.createOrder({
       ...body,
+      shippingAddressSnapshot,
       customerId,
     })
     return c.json({ success: true, data: order }, 201)
